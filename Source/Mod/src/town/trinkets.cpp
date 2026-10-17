@@ -271,7 +271,7 @@ int  bldTrinketEffects(uintptr_t base, uintptr_t item, char* out, int outsz, boo
 bool bldTrinketFitsHero(uintptr_t base, uintptr_t item, uintptr_t hero, bool* sure);
 
 static bool riTrinketRowText(uintptr_t base, uintptr_t sys, int slot, int pos, int total,
-                             char* out, int outsz) {
+                             char* out, int outsz, bool brief, int card = INV_CARD_AUTO) {
     uintptr_t beg = 0; int slots = 0;
     if (!invItemVectorAt(sys, &beg, &slots) || slot < 0 || slot >= slots) return false;
     uintptr_t item = beg + (uintptr_t)slot * ITEM_STRIDE;
@@ -279,30 +279,29 @@ static bool riTrinketRowText(uintptr_t base, uintptr_t sys, int slot, int pos, i
     safeReadU32(item + ITEM_AMOUNT_OFF, &amount);
     char type[64] = {0}, itemId[64] = {0}, key[192] = {0}, name[256] = {0};
     invItemName(base, item, type, itemId, key, name);
-    char rarity[96] = {0}, clsreq[256] = {0}, charges[384] = {0}, trig[1536] = {0};
-    uintptr_t rec = bldTrinketRecord(base, item);
-    if (rec) {
-        bldTrinketRarity(base, rec, rarity, sizeof rarity, false);
-        bldTrinketClassReq(base, rec, clsreq, sizeof clsreq, false);
-        bldTrinketCharges(base, item, rec, charges, sizeof charges, false);
-        bldTrinketTriggers(base, rec, trig, sizeof trig, false);
-    }
-    char fx[768] = {0};
-    bldTrinketEffects(base, item, fx, sizeof fx, false);
-    char desckey[192], desc[512];
-    _snprintf(desckey, sizeof desckey, "%s%s%s", INV_DESC_PREFIX, type, itemId);
-    desckey[sizeof desckey - 1] = 0;
-    bool hasDesc = resolveKey(base, desckey, desc, sizeof desc) && desc[0];
+    InvCard c;
+    if (invCardWanted(card)) invCardRead(base, item, &c);
+    else                     memset(&c, 0, sizeof c);
+    const char* rarity = c.rarity;  const char* clsreq = c.clsreq;  const char* charges = c.charges;
+    const char* trig   = c.trig;    const char* fx     = c.fx;      const char* desc    = c.desc;
+    bool hasDesc = !brief && desc[0];
     char head[1120];
     if (amount > 1)
         _snprintf(head, sizeof head, "%s, %u%s%s%s%s%s%s", name, amount,
-                  rarity[0] ? ". " : "", rarity, clsreq[0] ? ". " : "", clsreq,
+                  rarity[0] ? ", " : "", rarity, clsreq[0] ? ", " : "", clsreq,
                   charges[0] ? ". " : "", charges);
     else
         _snprintf(head, sizeof head, "%s%s%s%s%s%s%s", name,
-                  rarity[0] ? ". " : "", rarity, clsreq[0] ? ". " : "", clsreq,
+                  rarity[0] ? ", " : "", rarity, clsreq[0] ? ", " : "", clsreq,
                   charges[0] ? ". " : "", charges);
     head[sizeof head - 1] = 0;
+    if (brief) {
+        _snprintf(out, outsz, "%s%s%s%s%s.",
+                  head, fx[0] ? ". " : "", fx,
+                  trig[0] ? ". " : "", trig);
+        out[outsz - 1] = 0;
+        return true;
+    }
     char posline[64];
     _snprintf(posline, sizeof posline, axs(AXS_RI_TRINKET_N_OF_M), pos, total);
     posline[sizeof posline - 1] = 0;
@@ -312,6 +311,7 @@ static bool riTrinketRowText(uintptr_t base, uintptr_t sys, int slot, int pos, i
               posline,
               hasDesc ? " " : "", hasDesc ? desc : "");
     out[outsz - 1] = 0;
+    if (card == INV_CARD_AUTO && invCardWanted(card)) { invCardNoteKeywords(&c); axTipGlueKeywords(out, outsz); }
     return true;
 }
 
@@ -320,7 +320,7 @@ static int riActionCount(uintptr_t base) {
     return riActions(base, riPanel(base), acts);
 }
 
-static bool riRowText(uintptr_t base, int index, char* out, int outsz) {
+static bool riRowTextEx(uintptr_t base, int index, bool brief, char* out, int outsz) {
     RiAction acts[RI_MAX_ACTIONS];
     int nActs = riActions(base, riPanel(base), acts);
     if (index >= 0 && index < nActs) {                 // the top button row
@@ -328,8 +328,10 @@ static bool riRowText(uintptr_t base, int index, char* out, int outsz) {
         if (!resolveKey(base, acts[index].locKey, label, sizeof label))
             strncpy(label, acts[index].logName, sizeof label - 1);   // never silent on a miss
         abStripMarkup(label);
-        _snprintf(out, outsz, axs(AXS_RI_BUTTON_N_OF_M), label, index + 1, nActs);
+        if (brief) _snprintf(out, outsz, "%s", label);
+        else       _snprintf(out, outsz, axs(AXS_RI_BUTTON_N_OF_M), label, index + 1, nActs);
         out[outsz - 1] = 0;
+        if (!brief) axAppendHint(out, outsz, AXS_ENTER_ACTIVATE_HINT);
         return true;
     }
     int occ[RI_MAX_TRINKETS];
@@ -337,7 +339,12 @@ static bool riRowText(uintptr_t base, int index, char* out, int outsz) {
     int g = index - nActs;                             // position within the table
     if (g < 0 || g >= slots) return false;
     uintptr_t sys = riSystem(base);
-    return sys && riTrinketRowText(base, sys, occ[g], g + 1, slots, out, outsz);
+    if (!sys || !riTrinketRowText(base, sys, occ[g], g + 1, slots, out, outsz, brief)) return false;
+    if (!brief) axAppendHint(out, outsz, riInCircus(base) ? AXS_RI_TRINKET_CIRCUS_HINT : AXS_RI_TRINKET_HINT);
+    return true;
+}
+static bool riRowText(uintptr_t base, int index, char* out, int outsz) {
+    return riRowTextEx(base, index, false, out, outsz);
 }
 
 void riSpeakRow(uintptr_t base, const char* prefix) {
@@ -726,8 +733,56 @@ static void riServiceHoverTrack(uintptr_t base) {
     g_riHoverStable = 0;
 }
 
+// ---- THE TRINKET INVENTORY'S FIND ENUMERATOR ----
+int riFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_riActive || !riPanel(base)) return 0;
+    int nActs = riActionCount(base);
+    int occ[RI_MAX_TRINKETS];
+    int slots = riOccupiedSlots(base, occ, RI_MAX_TRINKETS);
+    if (slots < 0) slots = 0;
+    int total = nActs + slots;
+    if (op == AXF_COUNT) return total;
+    if (idx < 0 || idx >= total) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        return riRowTextEx(base, idx, true, out, outsz) ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        g_riSlot = idx;
+        logLine("realminv: find landed on item %d (%s)", idx, idx < nActs ? "button" : "trinket");
+        riHoverFromCursor(base, nActs, occ, slots);    // keep the game's grid on the focus
+        riSpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
+}
+
 bool routeRealmInvKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
-    if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) return false;
+    if (mod & (KMOD_LALT | KMOD_RALT)) return false;
+    if (mod & (KMOD_LCTRL | KMOD_RCTRL)) {
+        if (sym != SDLK_UP && sym != SDLK_DOWN) return false;
+        if (repeat) return true;
+        static int s_tipLine = 0, s_tipSlot = -1;
+        if (s_tipSlot != g_riSlot) { s_tipSlot = g_riSlot; s_tipLine = 0; }
+        static char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+        int ln = 0;
+        int nActs = riActionCount(base);
+        int occ[RI_MAX_TRINKETS];
+        int slots = riOccupiedSlots(base, occ, RI_MAX_TRINKETS);
+        int g = g_riSlot - nActs;
+        uintptr_t sys = riSystem(base);
+        if (sys && g >= 0 && g < slots &&
+            riTrinketRowText(base, sys, occ[g], g + 1, slots, lines[0], AB_TIP_LINE_SZ, false, INV_CARD_OFF)) {
+            ln = 1;
+            uintptr_t beg = 0; int total = 0;
+            if (invItemVectorAt(sys, &beg, &total) && occ[g] < total) {
+                InvCard c;
+                invCardRead(base, beg + (uintptr_t)occ[g] * ITEM_STRIDE, &c);
+                ln = invCardLines(&c, lines, 1, AB_TIP_MAX_LINES);
+            }
+        }
+        return axTipStep(&s_tipLine, sym == SDLK_UP ? 1 : -1, &lines[0][0], AB_TIP_LINE_SZ, ln);
+    }
     bool up    = (sym == SDLK_UP),   down  = (sym == SDLK_DOWN);
     bool left  = (sym == SDLK_LEFT), right = (sym == SDLK_RIGHT);
     bool enter = (sym == SDLK_RETURN || sym == SDLK_KP_ENTER);

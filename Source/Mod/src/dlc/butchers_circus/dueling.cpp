@@ -658,8 +658,9 @@ static void dgServiceEdit(uintptr_t base, uintptr_t panel) {
             else abStripMarkup(title);
             dgEditText(panel, g_dgEditLast, sizeof g_dgEditLast);   // seeded: already in the line
             char line[MAILBOX_SZ];
-            _snprintf(line, sizeof line, "%s. %s. %s.", title, g_dgEditLast, axs(AXS_NM_HELP));
+            _snprintf(line, sizeof line, "%s. %s.", title, g_dgEditLast);
             line[sizeof line - 1] = 0;
+            axAppendHint(line, sizeof line, AXS_NM_HELP);   // "" while the F10 "Control hints" row is Off
             postSpeech(line);
             logLine("dueling: edit OPEN section %d text=\"%s\"", sec, g_dgEditLast);
         } else {

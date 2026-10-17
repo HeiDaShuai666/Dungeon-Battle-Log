@@ -369,12 +369,9 @@ static int bldCollectTracks(uintptr_t base, uintptr_t root, uintptr_t panel, boo
     return g_bldTrackCount;
 }
 
-static void bldTrackRowText(uintptr_t base, int i, char* out, int outsz) {
+static void bldTrackRowLabel(uintptr_t base, int i, char* out, int outsz) {
     const BldTrack* t = &g_bldTracks[i];
     int total = t->def ? t->def->steps : t->stepsSeen;
-    char pos[64];                                     // the trailing "Track i of n." sentence
-    _snprintf(pos, sizeof pos, axs(AXS_BLD_TRACK_POS_FMT), i + 1, g_bldTrackCount);
-    pos[sizeof pos - 1] = 0;
     if (t->nextIdx >= 0) {
         int k = t->nextIdx;                           // ranks bought == the next step's index
         bool buyable = (k < BLD_TRACK_STEPS_MAX) && t->state[k] != 0;
@@ -410,25 +407,48 @@ static void bldTrackRowText(uintptr_t base, int i, char* out, int outsz) {
         char nextS[288];
         _snprintf(nextS, sizeof nextS, axs(AXS_BLD_NEXT_RANK_FMT), next);
         nextS[sizeof nextS - 1] = 0;
-        _snprintf(out, outsz, "%s. %s %s", head, nextS, pos);
+        _snprintf(out, outsz, "%s. %s", head, nextS);
     } else if (t->id[0] && strcmp(t->id, "stage_coach.upgraded_recruits") == 0) {
-        char head[224];
-        _snprintf(head, sizeof head, axs(AXS_BLD_ROW_LOCKED_CROSS_FMT), t->name);
-        head[sizeof head - 1] = 0;
-        _snprintf(out, outsz, "%s %s", head, pos);
+        _snprintf(out, outsz, axs(AXS_BLD_ROW_LOCKED_CROSS_FMT), t->name);
     } else if (t->stepsSeen > 0) {
         const char* curFx = (t->fx && total <= 6 && t->fx->cur[total] >= 0)
                             ? axs((AxStrId)t->fx->cur[total]) : "";
-        char head[224];
-        if (curFx[0]) _snprintf(head, sizeof head, axs(AXS_BLD_ROW_FULL_FX_FMT), t->name, curFx);
-        else          _snprintf(head, sizeof head, axs(AXS_BLD_ROW_FULL_FMT), t->name);
-        head[sizeof head - 1] = 0;
-        _snprintf(out, outsz, "%s %s", head, pos);
+        if (curFx[0]) _snprintf(out, outsz, axs(AXS_BLD_ROW_FULL_FX_FMT), t->name, curFx);
+        else          _snprintf(out, outsz, axs(AXS_BLD_ROW_FULL_FMT), t->name);
     } else {
         // Steps unreadable (the collect log says why) — never invent state.
-        _snprintf(out, outsz, "%s. %s", t->name, pos);
+        _snprintf(out, outsz, "%s.", t->name);
     }
     out[outsz - 1] = 0;
+}
+
+static void bldTrackRowText(uintptr_t base, int i, char* out, int outsz) {
+    char body[640], pos[64];
+    bldTrackRowLabel(base, i, body, sizeof body);
+    _snprintf(pos, sizeof pos, axs(AXS_BLD_TRACK_POS_FMT), i + 1, g_bldTrackCount);
+    pos[sizeof pos - 1] = 0;
+    _snprintf(out, outsz, "%s %s", body, pos);
+    out[outsz - 1] = 0;
+}
+
+static bool bldTrackBuyable(int i) {
+    const BldTrack* t = &g_bldTracks[i];
+    int k = t->nextIdx;
+    return k >= 0 && k < BLD_TRACK_STEPS_MAX && t->state[k] != 0;
+}
+
+static void bldTrackFxTexts(int i, const char** cur, const char** nxt) {
+    *cur = ""; *nxt = "";
+    const BldTrack* t = &g_bldTracks[i];
+    if (!t->fx) return;
+    int total = t->def ? t->def->steps : t->stepsSeen;
+    if (t->nextIdx >= 0) {
+        int k = t->nextIdx;
+        if (k <= 6 && t->fx->cur[k] >= 0) *cur = axs((AxStrId)t->fx->cur[k]);
+        if (k <  6 && t->fx->nxt[k] >= 0) *nxt = axs((AxStrId)t->fx->nxt[k]);
+    } else if (t->stepsSeen > 0 && total <= 6 && t->fx->cur[total] >= 0) {
+        *cur = axs((AxStrId)t->fx->cur[total]);
+    }
 }
 
 static void bldSpeakTrackRow(uintptr_t base, uintptr_t root, uintptr_t panel, const char* prefix) {
@@ -436,8 +456,16 @@ static void bldSpeakTrackRow(uintptr_t base, uintptr_t root, uintptr_t panel, co
     if (n <= 0) { postSpeech(axs(AXS_BLD_NO_TRACKS)); return; }
     if (g_bldUpRow >= n) g_bldUpRow = n - 1;
     if (g_bldUpRow < 0)  g_bldUpRow = 0;
-    char row[320], utter[MAILBOX_SZ];
+    char row[768], utter[MAILBOX_SZ];
     bldTrackRowText(base, g_bldUpRow, row, sizeof row);
+    if (axTipWanted()) {
+        const char* cur; const char* nxt;
+        bldTrackFxTexts(g_bldUpRow, &cur, &nxt);
+        axTipNoteKeywords(cur);
+        axTipNoteKeywords(nxt);
+        axTipGlueKeywords(row, sizeof row);
+    }
+    if (bldTrackBuyable(g_bldUpRow)) axAppendHint(row, sizeof row, AXS_BLD_UPGRADE_HINT);
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", row);
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
@@ -1600,7 +1628,8 @@ static void bldJewelerPurseLine(uintptr_t base, uintptr_t panel, int col, char* 
 }
 
 static bool bldStoreRowText(uintptr_t base, uintptr_t sys, int kind, int slot, int pos, int total,
-                            char* out, int outsz, char* nameOut, int nameOutSz, int* priceOut) {
+                            char* out, int outsz, char* nameOut, int nameOutSz, int* priceOut,
+                            int card = INV_CARD_AUTO) {
     uintptr_t beg = 0; int slots = 0;
     if (!invItemVectorAt(sys, &beg, &slots) || slot < 0 || slot >= slots) return false;
     uintptr_t item = beg + (uintptr_t)slot * ITEM_STRIDE;
@@ -1615,48 +1644,44 @@ static bool bldStoreRowText(uintptr_t base, uintptr_t sys, int kind, int slot, i
     if (priceOut) *priceOut = havePrice ? price : -1;
     char currency[96];
     bldStoreCurrencyName(base, kind, currency, sizeof currency);
-    char rarity[96], clsreq[256], charges[384], trig[1536];
-    rarity[0] = clsreq[0] = charges[0] = trig[0] = 0;
-    uintptr_t rec = bldTrinketRecord(base, item);
-    if (rec) {
-        bldTrinketRarity(base, rec, rarity, sizeof rarity, false);
-        bldTrinketClassReq(base, rec, clsreq, sizeof clsreq, false);
-        bldTrinketCharges(base, item, rec, charges, sizeof charges, false);
-        bldTrinketTriggers(base, rec, trig, sizeof trig, false);
-    }
-    char fx[768];
-    bldTrinketEffects(base, item, fx, sizeof fx, false);
-    char desckey[192], desc[512];
-    _snprintf(desckey, sizeof desckey, "%s%s%s", INV_DESC_PREFIX, type, itemId);
-    desckey[sizeof desckey - 1] = 0;
-    bool hasDesc = resolveKey(base, desckey, desc, sizeof desc) && desc[0];
+    // The card (invCardRead, raid/inventory.cpp): read only while the row carries it.
+    InvCard c;
+    if (invCardWanted(card)) invCardRead(base, item, &c);
+    else                     memset(&c, 0, sizeof c);
+    const char* rarity = c.rarity;  const char* clsreq = c.clsreq;  const char* charges = c.charges;
+    const char* trig   = c.trig;    const char* fx     = c.fx;      const char* desc    = c.desc;
+    bool hasDesc = desc[0] != 0;
     char head[1024];
     _snprintf(head, sizeof head, "%s%s%s%s%s%s%s", name,
-              rarity[0] ? ". " : "", rarity,
-              clsreq[0] ? ". " : "", clsreq,
+              rarity[0] ? ", " : "", rarity,
+              clsreq[0] ? ", " : "", clsreq,
               charges[0] ? ". " : "", charges);
     head[sizeof head - 1] = 0;
     char itemPos[64];
-    _snprintf(itemPos, sizeof itemPos, axs(AXS_ITEM_N_OF_M), pos, total);
-    itemPos[sizeof itemPos - 1] = 0;
+    itemPos[0] = 0;
+    if (pos > 0) {
+        _snprintf(itemPos, sizeof itemPos, axs(AXS_ITEM_N_OF_M), pos, total);
+        itemPos[sizeof itemPos - 1] = 0;
+    }
     if (havePrice) {
         char priceS[128];                             // period-less: the ". " joins supply it
         _snprintf(priceS, sizeof priceS, axs(AXS_SHOP_COSTS_FMT), price, currency);
         priceS[sizeof priceS - 1] = 0;
-        _snprintf(out, outsz, "%s. %s%s%s%s%s. %s%s%s",
+        _snprintf(out, outsz, "%s. %s%s%s%s%s.%s%s%s%s",
                   head, priceS,
                   fx[0] ? ". " : "", fx,
                   trig[0] ? ". " : "", trig,
-                  itemPos,
+                  itemPos[0] ? " " : "", itemPos,
                   hasDesc ? " " : "", hasDesc ? desc : "");
     } else {
-        _snprintf(out, outsz, "%s%s%s%s%s. %s%s%s",
+        _snprintf(out, outsz, "%s%s%s%s%s.%s%s%s%s",
                   head, fx[0] ? ". " : "", fx,
                   trig[0] ? ". " : "", trig,
-                  itemPos,
+                  itemPos[0] ? " " : "", itemPos,
                   hasDesc ? " " : "", hasDesc ? desc : "");
     }
     out[outsz - 1] = 0;
+    if (card == INV_CARD_AUTO && invCardWanted(card)) { invCardNoteKeywords(&c); axTipGlueKeywords(out, outsz); }
     return true;
 }
 
@@ -1853,13 +1878,19 @@ static int stBuildModel(uintptr_t base, uintptr_t panel) {
     return g_stRowCount;
 }
 
+static void stRowLabel(int rowIdx, char* out, int outsz) {
+    const StRow* r = &g_stRows[rowIdx];
+    _snprintf(out, outsz, "%s. %s.", r->text, stTypeWord(r->type));
+    out[outsz - 1] = 0;
+}
+
 // One row line: "<title>. <Cinematic/Narration/Journal page>. Item i of N."
 static void stComposeRow(int rowIdx, char* out, int outsz) {
-    const StRow* r = &g_stRows[rowIdx];
-    char itemPos[64];
+    char body[288], itemPos[64];
+    stRowLabel(rowIdx, body, sizeof body);
     _snprintf(itemPos, sizeof itemPos, axs(AXS_ITEM_N_OF_M), rowIdx + 1, g_stRowCount);
     itemPos[sizeof itemPos - 1] = 0;
-    _snprintf(out, outsz, "%s. %s. %s", r->text, stTypeWord(r->type), itemPos);
+    _snprintf(out, outsz, "%s %s", body, itemPos);
     out[outsz - 1] = 0;
 }
 
@@ -2044,6 +2075,7 @@ static bool bldSpeakOptionRow(uintptr_t base, uintptr_t panel, const char* prefi
             _snprintf(row, sizeof row, "%s", axs(AXS_SHOP_UNREADABLE));
         }
         if (n > 0) bldCometScrollToRow(base, panel, g_bldRow);
+        if (n > 0) axAppendHint(row, sizeof row, AXS_SHOP_BUY_HINT);
     } else {
         BldRecruit rows[16];
         int n = bldRecruitRows(base, panel, rows, 16, nullptr);
@@ -2056,6 +2088,11 @@ static bool bldSpeakOptionRow(uintptr_t base, uintptr_t panel, const char* prefi
             _snprintf(pos, sizeof pos, axs(AXS_RCT_POS_FMT), g_bldRow + 1, n);
             pos[sizeof pos - 1] = 0;
             _snprintf(row, sizeof row, "%s. %s", card, pos);
+            row[sizeof row - 1] = 0;
+            int rctKind = BLD_RCT_NONE;
+            bldRecruitDisplay(base, panel, &rctKind);
+            axAppendHint(row, sizeof row, rctKind == BLD_RCT_SHARD ? AXS_RCT_SHARD_ROW_HINT
+                                                                   : AXS_RCT_ROW_HINT);
         }
     }
     row[sizeof row - 1] = 0;
@@ -3006,6 +3043,7 @@ static void bldActRowText(uintptr_t base, uintptr_t panel, const BldActRow* r, i
         qtDropRowText(base, r, drop, sizeof drop);
         _snprintf(out, outsz, "%s%s", wing, drop);
         out[outsz - 1] = 0;
+        axAppendHint(out, outsz, AXS_EX_SELECT_HINT);
         return;
     }
     char state[320];
@@ -3018,6 +3056,8 @@ static void bldActRowText(uintptr_t base, uintptr_t panel, const BldActRow* r, i
         if (hero) safeReadCStr(hero + HERO_NAME_OFF, who, sizeof who);
         _snprintf(state, sizeof state, axs(AXS_ACT_STAYING_FMT),
                   who[0] ? who : axs(AXS_ACT_A_HERO));
+        state[sizeof state - 1] = 0;
+        axAppendHint(state, sizeof state, AXS_ACT_TAKE_OUT_HINT);
     } else if (r->pendingHero) {
         char who[80] = {0};
         safeReadCStr(r->pendingHero + HERO_NAME_OFF, who, sizeof who);
@@ -3027,6 +3067,8 @@ static void bldActRowText(uintptr_t base, uintptr_t panel, const BldActRow* r, i
             if (!chosen[0]) {
                 _snprintf(state, sizeof state, axs(AXS_QT_NOTHING_CHOSEN_FMT),
                           who[0] ? who : axs(AXS_ACT_A_HERO));
+                state[sizeof state - 1] = 0;
+                axAppendHint(state, sizeof state, AXS_QT_NOTHING_CHOSEN_HINT);
             } else {
                 char costFrag[80] = {0};
                 uint32_t guid = 0;
@@ -3046,6 +3088,8 @@ static void bldActRowText(uintptr_t base, uintptr_t panel, const BldActRow* r, i
                 }
                 _snprintf(state, sizeof state, axs(AXS_QT_PENDING_FMT),
                           who[0] ? who : axs(AXS_ACT_A_HERO), chosen, costFrag);
+                state[sizeof state - 1] = 0;
+                axAppendHint(state, sizeof state, AXS_ACT_CONFIRM_HINT);   // "" while Control hints is Off
             }
         } else {
             char costFrag[80] = {0};
@@ -3066,6 +3110,8 @@ static void bldActRowText(uintptr_t base, uintptr_t panel, const BldActRow* r, i
             }
             _snprintf(state, sizeof state, axs(AXS_ACT_NOT_CONFIRMED_COST_FMT),
                       who[0] ? who : axs(AXS_ACT_A_HERO), costFrag);
+            state[sizeof state - 1] = 0;
+            axAppendHint(state, sizeof state, AXS_ACT_CONFIRM_HINT);
         }
     } else if (bldSehActSlotLocked(base, r->activity, (uint32_t)r->slotIdx)) {
         _snprintf(state, sizeof state, "%s", axs(AXS_ACT_SLOT_LOCKED));
@@ -3075,6 +3121,8 @@ static void bldActRowText(uintptr_t base, uintptr_t panel, const BldActRow* r, i
         bool free_ = !bldSehActFlag(base, ACT_COSTSMONEY_RVA, r->activity, true);
         _snprintf(state, sizeof state, "%s",
                   axs(free_ ? AXS_ACT_EMPTY_FREE_CHOOSE : AXS_ACT_EMPTY_CHOOSE));
+        state[sizeof state - 1] = 0;
+        axAppendHint(state, sizeof state, AXS_ACT_CHOOSE_HINT);
     }
     state[sizeof state - 1] = 0;
     char slotPos[64];
@@ -3130,6 +3178,13 @@ static void bldActProbe(uintptr_t base, uintptr_t panel) {
             feGetElementById((int64_t)BLD_ELEM_CNFM_ID) ? "live" : "absent");
 }
 
+static bool bldActDescription(uintptr_t base, const char* actId, char* out, int outsz) {
+    out[0] = 0;
+    char key[64];
+    _snprintf(key, sizeof key, "town_activity_description_%s", actId);
+    key[sizeof key - 1] = 0;
+    return resolveKey(base, key, out, outsz) && out[0];
+}
 static bool bldActFocusedRowText(uintptr_t base, uintptr_t panel, char* row, int rowsz,
                                  bool withWing) {
     BldActRow rows[48];
@@ -3137,6 +3192,13 @@ static bool bldActFocusedRowText(uintptr_t base, uintptr_t panel, char* row, int
     if (n <= 0) return false;
     axStepCursor(&g_bldRow, n, 0);           // re-clamp against the live rows
     bldActRowText(base, panel, &rows[g_bldRow], bldActWingCount(rows, n), withWing, row, rowsz);
+    if (axTipWanted()) {
+        char desc[MAILBOX_SZ];
+        if (bldActDescription(base, rows[g_bldRow].actId, desc, sizeof desc)) {
+            axTipGlue(row, rowsz, desc);
+            axTipGlueKeywords(row, rowsz);           // the glossary terms it names (core/keywords.cpp)
+        }
+    }
     return true;
 }
 
@@ -3213,6 +3275,20 @@ static void qtOpenRowText(uintptr_t base, int row, char* out, int outsz) {
     out[outsz - 1] = 0;
 }
 
+static bool qtOpenRowDesc(uintptr_t base, int row, char* out, int outsz) {
+    out[0] = 0;
+    QtCand cands[64];
+    int cn = qtCandidates(base, g_qtOpenActivity, g_qtOpenSlot, g_qtOpenMode, cands, 64);
+    if (row <= 0 || row > cn) return false;
+    uintptr_t qc = qtQuirkClass(g_qtOpenHero, cands[row - 1].id);
+    char desc[CS_QUIRK_DESC_BUF];
+    if (!qc || !csQuirkDescRaw(base, qc, desc, sizeof desc) || !desc[0]) return false;
+    csFlattenLines(desc, sizeof desc);
+    abStripMarkup(desc);
+    _snprintf(out, outsz, "%s", desc);
+    out[outsz - 1] = 0;
+    return out[0] != 0;
+}
 static void qtSpeakOpenRow(uintptr_t base, const char* prefix) {
     QtCand cands[64];
     int n = qtCandidates(base, g_qtOpenActivity, g_qtOpenSlot, g_qtOpenMode, cands, 64);
@@ -3220,6 +3296,14 @@ static void qtSpeakOpenRow(uintptr_t base, const char* prefix) {
     if (g_qtOpenRow < 0) g_qtOpenRow = 0;
     char row[MAILBOX_SZ], utter[MAILBOX_SZ];
     qtOpenRowText(base, g_qtOpenRow, row, sizeof row);
+    if (axTipWanted()) {
+        char desc[CS_QUIRK_DESC_BUF + 8];
+        if (qtOpenRowDesc(base, g_qtOpenRow, desc, sizeof desc)) {
+            axTipGlue(row, sizeof row, desc);
+            axTipGlueKeywords(row, sizeof row);      // the glossary terms it names (core/keywords.cpp)
+        }
+    }
+    if (g_qtOpenRow > 0) axAppendHint(row, sizeof row, AXS_EX_SELECT_HINT);
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", row);
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
@@ -3300,8 +3384,11 @@ void bldActPickRowSuffix(uintptr_t base, uintptr_t hero, char* out, int outsz) {
     }
     bool canAfford = true, eligible = true;
     if (bldSehActCanHero(base, g_bldActPickActivity, (int)guid, &canAfford, &eligible)) {
-        if (!eligible)
+        if (!eligible) {
             _snprintf(eligFrag, sizeof eligFrag, " %s", axs(AXS_ACT_NOT_ELIGIBLE));
+            eligFrag[sizeof eligFrag - 1] = 0;
+            axAppendHint(eligFrag, sizeof eligFrag, AXS_ACT_NOT_ELIGIBLE_HINT);   // "Enter says why."
+        }
     }
     _snprintf(out, outsz, "%s%s", costFrag, eligFrag);
     out[outsz - 1] = 0;
@@ -3309,6 +3396,44 @@ void bldActPickRowSuffix(uintptr_t base, uintptr_t hero, char* out, int outsz) {
 
 bool bldActPickBusy() {
     return g_bldActPickActivity != 0 && g_bldActWatch != 0;
+}
+
+// ---- THE MEDICAL WARD'S PICK FILTER ----
+static const char* const ACT_ID_DISEASE_WARD = "disease_treatment";
+
+static bool bldActPickFilters() {
+    return g_bldActPickActivity != 0 && strcmp(g_bldActPickActId, ACT_ID_DISEASE_WARD) == 0;
+}
+
+bool bldActPickWantsHero(uintptr_t base, uintptr_t hero) {
+    if (!bldActPickFilters() || !hero) return true;
+    uint32_t guid = 0;
+    if (!safeReadU32(hero + ACTOR_ID_OFF, &guid)) return true;    // unreadable: keep the row
+    bool canAfford = true, eligible = true;
+    if (!bldSehActCanHero(base, g_bldActPickActivity, (int)guid, &canAfford, &eligible)) {
+        logLine("bldact: ward filter: verdict faulted for guid %u -- keeping the row", guid);
+        return true;
+    }
+    return eligible;
+}
+
+static int bldActPickShownCount(uintptr_t base) {
+    if (!bldActPickFilters()) return bldActIdleCount(base);
+    uintptr_t root = resTownRoot(base);
+    if (!root) return 0;
+    uintptr_t beg = 0, end = 0;
+    if (!safeReadPtr(root + ACT_RL_OFF + ACT_RL_ROWS_BEG, &beg) ||
+        !safeReadPtr(root + ACT_RL_OFF + ACT_RL_ROWS_END, &end) || !beg || end <= beg) return 0;
+    int rows = (int)((end - beg) / 0x40);
+    if (rows > 64) rows = 64;
+    int n = 0;
+    for (int i = 0; i < rows; i++) {
+        uintptr_t rowW = 0, entry = 0;
+        if (!safeReadPtr(beg + (uintptr_t)i * 0x40, &rowW) || rowW <= 0x10000) continue;
+        if (!safeReadPtr(rowW + ACT_RL_ROW_ENTRY, &entry) || entry <= 0x10000) continue;
+        if (bldActPickWantsHero(base, entry + ACT_ENTRY_HERO_OFF)) n++;
+    }
+    return n;
 }
 
 static void bldActPickSessionDrop(const char* why) {
@@ -4196,6 +4321,13 @@ static void haColumnText(uintptr_t base, uintptr_t hero, const HaTree* t,
     out[outsz - 1] = 0;
 }
 
+static bool haColumnBuyable(uintptr_t base, uintptr_t hero, const HaTree* t) {
+    const HaStep* nx = (t->next >= 0 && t->next < t->steps) ? &t->step[t->next] : nullptr;
+    if (!nx) return false;
+    char lock[192];
+    return !haStepRefused(base, hero, t, nx, lock, sizeof lock);
+}
+
 static void haHeroLine(uintptr_t base, uintptr_t hero, char* out, int outsz) {
     char name[80] = {0}, cls[80] = {0};
     abHeroNameClassOf(base, hero, name, sizeof name, cls, sizeof cls);
@@ -4209,6 +4341,8 @@ static void haHeroLine(uintptr_t base, uintptr_t hero, char* out, int outsz) {
     out[outsz - 1] = 0;
 }
 
+static void haAppendTip(uintptr_t base, uintptr_t hero, const HaTree* t, char* buf, int bufsz);
+static bool haClassBlurb(uintptr_t base, uintptr_t panel, uintptr_t hero, char* out, int outsz);
 static bool haSpeakCell(uintptr_t base, uintptr_t panel, const char* prefix, bool sayHero) {
     int skin = haSkinOf(base, panel);
     if (skin < 0) return false;
@@ -4226,6 +4360,13 @@ static bool haSpeakCell(uintptr_t base, uintptr_t panel, const char* prefix, boo
             _snprintf(pos, sizeof pos, axs(AXS_HA_HERO_POS_FMT), g_haRow + 1, nh);
             pos[sizeof pos - 1] = 0;
             _snprintf(row, sizeof row, "%s. %s", line, pos);
+            if (axTipWanted()) {
+                char blurb[MAILBOX_SZ];
+                if (haClassBlurb(base, panel, h->hero, blurb, sizeof blurb)) {
+                    axTipGlue(row, sizeof row, blurb);
+                    axTipGlueKeywords(row, sizeof row);  // the glossary terms it names (core/keywords.cpp)
+                }
+            }
         } else {
             int nt = (haSelectedGuid(base, panel) == h->guid)
                      ? haTrees(base, panel, h->hero, false) : 0;
@@ -4245,6 +4386,10 @@ static bool haSpeakCell(uintptr_t base, uintptr_t panel, const char* prefix, boo
                 } else {
                     _snprintf(row, sizeof row, "%s", cell);
                 }
+                row[sizeof row - 1] = 0;
+                if (axTipWanted()) haAppendTip(base, h->hero, &g_haTrees[g_haCol - 1], row, sizeof row);
+                if (haColumnBuyable(base, h->hero, &g_haTrees[g_haCol - 1]))
+                    axAppendHint(row, sizeof row, AXS_BLD_UPGRADE_HINT);
             }
         }
     }
@@ -4293,7 +4438,10 @@ static int haEquipTipLines(uintptr_t base, uintptr_t hero, int kind, int tier,
         name[sizeof name - 1] = 0;
     }
     abStripMarkup(name);
-    _snprintf(lines[at], AB_TIP_LINE_SZ, "%s. Tier %d.", name, tier);
+    char tierS[64];
+    _snprintf(tierS, sizeof tierS, axs(AXS_CS_TIER_FMT), tier);
+    tierS[sizeof tierS - 1] = 0;
+    _snprintf(lines[at], AB_TIP_LINE_SZ, "%s. %s", name, tierS);
     lines[at][AB_TIP_LINE_SZ - 1] = 0;
 
     char stats[AB_TIP_LINE_SZ], v[96];
@@ -4407,6 +4555,42 @@ static bool haBuildTip(uintptr_t base, uintptr_t hero, const HaTree* t) {
     g_haTipTree = t->hash;
     g_haTipRow = g_haRow;
     return true;
+}
+
+static AxStrId haTipHead(const HaTree* t, int col) {
+    if (col == 0)                                      return AXS_HA_HEAD_NOW;
+    if (t->kind == HA_WEAPON || t->kind == HA_ARMOUR)  return AXS_HA_HEAD_NEXT_TIER;
+    if (t->kind == HA_COMBAT && t->level >= 0)         return AXS_HA_HEAD_NEXT_RANK;
+    return AXS_HA_HEAD_IF_BUY;
+}
+
+static void haAppendTip(uintptr_t base, uintptr_t hero, const HaTree* t, char* buf, int bufsz) {
+    haBuildTip(base, hero, t);
+    g_haTipCol  = 0;
+    g_haTipLine = -1;
+    for (int c = 0; c < HA_TIP_COLS; c++)
+        axTipGluePanel(buf, bufsz, axs(haTipHead(t, c)), &g_haTip[c][0][0], AB_TIP_LINE_SZ,
+                       g_haTipCount[c], 0);
+    axTipGlueKeywords(buf, bufsz);
+}
+
+static bool haClassBlurb(uintptr_t base, uintptr_t panel, uintptr_t hero, char* out, int outsz) {
+    out[0] = 0;
+    static const char* kHaSkinId[3] = { "blacksmith", "guild", "camping_trainer" };
+    int skin = haSkinOf(base, panel);      // kind 6 => >= 0, but never assume
+    uintptr_t cobj = abHeroClassOf(hero);
+    char cid[64] = {0};
+    if (skin >= 0 && skin < 3 && cobj) safeReadCStr(cobj + HEROCLASS_ID_OFF, cid, sizeof cid);
+    if (!cid[0]) return false;
+    char key[128], raw[MAILBOX_SZ];
+    _snprintf(key, sizeof key, "action_verbose_body_%s_%s", kHaSkinId[skin], cid);
+    key[sizeof key - 1] = 0;
+    if (resolveKey(base, key, raw, sizeof raw) && raw[0]) {
+        stripMarkup(raw, out, outsz);
+        if (out[0]) return true;
+    }
+    logLine("ha: class blurb miss \"%s\"", key);
+    return false;
 }
 
 static int g_haDumps = 0;
@@ -4843,6 +5027,134 @@ bool routeTownJumpKey(uintptr_t base, const char* id, bool fromBuilding, uint8_t
     return tjJumpFromMap(base, root, id, repeat);
 }
 
+// ---- THE BUILDING SCREEN'S FIND ENUMERATOR ----
+int bldFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_bldActive || g_bldRecDrag != 0 || g_qtOpen) return 0;
+    uintptr_t root = resTownRoot(base);
+    uintptr_t panel = root ? bldOpenPanel(root) : 0;
+    if (!panel) return 0;
+    const bool label = (op == AXF_LABEL);
+    if (label && (!out || outsz <= 0)) return 0;
+
+    if (g_bldMode == 1) {                                     // the upgrade view: the tracks
+        int n = bldCollectTracks(base, root, panel, false);
+        if (n < 0) n = 0;
+        if (op == AXF_COUNT) return n;
+        if (idx < 0 || idx >= n) return 0;
+        if (label) { bldTrackRowLabel(base, idx, out, outsz); return 1; }
+        g_bldUpRow = idx;
+        logLine("building: find landed on upgrade track %d", idx);
+        bldSpeakTrackRow(base, root, panel, nullptr);
+        return 1;
+    }
+
+    uintptr_t sys = 0;
+    int storeKind = BLD_STORE_NONE;
+    int kind = bldRowKindOf(base, panel, &sys, &storeKind);
+    switch (kind) {
+    case 1: {                                                 // the store (nomad wagon, Jeweler)
+        int slots[64];
+        int n = bldStoreRows(sys, slots, 64);
+        if (op == AXF_COUNT) return n;
+        if (idx < 0 || idx >= n) return 0;
+        if (label)
+            return bldStoreRowText(base, sys, storeKind, slots[idx], 0, n, out, outsz,
+                                   nullptr, 0, nullptr) ? 1 : 0;
+        g_bldRow = idx;
+        logLine("building: find landed on store row %d", idx);
+        if (!bldSpeakOptionRow(base, panel, nullptr)) bldSpeakHere(base);
+        return 1;
+    }
+    case 2: {                                                 // the stage coach's recruits
+        BldRecruit rows[16];
+        int n = bldRecruitRows(base, panel, rows, 16, nullptr);
+        if (op == AXF_COUNT) return n;
+        if (idx < 0 || idx >= n) return 0;
+        if (label) { ptyHeroFrag(base, rows[idx].hero, out, outsz); return 1; }
+        g_bldRow = idx;
+        logLine("building: find landed on recruit row %d", idx);
+        if (!bldSpeakOptionRow(base, panel, nullptr)) bldSpeakHere(base);
+        return 1;
+    }
+    case 3: {                                                 // Abbey / Tavern / Sanitarium wings
+        BldActRow rows[48];
+        int n = bldActRows(base, panel, rows, 48);
+        if (n <= 0) return 0;
+        int cur = g_bldRow;                                   // a clamped COPY: no cursor write
+        if (cur >= n) cur = n - 1;
+        if (cur < 0)  cur = 0;
+        int wing = rows[cur].actOrd;                          // a wing's rows are contiguous
+        int first = cur, last = cur;
+        while (first > 0     && rows[first - 1].actOrd == wing) first--;
+        while (last + 1 < n  && rows[last + 1].actOrd == wing) last++;
+        int cnt = last - first + 1;
+        if (op == AXF_COUNT) return cnt;
+        if (idx < 0 || idx >= cnt) return 0;
+        if (label) {
+            bldActRowText(base, panel, &rows[first + idx], bldActWingCount(rows, n), false,
+                          out, outsz);
+            return 1;
+        }
+        g_bldRow = first + idx;
+        logLine("building: find landed on activity row %d (wing %d)", g_bldRow, wing);
+        char row[MAILBOX_SZ];
+        if (!bldActFocusedRowText(base, panel, row, sizeof row, false))
+            _snprintf(row, sizeof row, "%s", axs(AXS_ACT_NONE_READ));
+        row[sizeof row - 1] = 0;
+        postSpeech(row);
+        return 1;
+    }
+    case 4: {                                                 // the statue's media list
+        int n = stBuildModel(base, panel);
+        if (op == AXF_COUNT) return n;
+        if (idx < 0 || idx >= n) return 0;
+        if (label) { stRowLabel(idx, out, outsz); return 1; }
+        g_stRow = idx;
+        logLine("building: find landed on statue row %d", idx);
+        if (!stSpeakFocused(base, panel, nullptr)) postSpeech(axs(AXS_ST_NOTHING_YET));
+        return 1;
+    }
+    case 5: {                                                 // the graveyard's memorial list
+        int n = gyBuildModel(base, panel);
+        if (op == AXF_COUNT) return n;
+        if (idx < 0 || idx >= n) return 0;
+        if (label) {
+            _snprintf(out, outsz, "%s", g_gyRows[idx].text);
+            out[outsz - 1] = 0;
+            return 1;
+        }
+        g_gyRow = idx;
+        logLine("building: find landed on graveyard row %d", idx);
+        if (!gySpeakFocused(base, panel, nullptr)) postSpeech(axs(AXS_GY_NO_DEAD));
+        return 1;
+    }
+    case 6: {                                                 // Blacksmith / Guild / Camping Trainer
+        int nh = haHeroRows(base);
+        if (nh < 0) nh = 0;
+        if (op == AXF_COUNT) return nh;
+        if (idx < 0 || idx >= nh) return 0;
+        if (label) {
+            char line[256];
+            haHeroLine(base, g_haHeroes[idx].hero, line, sizeof line);
+            _snprintf(out, outsz, "%s.", line);           // the hero-column row minus "Hero i of n"
+            out[outsz - 1] = 0;
+            return 1;
+        }
+        g_haRow = idx;
+        logLine("building: find landed on hero row %d (column %d)", idx, g_haCol);
+        if (g_haCol > 0 && !haShowFocusedHero(base, panel, &g_haHeroes[g_haRow])) {
+            g_haCol = 0;
+            haSpeakCellPfx(base, panel, AXS_HA_CANT_WORK_HERO, true);
+            return 1;
+        }
+        haSpeakCell(base, panel, nullptr, true);
+        return 1;
+    }
+    default:
+        return 0;                                             // kind 0: no rows to search here
+    }
+}
+
 bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
     if (dgEditFieldOpen(base)) return false;
 
@@ -4895,19 +5207,9 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         } else if (repeat) return true;
         if (mod & (KMOD_LCTRL | KMOD_RCTRL)) {
             if (!(mod & (KMOD_LALT | KMOD_RALT)) && (sym == SDLK_UP || sym == SDLK_DOWN)) {
-                QtCand cands[64];
-                int cn = qtCandidates(base, g_qtOpenActivity, g_qtOpenSlot, g_qtOpenMode,
-                                      cands, 64);
-                char desc[CS_QUIRK_DESC_BUF];
-                uintptr_t qc = 0;
-                if (g_qtOpenRow > 0 && g_qtOpenRow <= cn)
-                    qc = qtQuirkClass(g_qtOpenHero, cands[g_qtOpenRow - 1].id);
-                if (qc && csQuirkDescRaw(base, qc, desc, sizeof desc) && desc[0]) {
-                    csFlattenLines(desc, sizeof desc);
-                    postSpeech(desc);
-                } else {
-                    postSpeech(axs(AXS_NO_MORE_INFO));
-                }
+                char desc[CS_QUIRK_DESC_BUF + 8];
+                if (qtOpenRowDesc(base, g_qtOpenRow, desc, sizeof desc)) postSpeech(desc);
+                else postSpeech(axs(AXS_NO_MORE_INFO));
             }
             return true;
         }
@@ -5041,23 +5343,12 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
                 if (nh <= 0) { postSpeech(axs(AXS_HA_NO_HERO)); return true; }
                 if (g_haRow >= nh) g_haRow = nh - 1;
                 if (g_haRow < 0)   g_haRow = 0;
-                static const char* kHaSkinId[3] = { "blacksmith", "guild", "camping_trainer" };
-                int skin = haSkinOf(base, panel);      // kind 6 => >= 0, but never assume
-                uintptr_t cobj = abHeroClassOf(g_haHeroes[g_haRow].hero);
-                char cid[64] = {0};
-                if (skin >= 0 && cobj) safeReadCStr(cobj + HEROCLASS_ID_OFF, cid, sizeof cid);
-                if (cid[0]) {
-                    char key[128], raw[MAILBOX_SZ], desc[MAILBOX_SZ];
-                    _snprintf(key, sizeof key, "action_verbose_body_%s_%s",
-                              kHaSkinId[skin], cid);
-                    key[sizeof key - 1] = 0;
-                    if (resolveKey(base, key, raw, sizeof raw) && raw[0]) {
-                        stripMarkup(raw, desc, sizeof desc);
-                        if (desc[0]) { postSpeech(desc); return true; }
-                    }
-                    // A modded class may ship no blurb; fall through to "No more information."
-                    logLine("ha: class blurb miss \"%s\"", key);
+                char desc[MAILBOX_SZ];
+                if (haClassBlurb(base, panel, g_haHeroes[g_haRow].hero, desc, sizeof desc)) {
+                    postSpeech(desc);
+                    return true;
                 }
+                // A modded class may ship no blurb: "No more information."
                 postSpeech(axs(AXS_NO_MORE_INFO));
                 return true;
             }
@@ -5092,13 +5383,20 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
             } else {
                 int n = g_haTipCount[g_haTipCol];
                 if (n <= 0) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
+                int total = n + axTipKeywordCount(&g_haTip[g_haTipCol][0][0], AB_TIP_LINE_SZ, n, 0, nullptr);
                 if (g_haTipLine < 0) g_haTipLine = 0;              // the first press lands on line 1
                 else {
                     g_haTipLine += (sym == SDLK_DOWN) ? 1 : -1;
-                    if (g_haTipLine < 0)  g_haTipLine = n - 1;     // wraps, like the action bar's
-                    if (g_haTipLine >= n) g_haTipLine = 0;
+                    if (g_haTipLine < 0)      g_haTipLine = total - 1;   // wraps, like the action bar's
+                    if (g_haTipLine >= total) g_haTipLine = 0;
                 }
-                _snprintf(utter, sizeof utter, "%s", g_haTip[g_haTipCol][g_haTipLine]);
+                if (g_haTipLine < n)
+                    _snprintf(utter, sizeof utter, "%s", g_haTip[g_haTipCol][g_haTipLine]);
+                else if (!axTipKeywordLine(&g_haTip[g_haTipCol][0][0], AB_TIP_LINE_SZ, n, 0, nullptr,
+                                           g_haTipLine - n, utter, sizeof utter)) {
+                    g_haTipLine = 0;
+                    _snprintf(utter, sizeof utter, "%s", g_haTip[g_haTipCol][0]);
+                }
             }
             utter[sizeof utter - 1] = 0;
             postSpeech(utter);
@@ -5116,10 +5414,8 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         int n = bldActRows(base, panel, rows, 48);
         if (n <= 0) return false;
         axStepCursor(&g_bldRow, n, 0);       // re-clamp against the live rows
-        char key[64], desc[MAILBOX_SZ];
-        _snprintf(key, sizeof key, "town_activity_description_%s", rows[g_bldRow].actId);
-        key[sizeof key - 1] = 0;
-        if (resolveKey(base, key, desc, sizeof desc) && desc[0]) postSpeech(desc);
+        char desc[MAILBOX_SZ];
+        if (bldActDescription(base, rows[g_bldRow].actId, desc, sizeof desc)) postSpeech(desc);
         else postSpeech(axs(AXS_NO_MORE_INFO));
         return true;
     }
@@ -5128,6 +5424,41 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         uintptr_t bdRoot = resTownRoot(base);
         uintptr_t bdPanel = bdRoot ? bldOpenPanel(bdRoot) : 0;
         if (bdPanel && bdIsPanel(base, bdPanel) && bdRouteKey(base, bdPanel, sym, mod, repeat)) return true;
+    }
+
+    if ((mod & (KMOD_LCTRL | KMOD_RCTRL)) && !(mod & (KMOD_LALT | KMOD_RALT)) &&
+        (sym == SDLK_UP || sym == SDLK_DOWN) && g_bldMode == 0) {
+        uintptr_t tRoot = resTownRoot(base);
+        uintptr_t tPanel = tRoot ? bldOpenPanel(tRoot) : 0;
+        if (tPanel && pbIsPanel(base, tPanel)) {
+            if (repeat) return true;
+            return pbRouteTipKey(base, tPanel, sym == SDLK_UP ? 1 : -1);
+        }
+        uintptr_t sys = 0;
+        int storeKind = BLD_STORE_NONE;
+        if (tPanel && bldRowKindOf(base, tPanel, &sys, &storeKind) == 1) {
+            if (repeat) return true;
+            int slots[64];
+            int n = bldStoreRows(sys, slots, 64);
+            if (n <= 0) { postSpeech(axs(AXS_SHOP_NOTHING)); return true; }
+            axStepCursor(&g_bldRow, n, 0);
+            static int s_tipLine = 0, s_tipRow = -1;
+            static uintptr_t s_tipSys = 0;
+            if (s_tipRow != g_bldRow || s_tipSys != sys) { s_tipRow = g_bldRow; s_tipSys = sys; s_tipLine = 0; }
+            static char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+            int ln = 0;
+            if (bldStoreRowText(base, sys, storeKind, slots[g_bldRow], g_bldRow + 1, n,
+                                lines[0], AB_TIP_LINE_SZ, nullptr, 0, nullptr, INV_CARD_OFF)) {
+                ln = 1;
+                uintptr_t beg = 0; int total = 0;
+                if (invItemVectorAt(sys, &beg, &total) && slots[g_bldRow] < total) {
+                    InvCard c;
+                    invCardRead(base, beg + (uintptr_t)slots[g_bldRow] * ITEM_STRIDE, &c);
+                    ln = invCardLines(&c, lines, 1, AB_TIP_MAX_LINES);
+                }
+            }
+            return axTipStep(&s_tipLine, sym == SDLK_UP ? 1 : -1, &lines[0][0], AB_TIP_LINE_SZ, ln);
+        }
     }
 
     if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) return false;
@@ -5671,17 +6002,23 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
             g_bldActPickSlot = r->slotIdx;
             strncpy(g_bldActPickActId, r->actId, sizeof g_bldActPickActId - 1);
             g_bldActPickActId[sizeof g_bldActPickActId - 1] = 0;
-            int idleN = bldActIdleCount(base);
+            int shownN = bldActPickShownCount(base);
+            if (shownN <= 0 && bldActPickFilters()) {
+                bldActPickSessionDrop("ward filter: no diseased hero on the roster");
+                postSpeech(axs(AXS_ACT_NO_DISEASED_HERO));
+                return true;
+            }
             char head[144];
-            _snprintf(head, sizeof head, axs(AXS_ACT_CHOOSE_HERO_FMT), actName, idleN);
+            _snprintf(head, sizeof head, axs(AXS_ACT_CHOOSE_HERO_FMT), actName, shownN);
             head[sizeof head - 1] = 0;
             if (!rosEnterForActivityPick(base, head)) {
                 // The roster surface could not open (no rows readable) — it said so itself.
                 bldActPickSessionDrop("roster would not open");
                 return true;
             }
-            logLine("bldact: roster pick open, \"%s\" slot %d, %d idle",
-                    r->actId, r->slotIdx, idleN);
+            logLine("bldact: roster pick open, \"%s\" slot %d, %d %s",
+                    r->actId, r->slotIdx, shownN,
+                    bldActPickFilters() ? "with a disease (ward filter)" : "idle");
             return true;
         }
 
@@ -5704,6 +6041,7 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         _snprintf(utter, sizeof utter, axs(AXS_RCT_ADD_FMT),
                   g_bldRecName[0] ? g_bldRecName : axs(AXS_RCT_THIS_HERO));
         utter[sizeof utter - 1] = 0;
+        axAppendHint(utter, sizeof utter, AXS_RCT_ADD_HINT);   // "" while Control hints is Off
         postSpeech(utter);
         return true;
     }
@@ -5734,8 +6072,14 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
             return true;
         }
         if (!r->pendingHero) {
-            postSpeech(axs(r->committedGuid ? AXS_ACT_ALREADY_STAYING
-                                            : AXS_ACT_NOTHING_TAKE_OUT));
+            if (r->committedGuid) {
+                char line[192];
+                _snprintf(line, sizeof line, "%s", axs(AXS_ACT_ALREADY_STAYING)); line[sizeof line - 1] = 0;
+                axAppendHint(line, sizeof line, AXS_ACT_TAKE_OUT_HINT);
+                postSpeech(line);
+            } else {
+                postSpeech(axs(AXS_ACT_NOTHING_TAKE_OUT));
+            }
             return true;
         }
         char who[64] = {0};
@@ -5922,6 +6266,8 @@ void checkBuilding(uintptr_t base) {
                 if (rosActivityPickLive()) rosLeave(base, "activity pick committed");
                 _snprintf(utter, sizeof utter, axs(AXS_ACT_PLACED_FMT),
                           g_bldActWatchWho, g_bldActWatchWhat);
+                utter[sizeof utter - 1] = 0;
+                axAppendHint(utter, sizeof utter, AXS_ACT_CONFIRM_HINT);   // "" while Control hints is Off
                 done = true;
             } else if (g_bldActWatch == 2 && stateOk && committed && committed == wantGuid) {
                 int goldNow = 0;
@@ -6254,6 +6600,9 @@ void checkBuilding(uintptr_t base) {
         g_qtOpen = false;                            // nor an open treatment dropdown
         if (mode == 0) bldRowsProbe(base, panel);    // one-shot row-resolution log per open
         bldSpeakHere(base);
+        if (mode == 0 && !(bdIsPanel(base, panel) || dgIsPanel(base, panel) ||
+                           pbIsPanel(base, panel) || rbIsPanel(base, panel)))
+            axAppendHintToLast(AXS_BLD_ARRIVAL_HINT);
         if (g_bldProbes < 8) {
             g_bldProbeDue = GetTickCount() + 400;
             strncpy(g_bldProbeWhy, "open", sizeof g_bldProbeWhy - 1);

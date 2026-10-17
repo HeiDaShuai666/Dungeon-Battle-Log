@@ -1,4 +1,4 @@
-# Builds ddaccess.dll (the mod) using MSVC.
+# Builds version.dll (the mod) using MSVC.
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -47,7 +47,7 @@ $bat = @"
 @echo off
 call "$vcvars" >nul 2>nul
 cd /d "$root\build"
-cl /nologo /LD /O2 /MT /EHsc /std:c++17 /D_CRT_SECURE_NO_WARNINGS /I "$root\lib\prism" /I "$root\src" /Fe:ddaccess.dll "$root\src\dllmain.cpp" "$root\src\core\speech.cpp" "$root\src\core\gameread.cpp" "$root\src\core\subtitles.cpp" "$root\src\core\hooks.cpp" "$root\src\game\gamebuild.cpp" "$root\src\core\axstrings.cpp" "$root\src\frontend\loading.cpp" "$root\src\frontend\sharedui.cpp" "$root\src\frontend\options.cpp" "$root\src\frontend\dialog.cpp" "$root\src\frontend\display.cpp" "$root\src\frontend\tutorial.cpp" "$root\src\frontend\naming.cpp" "$root\src\frontend\pause.cpp" "$root\src\input\synth.cpp" "$root\src\input\layout.cpp" "$root\src\input\pad.cpp" "$root\src\input\padmap.cpp" "$root\src\town\estate.cpp" "$root\src\town\map.cpp" "$root\src\town\districts.cpp" "$root\src\town\embark.cpp" "$root\src\town\provision.cpp" "$root\src\town\buildings.cpp" "$root\src\town\party.cpp" "$root\src\town\trinkets.cpp" "$root\src\town\exchange.cpp" "$root\src\town\barks.cpp" "$root\src\town\events.cpp" "$root\src\raid\resting.cpp" "$root\src\raid\raidmap.cpp" "$root\src\raid\dungeonview.cpp" "$root\src\raid\actionbar.cpp" "$root\src\raid\camp.cpp" "$root\src\raid\loot.cpp" "$root\src\raid\eventscroll.cpp" "$root\src\raid\inventory.cpp" "$root\src\raid\light.cpp" "$root\src\raid\combattext.cpp" "$root\src\raid\results.cpp" "$root\src\raid\quest.cpp" "$root\src\sheet\charsheet.cpp" "$root\src\sheet\composers.cpp" "$root\src\settings\keymap.cpp" "$root\src\settings\modmenu.cpp" "$root\src\dlc\color_of_madness\wave.cpp" "$root\src\dlc\butchers_circus\dueling.cpp" "$root\src\dlc\butchers_circus\ring.cpp" "$root\src\dlc\butchers_circus\pit.cpp" "$root\src\dlc\butchers_circus\matchresults.cpp" "$root\src\dlc\butchers_circus\prizebox.cpp" "$root\src\dlc\butchers_circus\rankings.cpp" "$root\src\dlc\butchers_circus\banner.cpp" /link "$root\lib\prism\prism.lib" user32.lib
+cl /nologo /LD /O2 /MT /EHsc /std:c++17 /D_CRT_SECURE_NO_WARNINGS /DPRISM_STATIC /I "$root\lib\prism" /I "$root\src" /Fe:version.dll "$root\src\dllmain.cpp" "$root\src\core\speech.cpp" "$root\src\core\gameread.cpp" "$root\src\core\subtitles.cpp" "$root\src\core\hooks.cpp" "$root\src\game\gamebuild.cpp" "$root\src\core\axstrings.cpp" "$root\src\core\find.cpp" "$root\src\core\modtutorial.cpp" "$root\src\core\updatecheck.cpp" "$root\src\core\tooltip.cpp" "$root\src\core\keywords.cpp" "$root\src\frontend\loading.cpp" "$root\src\frontend\sharedui.cpp" "$root\src\frontend\options.cpp" "$root\src\frontend\dialog.cpp" "$root\src\frontend\display.cpp" "$root\src\frontend\tutorial.cpp" "$root\src\frontend\naming.cpp" "$root\src\frontend\pause.cpp" "$root\src\input\synth.cpp" "$root\src\input\layout.cpp" "$root\src\input\pad.cpp" "$root\src\input\padmap.cpp" "$root\src\town\estate.cpp" "$root\src\town\map.cpp" "$root\src\town\districts.cpp" "$root\src\town\embark.cpp" "$root\src\town\provision.cpp" "$root\src\town\buildings.cpp" "$root\src\town\party.cpp" "$root\src\town\trinkets.cpp" "$root\src\town\exchange.cpp" "$root\src\town\barks.cpp" "$root\src\town\events.cpp" "$root\src\raid\resting.cpp" "$root\src\raid\raidmap.cpp" "$root\src\raid\dungeonview.cpp" "$root\src\raid\actionbar.cpp" "$root\src\raid\camp.cpp" "$root\src\raid\loot.cpp" "$root\src\raid\eventscroll.cpp" "$root\src\raid\inventory.cpp" "$root\src\raid\light.cpp" "$root\src\raid\combattext.cpp" "$root\src\raid\results.cpp" "$root\src\raid\quest.cpp" "$root\src\sheet\charsheet.cpp" "$root\src\sheet\composers.cpp" "$root\src\settings\keymap.cpp" "$root\src\settings\modmenu.cpp" "$root\src\dlc\color_of_madness\wave.cpp" "$root\src\dlc\butchers_circus\dueling.cpp" "$root\src\dlc\butchers_circus\ring.cpp" "$root\src\dlc\butchers_circus\pit.cpp" "$root\src\dlc\butchers_circus\matchresults.cpp" "$root\src\dlc\butchers_circus\prizebox.cpp" "$root\src\dlc\butchers_circus\rankings.cpp" "$root\src\dlc\butchers_circus\banner.cpp" /link /WHOLEARCHIVE:"$root\lib\prism\prism-static.lib" ole32.lib onecore.lib runtimeobject.lib uiautomationcore.lib rpcrt4.lib PowrProf.lib user32.lib shell32.lib winhttp.lib
 if errorlevel 1 exit /b 1
 "@
 $batPath = Join-Path $env:TEMP "dd_mod_build.bat"
@@ -55,39 +55,74 @@ Set-Content -Path $batPath -Value $bat -Encoding ascii
 cmd /c "`"$batPath`""
 if ($LASTEXITCODE -ne 0) { throw "Build failed (exit $LASTEXITCODE)" }
 Write-Host "`n[+] Build OK. Outputs in $root\build" -ForegroundColor Green
-Get-ChildItem "$root\build" -Include ddaccess.dll -Recurse | Select-Object Name,Length
+Get-ChildItem "$root\build" -Include version.dll -Recurse | Select-Object Name,Length
+
+# ---- The proxy's two gates ----
+$dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $dumpbin) { throw "dumpbin.exe not found under $vs -- cannot verify the proxy's exports. NOT deployed." }
+function AxExportRows($dll) {
+    $dump = & $dumpbin.FullName /nologo /exports $dll | Out-String
+    $rows = @{}
+    foreach ($m in [regex]::Matches($dump, "(?m)^\s+(\d+)\s+[0-9A-Fa-f]+\s+(?:[0-9A-Fa-f]{8}\s+)?(\w+)(.*)$")) {
+        $rows[$m.Groups[2].Value] = [pscustomobject]@{ ord = [int]$m.Groups[1].Value; fwd = ($m.Groups[3].Value -match "forwarded to") }
+    }
+    return $rows
+}
+$sysRows = AxExportRows (Join-Path $env:WINDIR "System32\version.dll")
+$ourRows = AxExportRows "$root\build\version.dll"
+$bad = @()
+foreach ($k in $sysRows.Keys) {
+    if (-not $ourRows.ContainsKey($k)) { $bad += "MISSING export $k"; continue }
+    if ($ourRows[$k].ord -ne $sysRows[$k].ord) { $bad += "ORDINAL $k ours @$($ourRows[$k].ord) real @$($sysRows[$k].ord)" }
+    if (-not $ourRows[$k].fwd) { $bad += "NOT A FORWARDER $k" }
+}
+foreach ($k in $ourRows.Keys) { if (-not $sysRows.ContainsKey($k)) { $bad += "UNEXPECTED export $k (a mod symbol leaked into the export table?)" } }
+if ($bad.Count) { $bad | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }; throw "version.dll's export table does not match the real one. NOT deployed." }
+Write-Host "[+] Proxy gate 1: export table equals System32\version.dll ($($sysRows.Count) names, ordinals, all forwarders)" -ForegroundColor Green
 
 # ---- Deploy ----
 $gameDir = "C:\Program Files (x86)\Steam\steamapps\common\DarkestDungeon\_windows\win64"
-$target  = Join-Path $gameDir "ddaccess.dll"
+$target  = Join-Path $gameDir "version.dll"
 
 if (-not (Test-Path $gameDir)) {
     Write-Host "[!] Game directory not found, NOT deployed: $gameDir" -ForegroundColor Yellow
-    Write-Host "    The game will keep loading whatever ddaccess.dll it already has." -ForegroundColor Yellow
+    Write-Host "    The game will keep loading whatever version.dll it already has." -ForegroundColor Yellow
     return
 }
+$needed = @{}
+foreach ($f in (Get-ChildItem $gameDir -Include *.dll,*.exe -Recurse -Depth 0)) {
+    if ($f.Name -ieq "version.dll") { continue }
+    $imp = & $dumpbin.FullName /nologo /imports $f.FullName 2>$null | Out-String
+    if ($imp -notmatch '(?i)version\.dll') { continue }
+    $inBlock = $false
+    foreach ($l in ($imp -split "`r?`n")) {
+        if ($l -match '(?i)^\s*version\.dll') { $inBlock = $true; continue }
+        elseif ($inBlock -and $l -match '^\s{4}\S+\.dll') { break }
+        elseif ($inBlock -and $l -match '^\s+[0-9A-Fa-f]+\s+(\w+)\s*$') { $needed[$matches[1]] = $f.Name }
+    }
+}
+$missing = @()
+foreach ($k in $needed.Keys) { if (-not $ourRows.ContainsKey($k)) { $missing += "$k (needed by $($needed[$k]))" } }
+if ($missing.Count) { $missing | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }; throw "version.dll does not cover every VERSION.dll import in the game folder. NOT deployed." }
+Write-Host "[+] Proxy gate 2: all $($needed.Count) VERSION.dll imports in the game folder are covered ($(($needed.Values | Sort-Object -Unique) -join ', '))" -ForegroundColor Green
+
 if (Get-Process -Name "Darkest*" -ErrorAction SilentlyContinue) {
     Write-Host "[!] Darkest Dungeon is RUNNING -- NOT deployed." -ForegroundColor Yellow
-    Write-Host "    Close the game, re-run this script, then start + inject again." -ForegroundColor Yellow
+    Write-Host "    Close the game, re-run this script, then start the game again." -ForegroundColor Yellow
     return
 }
 try {
-    Copy-Item "$root\build\ddaccess.dll" $target -Force -ErrorAction Stop
+    Copy-Item "$root\build\version.dll" $target -Force -ErrorAction Stop
     Write-Host "[+] Deployed -> $target" -ForegroundColor Green
 } catch {
     Write-Host "[!] Deploy FAILED: $_" -ForegroundColor Red
     Write-Host "    The build is fine; the game dir copy is stale. Copy it by hand before testing." -ForegroundColor Red
 }
-
-$prismSrc = "$root\lib\prism\prism.dll"
-$prismDst = Join-Path $gameDir "prism.dll"
-if (-not (Test-Path $prismDst) -or
-    ((Get-Item $prismSrc).Length -ne (Get-Item $prismDst).Length)) {
-    try {
-        Copy-Item $prismSrc $prismDst -Force -ErrorAction Stop
-        Write-Host "[+] Deployed -> $prismDst" -ForegroundColor Green
-    } catch {
-        Write-Host "[!] prism.dll deploy FAILED: $_ -- the mod DLL cannot load without it." -ForegroundColor Red
+foreach ($stale in @("ddaccess.dll", "DarkestAccess.exe", "prism.dll", "version-stub.log")) {
+    $p = Join-Path $gameDir $stale
+    if (Test-Path $p) {
+        try { Remove-Item $p -Force -ErrorAction Stop; Write-Host "[+] Removed the retired $stale from the game dir" -ForegroundColor Green }
+        catch { Write-Host "[!] Could not remove $p -- delete it by hand: $_" -ForegroundColor Yellow }
     }
 }
 

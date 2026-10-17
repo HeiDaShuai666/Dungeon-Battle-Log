@@ -12,6 +12,10 @@
 static CRITICAL_SECTION g_logCs;
 static CRITICAL_SECTION g_speechCfgCs;
 
+static const long LOG_CAP_BYTES = 64 * 1024 * 1024;
+static bool appendLogLine(const char* path, long cap, const char* line);
+static void axRotateLogAtLaunch(const char* path);
+
 // A settings.ini string value: strip the line end and clamp into `out`.
 static void iniCopyValue(char* out, int outsz, const char* p) {
     int n = 0;
@@ -28,6 +32,13 @@ struct AxDebugLogState {
     bool barksExplicit;
     volatile bool checkUpdates;
     volatile bool positionCounts;
+    volatile bool controlHints;
+    volatile bool autoTooltips;
+    volatile bool expandAbbrev;
+    volatile int  keywordDefs;
+    volatile bool modTutorials;
+    char tutorialsSeen[512];
+    volatile bool modEnabled;
     int  speechHandler;
     char prismBackend[64];
     char sapiVoice[128];
@@ -35,9 +46,12 @@ struct AxDebugLogState {
     int  sapiVolume;
     AxDebugLogState() : enabled(false), readSubtitles(true), readSubtitlesExplicit(false),
                         barks(AX_BARKS_ON), barksExplicit(false), checkUpdates(true), positionCounts(true),
-                        speechHandler(AX_SPEECH_AUTO), sapiRate(-1), sapiVolume(-1) {
+                        controlHints(true), autoTooltips(true), expandAbbrev(true), keywordDefs(AX_KEYWORDS_SPOKEN),
+                        modTutorials(true), modEnabled(true), speechHandler(AX_SPEECH_AUTO),
+                        sapiRate(-1), sapiVolume(-1) {
         InitializeCriticalSection(&g_logCs);
         InitializeCriticalSection(&g_speechCfgCs);
+        tutorialsSeen[0] = 0;
         prismBackend[0] = 0;
         sapiVoice[0] = 0;
         path[0] = 0;
@@ -79,6 +93,16 @@ struct AxDebugLogState {
                     }
                     else if (strncmp(p, "check_updates=", 14) == 0)   checkUpdates  = (p[14] != '0');
                     else if (strncmp(p, "position_counts=", 16) == 0) positionCounts = (p[16] != '0');
+                    else if (strncmp(p, "control_hints=", 14) == 0)   controlHints   = (p[14] != '0');
+                    else if (strncmp(p, "auto_tooltips=", 14) == 0)   autoTooltips   = (p[14] != '0');
+                    else if (strncmp(p, "expand_abbreviations=", 21) == 0) expandAbbrev = (p[21] != '0');
+                    else if (strncmp(p, "glossary_definitions=", 21) == 0) {
+                        int v = p[21] - '0';
+                        if (v >= 0 && v < AX_KEYWORDS_MODES) keywordDefs = v;
+                    }
+                    else if (strncmp(p, "mod_tutorials=", 14) == 0)   modTutorials   = (p[14] != '0');
+                    else if (strncmp(p, "mod_enabled=", 12) == 0)     modEnabled     = (p[12] != '0');
+                    else if (strncmp(p, "tutorials_seen=", 15) == 0)  iniCopyValue(tutorialsSeen, sizeof tutorialsSeen, p + 15);
                     else if (strncmp(p, "speech_handler=", 15) == 0) {
                         int v = p[15] - '0';
                         if (v >= 0 && v < AX_SPEECH_MODES) speechHandler = v;
@@ -97,14 +121,14 @@ struct AxDebugLogState {
                 fclose(f);
             }
         }
+        if (enabled) axRotateLogAtLaunch(path);
     }
 };
 static AxDebugLogState& axDebugState() { static AxDebugLogState s; return s; }
 
-static const long  LOG_CAP_BYTES = 64 * 1024 * 1024;
-
 bool axDebugLogEnabled() { return axDebugState().enabled; }
 const char* axDebugLogPath() { return axDebugState().path; }
+bool axModEnabled() { return axDebugState().modEnabled; }
 
 static void axSaveIni() {
     AxDebugLogState& s = axDebugState();
@@ -118,6 +142,13 @@ static void axSaveIni() {
     fprintf(f, "barks=%d\n", (int)s.barks);
     fprintf(f, "check_updates=%d\n", s.checkUpdates ? 1 : 0);
     fprintf(f, "position_counts=%d\n", s.positionCounts ? 1 : 0);
+    fprintf(f, "control_hints=%d\n", s.controlHints ? 1 : 0);
+    fprintf(f, "auto_tooltips=%d\n", s.autoTooltips ? 1 : 0);
+    fprintf(f, "expand_abbreviations=%d\n", s.expandAbbrev ? 1 : 0);
+    fprintf(f, "glossary_definitions=%d\n", (int)s.keywordDefs);
+    fprintf(f, "mod_tutorials=%d\n", s.modTutorials ? 1 : 0);
+    fprintf(f, "mod_enabled=%d\n", s.modEnabled ? 1 : 0);
+    fprintf(f, "tutorials_seen=%s\n", s.tutorialsSeen);             // comma list of topic ids
     EnterCriticalSection(&g_speechCfgCs);
     fprintf(f, "speech_handler=%d\n", s.speechHandler);
     fprintf(f, "prism_backend=%s\n", s.prismBackend);
@@ -162,6 +193,55 @@ void axSetCheckUpdates(bool on) {
 bool axPositionCounts() { return axDebugState().positionCounts; }
 void axSetPositionCounts(bool on) {
     axDebugState().positionCounts = on;
+    axSaveIni();
+}
+bool axControlHints() { return axDebugState().controlHints; }
+void axSetControlHints(bool on) {
+    axDebugState().controlHints = on;
+    axSaveIni();
+}
+bool axAutoTooltips() { return axDebugState().autoTooltips; }
+void axSetAutoTooltips(bool on) {
+    axDebugState().autoTooltips = on;
+    axSaveIni();
+}
+bool axExpandAbbreviations() { return axDebugState().expandAbbrev; }
+void axSetExpandAbbreviations(bool on) {
+    axDebugState().expandAbbrev = on;
+    axSaveIni();
+}
+int  axKeywordsMode() { return axDebugState().keywordDefs; }
+void axSetKeywordsMode(int mode) {
+    if (mode < 0 || mode >= AX_KEYWORDS_MODES) { logLine("keywords: mode %d refused", mode); return; }
+    axDebugState().keywordDefs = mode;
+    axSaveIni();
+}
+bool axModTutorials() { return axDebugState().modTutorials; }
+void axSetModTutorials(bool on) {
+    axDebugState().modTutorials = on;
+    axSaveIni();
+}
+bool axTutorialSeen(const char* id) {
+    if (!id || !id[0]) return false;
+    const char* list = axDebugState().tutorialsSeen;
+    size_t n = strlen(id);
+    for (const char* p = list; *p; ) {
+        const char* e = strchr(p, ',');
+        size_t len = e ? (size_t)(e - p) : strlen(p);
+        if (len == n && strncmp(p, id, n) == 0) return true;
+        if (!e) break;
+        p = e + 1;
+    }
+    return false;
+}
+void axMarkTutorialSeen(const char* id) {
+    if (!id || !id[0] || axTutorialSeen(id)) return;
+    AxDebugLogState& s = axDebugState();
+    size_t have = strlen(s.tutorialsSeen);
+    size_t need = have + (have ? 1 : 0) + strlen(id);
+    if (need >= sizeof s.tutorialsSeen) { logLine("tutorials: seen list full, \"%s\" not recorded", id); return; }
+    if (have) s.tutorialsSeen[have++] = ',';
+    strcpy(s.tutorialsSeen + have, id);
     axSaveIni();
 }
 
@@ -567,6 +647,28 @@ bool speakUtf8(const char* utf8, bool interrupt, int* outErr) {
 static FILE* g_logFile = nullptr;
 static long  g_logSize = 0;
 
+// ---- THE REPEAT SQUELCH ----
+static char     g_logLast[2048];
+static unsigned g_logRepeat = 0;
+static DWORD    g_logRepeatTick = 0;   // tick of the most recent suppressed repeat
+
+// Under g_logCs, file open. The one raw writer.
+static void logWriteRaw(const char* line) {
+    int n = fprintf(g_logFile, "[%10lu] %s\n", (unsigned long)GetTickCount(), line);
+    if (n > 0) g_logSize += n;
+}
+// Under g_logCs. Writes the note for a suppressed run, if there is one.
+static void logFlushRepeat() {
+    if (g_logRepeat && g_logFile) {
+        char note[128];
+        _snprintf(note, sizeof note, "(the line above repeated %u more time%s, last at [%10lu])",
+                  g_logRepeat, g_logRepeat == 1 ? "" : "s", (unsigned long)g_logRepeatTick);
+        note[sizeof note - 1] = 0;
+        logWriteRaw(note);
+    }
+    g_logRepeat = 0;
+}
+
 static bool appendLogLine(const char* path, long cap, const char* line) {
     if (!path || !path[0]) return false;
     EnterCriticalSection(&g_logCs);
@@ -576,15 +678,27 @@ static bool appendLogLine(const char* path, long cap, const char* line) {
         fseek(g_logFile, 0, SEEK_END);
         g_logSize = ftell(g_logFile);
         if (g_logSize < 0) g_logSize = 0;
+        g_logLast[0] = 0;
+        g_logRepeat = 0;
     }
     if (g_logSize > cap) {
         fclose(g_logFile);
         g_logFile = fopen(path, "w");
         if (!g_logFile) { LeaveCriticalSection(&g_logCs); return false; }
         g_logSize = 0;
+        g_logLast[0] = 0;
+        g_logRepeat = 0;
     }
-    int n = fprintf(g_logFile, "[%10lu] %s\n", (unsigned long)GetTickCount(), line);
-    if (n > 0) g_logSize += n;
+    if (g_logLast[0] && strcmp(line, g_logLast) == 0) {
+        g_logRepeat++;
+        g_logRepeatTick = GetTickCount();
+        LeaveCriticalSection(&g_logCs);
+        return true;
+    }
+    logFlushRepeat();
+    logWriteRaw(line);
+    strncpy(g_logLast, line, sizeof g_logLast - 1);
+    g_logLast[sizeof g_logLast - 1] = 0;
     fflush(g_logFile);
     LeaveCriticalSection(&g_logCs);
     return true;
@@ -592,7 +706,8 @@ static bool appendLogLine(const char* path, long cap, const char* line) {
 
 static void axCloseLogFile() {
     EnterCriticalSection(&g_logCs);
-    if (g_logFile) { fclose(g_logFile); g_logFile = nullptr; }
+    if (g_logFile) { logFlushRepeat(); fclose(g_logFile); g_logFile = nullptr; }
+    g_logLast[0] = 0;
     LeaveCriticalSection(&g_logCs);
 }
 
@@ -603,7 +718,35 @@ static void axTruncateLogFile(const char* path) {
     FILE* f = fopen(path, "w");
     if (f) fclose(f);
     g_logSize = 0;
+    g_logLast[0] = 0;
+    g_logRepeat = 0;
     LeaveCriticalSection(&g_logCs);
+}
+
+// ---- THE LAUNCH ROTATION ----
+static void axRotateLogAtLaunch(const char* path) {
+    if (!path || !path[0]) return;
+    size_t len = strlen(path);
+    char prev[MAX_PATH];
+    if (len > 4 && len + 6 < sizeof prev && _stricmp(path + len - 4, ".log") == 0) {
+        memcpy(prev, path, len - 4);
+        strcpy(prev + len - 4, ".prev.log");
+    } else {
+        _snprintf(prev, sizeof prev, "%s.prev", path);
+        prev[sizeof prev - 1] = 0;
+    }
+    EnterCriticalSection(&g_logCs);
+    if (g_logFile) { fclose(g_logFile); g_logFile = nullptr; }   // (never open this early; belt and braces)
+    MoveFileExA(path, prev, MOVEFILE_REPLACE_EXISTING);            // no file yet = nothing to keep
+    g_logSize = 0;
+    g_logLast[0] = 0;
+    g_logRepeat = 0;
+    LeaveCriticalSection(&g_logCs);
+    char head[200];
+    _snprintf(head, sizeof head, "=== ddaccess debug log: launch (build %s %s); the previous session is in "
+              "ddaccess-debug.prev.log ===", __DATE__, __TIME__);
+    head[sizeof head - 1] = 0;
+    appendLogLine(path, LOG_CAP_BYTES, head);
 }
 
 void logLine(const char* fmt, ...) {
@@ -629,6 +772,74 @@ void logDump(const char* fmt, ...) {
     appendLogLine(s.path, LOG_CAP_BYTES, line);
 }
 
+// ---- EXPAND ABBREVIATIONS ----
+struct AxAbbrev { AxStrId abbr; AxStrId full; };
+static const AxAbbrev kAxAbbrevs[] = {
+    { AXS_ABBR_MAX_HP, AXS_ABBR_MAX_HP_FULL },
+    { AXS_ABBR_ACC,    AXS_ABBR_ACC_FULL },
+    { AXS_ABBR_CRIT,   AXS_ABBR_CRIT_FULL },
+    { AXS_ABBR_DMG,    AXS_ABBR_DMG_FULL },
+    { AXS_ABBR_DOT,    AXS_ABBR_DOT_FULL },
+    { AXS_ABBR_HP,     AXS_ABBR_HP_FULL },
+    { AXS_ABBR_PROT,   AXS_ABBR_PROT_FULL },
+    { AXS_ABBR_SPD,    AXS_ABBR_SPD_FULL },
+    { AXS_ABBR_RD,     AXS_ABBR_RD_FULL },
+    { AXS_ABBR_RDS,    AXS_ABBR_RDS_FULL },    // "for 3 rds", "Marked (2 rds)": rounds -- its own
+                                               // pair, the matcher is whole-word and cannot inflect
+};
+static const int AX_ABBREV_N = (int)(sizeof kAxAbbrevs / sizeof kAxAbbrevs[0]);
+
+bool axWordCp(unsigned char lead) {
+    if (lead < 0x80) return (lead >= '0' && lead <= '9') || (lead >= 'A' && lead <= 'Z') || (lead >= 'a' && lead <= 'z');
+    return lead < 0xE3;      // U+0080..U+2FFF: letters; U+3000 and up: not
+}
+bool axWordBefore(const unsigned char* s, size_t i) {
+    if (i == 0) return false;
+    size_t j = i - 1;
+    while (j > 0 && (s[j] & 0xC0) == 0x80) j--;
+    return axWordCp(s[j]);
+}
+unsigned char axAsciiLower(unsigned char c) { return (c >= 'A' && c <= 'Z') ? (unsigned char)(c + 32) : c; }
+
+size_t axWordMatchAt(const unsigned char* s, size_t i, const unsigned char* sp, size_t n) {
+    if (n == 0) return 0;
+    for (size_t k = 0; k < n; k++)
+        if (axAsciiLower(s[i + k]) != axAsciiLower(sp[k])) return 0;   // s is NUL-terminated: a NUL mismatches
+    if (axWordCp(s[i + n])) return 0;
+    return n;
+}
+
+static void axExpandAbbrevText(const char* in, char* out, size_t outsz) {
+    const unsigned char* s = (const unsigned char*)in;
+    size_t o = 0;
+    for (size_t i = 0; s[i] && o + 1 < outsz; ) {
+        size_t bestLen = 0; const char* bestFull = nullptr;
+        if (!axWordBefore(s, i)) {
+            for (int e = 0; e < AX_ABBREV_N; e++) {
+                // Each ABBR entry is "spelling, spelling, ...": walk its comma-separated list.
+                const unsigned char* list = (const unsigned char*)axs(kAxAbbrevs[e].abbr);
+                for (size_t a = 0; list[a]; ) {
+                    while (list[a] == ' ' || list[a] == ',') a++;
+                    size_t b = a;
+                    while (list[b] && list[b] != ',') b++;
+                    size_t n = b - a;
+                    while (n > 0 && list[a + n - 1] == ' ') n--;
+                    size_t m = axWordMatchAt(s, i, list + a, n);
+                    if (m > bestLen) { bestLen = m; bestFull = axs(kAxAbbrevs[e].full); }
+                    a = b;
+                }
+            }
+        }
+        if (bestLen && bestFull && bestFull[0]) {
+            for (const char* f = bestFull; *f && o + 1 < outsz; f++) out[o++] = *f;
+            i += bestLen;
+        } else {
+            out[o++] = (char)s[i++];
+        }
+    }
+    out[o] = 0;
+}
+
 void postSpeech(const char* text, bool interrupt, SpeechKind kind) {
     if (kind == SPK_AUTO) kind = interrupt ? SPK_NAV : SPK_EVENT;
     // ---- A STRAY ".." IS COLLAPSED HERE, ONCE FOR EVERY LINE ----
@@ -637,10 +848,16 @@ void postSpeech(const char* text, bool interrupt, SpeechKind kind) {
         size_t n = 0;
         for (size_t i = 0; text[i] && n < MAILBOX_SZ - 1; i++) {
             if (text[i] == '.' && text[i + 1] == '.' && text[i + 2] != '.' && (i == 0 || text[i - 1] != '.')) continue;
+            if (text[i] == ' ' && text[i + 1] == '.' && i > 0 && text[i - 1] == '.' && text[i + 2] != '.') { i++; continue; }
             clean[n++] = text[i];
         }
         clean[n] = 0;
         text = clean;
+    }
+    char expanded[MAILBOX_SZ];
+    if (axExpandAbbreviations()) {
+        axExpandAbbrevText(text, expanded, sizeof expanded);
+        text = expanded;
     }
     if (kind == SPK_NAV) {
         if (text != g_lastNavLine) {
@@ -728,6 +945,32 @@ void postSpeech(const char* text, bool interrupt, SpeechKind kind) {
     g_sqCount++;
     g_hasPending = true;
     LeaveCriticalSection(&g_cs);
+}
+
+// ---- GLUE A TAIL ONTO THE LINE JUST POSTED ----
+void appendToLastSpeech(const char* tail) {
+    if (!tail || !tail[0]) return;
+    char expanded[MAILBOX_SZ];
+    if (axExpandAbbreviations()) {
+        axExpandAbbrevText(tail, expanded, sizeof expanded);
+        tail = expanded;
+    }
+    bool glued = false;
+    EnterCriticalSection(&g_cs);
+    if (g_sqCount > 0) {
+        int last = (g_sqHead + g_sqCount - 1) % SPEECH_QUEUE_MAX;
+        if (g_sqKind[last] == SPK_NAV) {
+            axAppendHintText(g_speechQ[last], MAILBOX_SZ, tail);
+            glued = true;
+        }
+    }
+    LeaveCriticalSection(&g_cs);
+    if (glued) {
+        axAppendHintText(g_lastNavLine, MAILBOX_SZ, tail);   // the release re-read's copy
+        return;
+    }
+    logLine("speech: tail \"%.60s\" found no waiting nav line -- posted as its own event", tail);
+    postSpeech(tail, false, SPK_EVENT);
 }
 
 volatile bool g_silenceReq = false;        // -> the speech thread, which owns Tolk calls

@@ -6,9 +6,11 @@
 #ifndef PRISM_VERSION_H
 #define PRISM_VERSION_H
 
+// NOLINTBEGIN(modernize-macro-to-enum)
 #define PRISM_VERSION_MAJOR 0
 #define PRISM_VERSION_MINOR 18
-#define PRISM_VERSION_PATCH 2
-#define PRISM_VERSION_STRING "0.18.2"
+#define PRISM_VERSION_PATCH 3
+#define PRISM_VERSION_STRING "0.18.3"
+// NOLINTEND(modernize-macro-to-enum)
 
 #endif

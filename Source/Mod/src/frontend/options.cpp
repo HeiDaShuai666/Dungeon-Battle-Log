@@ -328,6 +328,15 @@ int64_t optRowAnchorId(int pos) {
 
 bool optIsAnchorId(uint32_t cc) { return isOptionId(cc) && !optIsIncreaseId(cc); }
 
+int optRowHintKind(uint32_t cc) {
+    if (!isOptionId(cc)) return 0;
+    if (optIsCategoryId(cc)) return 1;
+    if (optIsListId(cc)) return 2;
+    int pos = optRowPos(cc);
+    if (pos >= 0 && pos <= 255 && feElemOnScreen((int64_t)(OPT_DEC_ID_BASE + (uint32_t)pos))) return 2;
+    return 1;
+}
+
 bool optPageActive() { return optPageId() != 0; }
 
 uint32_t optPageId() {
@@ -339,6 +348,7 @@ uint32_t optPageId() {
 }
 
 // ---- The page walk itself: BY ROW NUMBER, NOT BY GEOMETRY ----
+static void optAppendTip(int pos, char* text, int textsz);
 bool optListStep(int dir) {
     if (dir != 0 && dir != 1) return false;           // vertical only; Left/Right adjust the value
     if (!optPageActive()) return false;               // the category LIST stays geometric
@@ -367,12 +377,15 @@ bool optListStep(int dir) {
             // The end of the list: re-read the row we are standing on, never silence.
             int64_t anchor = optRowAnchorId(pos);
             char text[512];
-            resolveLabel(g_base, g_tbwVtbl, anchor, text, sizeof text);
+            resolveLabelForSpeech(g_base, g_tbwVtbl, anchor, text, sizeof text);
             if (text[0]) {
-                postSpeech(text);
                 g_axSpokenId = anchor;
                 strncpy(g_axLastSpoken, text, sizeof g_axLastSpoken - 1);
                 g_axLastSpoken[sizeof g_axLastSpoken - 1] = 0;
+                char spoken[2048];
+                _snprintf(spoken, sizeof spoken, "%s", text); spoken[sizeof spoken - 1] = 0;
+                optAppendTip(pos, spoken, sizeof spoken);
+                postSpeech(spoken);
             }
             logLine("optlist: pos=%d is the %s row -- hard stop, re-read", pos,
                     step > 0 ? "last" : "first");
@@ -391,12 +404,15 @@ bool optListStep(int dir) {
     moveCursorTo(tx, ty);                              // the game's own hover does the focusing
     g_feFocusId = anchor;
     char text[512];
-    resolveLabel(g_base, g_tbwVtbl, anchor, text, sizeof text);
+    resolveLabelForSpeech(g_base, g_tbwVtbl, anchor, text, sizeof text);
     if (text[0]) {                                     // a move is explicit -> always speak
-        postSpeech(text);
         g_axSpokenId = anchor;
-        strncpy(g_axLastSpoken, text, sizeof g_axLastSpoken - 1);
+        strncpy(g_axLastSpoken, text, sizeof g_axLastSpoken - 1);   // bare: the re-read's memory
         g_axLastSpoken[sizeof g_axLastSpoken - 1] = 0;
+        char spoken[2048];
+        _snprintf(spoken, sizeof spoken, "%s", text); spoken[sizeof spoken - 1] = 0;
+        optAppendTip(target, spoken, sizeof spoken);
+        postSpeech(spoken);
     }
     logLine("optlist: dir=%d pos=%d -> %d anchor=0x%llx cursor=(%.0f,%.0f)",
             dir, pos, target, (unsigned long long)anchor, tx, ty);
@@ -408,6 +424,28 @@ static int      g_optTipLine = 0;   // buffer cursor; 0 = the row itself
 static int      g_optTipPos  = -1;  // the row position the cursor belongs to...
 static uint32_t g_optTipPage = 0;
                                     //    page is another row, so the pair is the identity)
+
+static bool optRowTooltip(int pos, char* tip, int tipsz, char* name, int namesz) {
+    tip[0] = 0;
+    name[0] = 0;
+    int chosen = optDescForPos(g_base, pos);
+    if (chosen >= 0)
+        safeReadCStr(g_base + OPT_DESC_ARR_RVA + (uintptr_t)chosen * OPT_DESC_STRIDE
+                     + OPT_DESC_NAME_OFF, name, namesz);
+    if (!name[0]) return false;
+    char key[96];
+    _snprintf(key, sizeof key, "menu_options_element_tooltip_%s", name); key[95] = 0;
+    if (resolveKey(g_base, key, tip, tipsz)) abStripMarkup(tip);
+    return tip[0] != 0;
+}
+static void optAppendTip(int pos, char* text, int textsz) {
+    if (!axTipWanted()) return;
+    char tip[1024], name[64];
+    if (optRowTooltip(pos, tip, sizeof tip, name, sizeof name)) {
+        axTipGlue(text, textsz, tip);
+        axTipGlueKeywords(text, textsz);             // the glossary terms it names (core/keywords.cpp)
+    }
+}
 
 bool optTipStep(bool forward) {
     uint32_t page = optPageId();
@@ -428,19 +466,15 @@ bool optTipStep(bool forward) {
     char row[512];
     resolveLabel(g_base, g_tbwVtbl, anchor, row, sizeof row);
 
-    char tip[1024]; tip[0] = 0;
+    char tip[1024], name[64];
+    optRowTooltip(pos, tip, sizeof tip, name, sizeof name);
     int chosen = optDescForPos(g_base, pos);
-    char name[64] = { 0 };
-    if (chosen >= 0)
-        safeReadCStr(g_base + OPT_DESC_ARR_RVA + (uintptr_t)chosen * OPT_DESC_STRIDE
-                     + OPT_DESC_NAME_OFF, name, sizeof name);
-    if (name[0]) {
-        char key[96];
-        _snprintf(key, sizeof key, "menu_options_element_tooltip_%s", name); key[95] = 0;
-        if (resolveKey(g_base, key, tip, sizeof tip)) abStripMarkup(tip);
-    }
 
-    int total = tip[0] ? 2 : 1;
+    int own = tip[0] ? 2 : 1;
+    char both[2][1024];
+    _snprintf(both[0], sizeof both[0], "%s", row); both[0][sizeof both[0] - 1] = 0;
+    _snprintf(both[1], sizeof both[1], "%s", tip); both[1][sizeof both[1] - 1] = 0;
+    int total = own + axTipKeywordCount(&both[0][0], sizeof both[0], own, 1, nullptr);   // 1: the tip, not the row
     if (total == 1) {
         char line[640];
         _snprintf(line, sizeof line, "%s %s", row, axs(AXS_OPT_NO_TOOLTIP));
@@ -451,7 +485,13 @@ bool optTipStep(bool forward) {
         return true;
     }
     g_optTipLine = (g_optTipLine + (forward ? 1 : -1) + total) % total;
-    postSpeech(g_optTipLine == 0 ? row : tip);
+    if (g_optTipLine < own) postSpeech(both[g_optTipLine]);
+    else {
+        char def[1024];
+        if (axTipKeywordLine(&both[0][0], sizeof both[0], own, 1, nullptr, g_optTipLine - own, def, sizeof def))
+            postSpeech(def);
+        else { g_optTipLine = 0; postSpeech(row); }
+    }
     logLine("opttip: pos=%d desc=%d name=\"%s\" line=%d/%d", pos, chosen, name,
             g_optTipLine, total);
     return true;
@@ -577,7 +617,9 @@ void serviceOptAdjust() {
     if (val[0]) {
         postSpeech(val);
         g_axSpokenId = g_optAdjustAnchor;
-        strncpy(g_axLastSpoken, text, sizeof g_axLastSpoken - 1);
+        char spoken[512];
+        resolveLabelForSpeech(g_base, g_tbwVtbl, g_optAdjustAnchor, spoken, sizeof spoken);
+        strncpy(g_axLastSpoken, spoken, sizeof g_axLastSpoken - 1);
         g_axLastSpoken[sizeof g_axLastSpoken - 1] = 0;
     }
     logLine("optadjust: row pos=%d %s \"%s\" -> \"%s\"", g_optAdjustRow,

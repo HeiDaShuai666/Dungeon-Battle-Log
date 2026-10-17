@@ -754,6 +754,7 @@ bool routeTownEventHeroKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t r
         _snprintf(utter, sizeof utter, axs(AXS_TE_ADD_PROMPT_FMT),
                   g_teRecName[0] ? g_teRecName : axs(AXS_TE_THIS_HERO));
         utter[sizeof utter - 1] = 0;
+        axAppendHint(utter, sizeof utter, AXS_RCT_ADD_HINT);   // the coach's hint, shared; "" when Off
         postSpeech(utter);
         return true;
     }
@@ -884,10 +885,11 @@ static bool teComposeLine(uintptr_t base, uintptr_t self, char* out, int outsz) 
         n = (w < 0) ? outsz - 1 : n + w;
     }
     if (haveA && n < outsz - 1) {
+        const char* fmt = axs(AXS_TE_PRESS_ENTER_TO_FMT);
         char armed[256];
-        _snprintf(armed, sizeof armed, axs(AXS_TE_PRESS_ENTER_TO_FMT), act);
+        _snprintf(armed, sizeof armed, fmt, act);
         armed[sizeof armed - 1] = 0;
-        int w = g_teInteractArmed
+        int w = (g_teInteractArmed && fmt[0])
                     ? _snprintf(out + n, outsz - n, " %s", armed)
                     : _snprintf(out + n, outsz - n, " %s.", act);
         n = (w < 0) ? outsz - 1 : n + w;
@@ -906,6 +908,7 @@ static bool teComposeLine(uintptr_t base, uintptr_t self, char* out, int outsz) 
         _snprintf(offered, sizeof offered, axs(AXS_TE_OFFERED_FMT),
                   heroes, card[0] ? card : axs(AXS_TE_A_HERO));
         offered[sizeof offered - 1] = 0;
+        axAppendHint(offered, sizeof offered, AXS_TE_OFFERED_HINT);   // "" while Control hints is Off
         int w = _snprintf(out + n, outsz - n, " %s", offered);
         n = (w < 0) ? outsz - 1 : n + w;
     }

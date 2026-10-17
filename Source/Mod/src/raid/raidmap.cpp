@@ -473,7 +473,8 @@ static int corridorDirToEnd(uintptr_t root, long corIdx, int ti, int endTile, lo
 }
 
 // ---- Announcement builders ----
-static void mapDescribeArea(uintptr_t base, uintptr_t root, long i, char* out, int outsz) {
+static void mapDescribeArea(uintptr_t base, uintptr_t root, long i, char* out, int outsz,
+                            bool withExits = true) {
     uintptr_t area = mapAreaAt(root, i);
     if (!area) { _snprintf(out, outsz, axs(AXS_MAP_AREA_UNREADABLE_FMT), i + 1); out[outsz - 1] = 0; return; }
     int32_t kind = -1;
@@ -502,6 +503,7 @@ static void mapDescribeArea(uintptr_t base, uintptr_t root, long i, char* out, i
 
     if (kind == 0) {   // room = 1 tile
         if (!here && tileVisited(area, 0)) o += _snprintf(out + o, outsz - o, ", %s", axs(AXS_MAP_VISITED));
+        if (!withExits) { out[outsz - 1] = 0; return; }
         MapExit exits[AREA_EXIT_SLOTS];
         int n = roomExits(root, i, exits, AREA_EXIT_SLOTS);
         char ex[256]; int eo = 0; ex[0] = 0; int nex = 0;
@@ -576,12 +578,17 @@ static void mapDescribeTile(uintptr_t base, uintptr_t root, long ai, int ti, cha
 
 void openMapReview(uintptr_t base, uintptr_t root) {                        // exported (internal.h)
     g_mapReview = true;
+    mtNoteLanding(true);
     mapFindParty(root, &g_mrArea, &g_mrTile);
     char adesc[400], tdesc[400], msg[MAILBOX_SZ];
     mapDescribeArea(base, root, g_mrArea, adesc, sizeof adesc);
     mapDescribeTile(base, root, g_mrArea, g_mrTile, tdesc, sizeof tdesc);
-    _snprintf(msg, sizeof msg, axs(AXS_MAP_OPEN_FMT), adesc, tdesc);
+    char name[160];
+    kmLabelWithKey(axs(AXS_MAP_NAME), "dungeon.panels", 0, name, sizeof name);
+    _snprintf(msg, sizeof msg, axs(AXS_MAP_OPEN_FMT), name, adesc, tdesc);
     msg[sizeof msg - 1] = 0;
+    axAppendHint(msg, sizeof msg, AXS_MAP_TAB_HINT);
+    axAppendHint(msg, sizeof msg, AXS_MAP_OPEN_HINT);
     postSpeech(msg);
     logLine("mapreview open (focus) areas=%ld startArea=%d startTile=%d panel=0x%llx",
             mapAreaCount(root), g_mrArea, g_mrTile, (unsigned long long)(uintptr_t)g_mapPanel);
@@ -606,6 +613,15 @@ static const char* activePanelName(uintptr_t rd, uintptr_t active) {
     if (safeReadPtr(rd + RD_PANEL_ARR_OFF + 8,  &p) && p == active && p) return "Hero";
     if (panelIsInventory(rd, active)) return "Inventory";
     return nullptr;
+}
+
+static bool activePanelLine(uintptr_t rd, uintptr_t active, char* out, int outsz) {
+    if (panelIsInventory(rd, active)) { invPanelTitle(out, outsz); return true; }
+    const char* pn = activePanelName(rd, active);
+    if (!pn) return false;
+    _snprintf(out, outsz, "%s", pn);
+    out[outsz - 1] = 0;
+    return true;
 }
 
 // ---- Tab out of a mod layer: name where the player LANDED ----
@@ -713,11 +729,12 @@ void checkMapFocus(uintptr_t base) {                                        // e
     g_mapSuspended = false;
 
     if (changed && !firstRead && idx >= 0 && !axOwnsAnnouncer(currentAxContext())) {
-        const char* pn = activePanelName(rd, active);
-        if (pn) {
+        char pn[MAILBOX_SZ];
+        if (activePanelLine(rd, active, pn, sizeof pn)) {
             postSpeech(pn);
             logLine("panel announced: \"%s\" (idx=%d)", pn, idx);
             g_panelHandoff = false;
+            if (panelIsInventory(rd, active)) mtNoteLanding(false);
         }
     } else if (changed && !firstRead && idx >= 0) {
         logLine("panel change idx=%d NOT announced — ctx %d owns the announcer", idx,
@@ -760,8 +777,8 @@ void servicePanelHandoff(uintptr_t base) {                                  // e
         return;
 
     g_panelHandoff = false;
-    const char* pn = activePanelName(rd, active);
-    if (!pn) {
+    char pn[MAILBOX_SZ];
+    if (!activePanelLine(rd, active, pn, sizeof pn)) {
         logLine("panel handoff: no name for the active panel (idx=%d active=0x%llx)",
                 idx, (unsigned long long)active);
         return;
@@ -832,6 +849,12 @@ static void mapHomeGateLogOnce(uintptr_t base) {
     logLine("mapnav: Home -> %s",
             kbActionForKey(base, (int)SDLK_HOME, owner, sizeof owner)
                 ? owner : "not bound in the game table");
+}
+
+static bool mapTravelAvailable(uintptr_t base, uintptr_t root, long areaIdx);
+
+static void mapAppendTravelHint(uintptr_t base, uintptr_t root, char* buf, int bufsz) {
+    if (mapTravelAvailable(base, root, g_mrArea)) axAppendHint(buf, bufsz, AXS_MAP_TRAVEL_HINT);
 }
 
 void serviceMapReq(uintptr_t base) {                                        // exported (OurPoll)
@@ -919,6 +942,7 @@ void serviceMapReq(uintptr_t base) {                                        // e
                           _snprintf(buf + strlen(buf), sizeof buf - strlen(buf), axs(AXS_MAP_VIA_HALLWAY_FMT), viaTiles); }
         else              _snprintf(buf, sizeof buf, "%s.", adesc);
         buf[sizeof buf - 1] = 0;
+        if (landTile < 0) mapAppendTravelHint(base, root, buf, sizeof buf);   // a room, not a door tile
         postSpeech(buf);
         logLine("mapnav room-step dir=%d -> area=%d tile=%d", dir, g_mrArea, g_mrTile);
         return;
@@ -962,6 +986,7 @@ void serviceMapReq(uintptr_t base) {                                        // e
         g_mrArea = (int)ri;
         g_mrTile = 0;
         mapDescribeArea(base, root, g_mrArea, buf, sizeof buf);
+        mapAppendTravelHint(base, root, buf, sizeof buf);
         postSpeech(buf);
         logLine("mapnav exit-hall dir=%d -> area=%d", dir, g_mrArea);
         return;
@@ -997,6 +1022,103 @@ bool routeMapKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {  
     g_moveArea = (mod & (KMOD_LCTRL | KMOD_RCTRL)) == 0;
     g_mapReq   = MR_MOVE;
     return true;
+}
+
+// ---- THE MAP'S FIND ENUMERATOR ----
+struct MapFindEntry { int area; int tile; };    // tile -1 = the area's own row
+static const int MAP_FIND_MAX = 512;
+static const int MAP_FIND_SECRETS = 32;
+
+static int mapFindBuild(uintptr_t root, MapFindEntry* out, int maxOut) {
+    long n = mapAreaCount(root);
+    uint32_t shown[MAP_FIND_SECRETS]; int nShown = 0;
+    for (long i = 0; i < n; i++) {
+        uintptr_t a = mapAreaAt(root, i); if (!a) continue;
+        int32_t kind = -1; safeReadU32(a + AREA_KIND_OFF, (uint32_t*)&kind);
+        if (kind != 1) continue;
+        long tiles = mapAreaTiles(a);
+        for (long t = 0; t < tiles && nShown < MAP_FIND_SECRETS; t++) {
+            uint32_t sid = 0;
+            if (tileHiddenDoorShown(a, (int)t, &sid) && sid) shown[nShown++] = sid;
+        }
+    }
+    int got = 0;
+    for (long i = 0; i < n && got < maxOut; i++) {
+        uintptr_t a = mapAreaAt(root, i); if (!a) continue;
+        uint32_t id = 0; int32_t kind = -1;
+        safeReadU32(a + AREA_ID_OFF, &id);
+        safeReadU32(a + AREA_KIND_OFF, (uint32_t*)&kind);
+        if (kind == 0 && isSecretAreaId(id)) {
+            bool led = false;
+            for (int s = 0; s < nShown; s++) if (shown[s] == id) { led = true; break; }
+            if (!led) continue;                 // unfound: as absent as it is on screen
+        }
+        out[got].area = (int)i; out[got].tile = -1; got++;
+        if (kind != 1) continue;
+        long tiles = mapAreaTiles(a);
+        uintptr_t tb = 0; safeReadPtr(a + AREA_TILES_BEG, &tb);
+        if (!tb) continue;
+        for (long t = 0; t < tiles && got < maxOut; t++) {
+            int32_t content = 0;
+            safeReadU32(tb + (uintptr_t)t * TILE_STRIDE + TILE_CONTENT_OFF, (uint32_t*)&content);
+            content = mapVisibleTileContent(a, (int)t, content);   // hunger + an unfound door read empty
+            if (content <= 0 || !tileContentsVisible(a, (int)t)) continue;
+            out[got].area = (int)i; out[got].tile = (int)t; got++;
+        }
+    }
+    if (got >= maxOut) logLine("mapfind: entry list full at %d (areas=%ld)", got, n);
+    return got;
+}
+
+int mapFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {   // exported (the table)
+    if (!g_mapReview) return 0;
+    uintptr_t root = mapRoot(base);
+    if (!root) return 0;
+    MapFindEntry list[MAP_FIND_MAX];
+    int n = mapFindBuild(root, list, MAP_FIND_MAX);
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        const MapFindEntry& e = list[idx];
+        if (e.tile < 0) { mapDescribeArea(base, root, e.area, out, outsz, /*withExits=*/false); return 1; }
+        char tdesc[400], alabel[96];
+        mapDescribeTile(base, root, e.area, e.tile, tdesc, sizeof tdesc);
+        mapAreaLabelEx(root, mapAreaAt(root, e.area), alabel, sizeof alabel);
+        _snprintf(out, outsz, "%s, %s", tdesc, alabel);
+        out[outsz - 1] = 0;
+        return 1;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;
+        const MapFindEntry& e = list[idx];
+        uintptr_t area = mapAreaAt(root, e.area);
+        if (!area) return 0;
+        int32_t kind = -1; safeReadU32(area + AREA_KIND_OFF, (uint32_t*)&kind);
+        g_mrArea = e.area;
+        g_mrTile = 0;
+        if (e.tile >= 0) g_mrTile = e.tile;
+        else if (kind == 1) {
+            int pa = 0, pt = 0; mapFindParty(root, &pa, &pt);
+            if (pa == e.area) g_mrTile = pt;
+        }
+        char buf[900];
+        if (kind == 1) {
+            char alabel[96], tdesc[400];
+            mapAreaLabelEx(root, area, alabel, sizeof alabel);
+            mapDescribeTile(base, root, g_mrArea, g_mrTile, tdesc, sizeof tdesc);
+            _snprintf(buf, sizeof buf, "%s. %s", alabel, tdesc);
+        } else {
+            mapDescribeArea(base, root, g_mrArea, buf, sizeof buf);
+            mapAppendTravelHint(base, root, buf, sizeof buf);   // "Press Enter to travel." when it would
+        }
+        buf[sizeof buf - 1] = 0;
+        logLine("mapnav find -> area=%d tile=%d (entry %d of %d)", g_mrArea, g_mrTile, idx, n);
+        postSpeech(buf);
+        return 1;
+    }
+    return 0;
 }
 
 // ---- In-raid MAP: Enter-to-move (the game's own move fn, with the button's own objects) ----
@@ -1078,13 +1200,36 @@ static uintptr_t mapDoorToward(uintptr_t root, uintptr_t curArea, uint32_t destI
     return 0;
 }
 
+static bool mapTravelAvailable(uintptr_t base, uintptr_t root, long areaIdx) {
+    if (!root || comIsWaveRaid(base)) return false;
+    uintptr_t area = mapAreaAt(root, areaIdx);
+    if (!area) return false;
+    uint32_t id = 0; int32_t kind = -1;
+    safeReadU32(area + AREA_ID_OFF, &id);
+    safeReadU32(area + AREA_KIND_OFF, reinterpret_cast<uint32_t*>(&kind));
+    if (kind != 0) return false;
+    uintptr_t curArea = 0;
+    if (!safeReadPtr(root + MAP_CUR_AREA_PTR, &curArea) || !curArea) return false;
+    uint32_t curId = 0; int32_t curKind = -1;
+    safeReadU32(curArea + AREA_ID_OFF, &curId);
+    safeReadU32(curArea + AREA_KIND_OFF, reinterpret_cast<uint32_t*>(&curKind));
+    if (id == curId || curKind != 0) return false;
+    if (!mapDoorToward(root, curArea, id)) return false;
+    uintptr_t mgr = 0;
+    if (!safeReadPtr(base + MOVE_MGR_RVA, &mgr) || !mgr) return false;
+    return sehMoveGate(base);
+}
+
 static void attemptRoomMove(uintptr_t base, uintptr_t root) {
     if (g_movePending) return;
 
     if (comIsWaveRaid(base)) {
         logLine("map-move: wave raid — the map's move-to-room is refused; the way on is the "
                 "dungeon view's last row");
-        postSpeech(axs(AXS_MAP_FARMSTEAD_NO_MOVE));
+        char line[320];
+        _snprintf(line, sizeof line, "%s", axs(AXS_MAP_FARMSTEAD_NO_MOVE)); line[sizeof line - 1] = 0;
+        axAppendHint(line, sizeof line, AXS_MAP_FARMSTEAD_HINT);   // "" while Control hints is Off
+        postSpeech(line);
         return;
     }
 
@@ -1111,7 +1256,10 @@ static void attemptRoomMove(uintptr_t base, uintptr_t root) {
         if (isSecretAreaId(id)) {
             logLine("map-move: '%.4s' is a secret room - no map-move into one exists; "
                     "entry is the hallway's door tile", &id);
-            postSpeech(axs(AXS_SECRET_ENTER_FROM_HALL));
+            char line[320];
+            _snprintf(line, sizeof line, "%s", axs(AXS_SECRET_ENTER_FROM_HALL)); line[sizeof line - 1] = 0;
+            axAppendHint(line, sizeof line, AXS_SECRET_ENTER_HINT);   // "" while Control hints is Off
+            postSpeech(line);
             return;
         }
         logLine("map-move: no door from '%.4s' (kind=%d) to '%.4s' -> can't move there",
@@ -1372,6 +1520,13 @@ static uint32_t g_twTrapAckSym  = 0;
 static uint32_t g_twTrapAckUntil = 0;
                                          // silently authorise a walk onto spikes
 
+static void twSayTrapAhead() {
+    char line[160];
+    _snprintf(line, sizeof line, "%s", axs(AXS_MAP_TRAP_AHEAD)); line[sizeof line - 1] = 0;
+    axAppendHint(line, sizeof line, AXS_MAP_TRAP_DISARM_HINT);
+    postSpeech(line);
+}
+
 static bool     g_twTrapShort    = false;  // the in-flight step is a trap approach
 static uint32_t g_twTrapTileArea = 0;      // where the approach stopped short...
 static int      g_twTrapTileIdx  = -1;
@@ -1575,6 +1730,7 @@ static bool twBeginStepImpl(uintptr_t base, uint32_t sym, uint32_t scan, uintptr
                 char msg[160];
                 _snprintf(msg, sizeof msg, axs(AXS_MAP_DOOR_AT_END_FMT), nl);
                 msg[sizeof msg - 1] = 0;
+                axAppendHint(msg, sizeof msg, AXS_DOOR_PRESS_W);   // the dungeon view's hint, shared
                 logLine("tilestep: refused '%c' past the door - tile %d of %ld is the %s end",
                         (char)sym, tile + 1, tiles, next < 0 ? "low" : "high");
                 postSpeech(msg);
@@ -1595,7 +1751,7 @@ static bool twBeginStepImpl(uintptr_t base, uint32_t sym, uint32_t scan, uintptr
                     g_twTrapAckUntil = GetTickCount() + TW_TRAP_ACK_MS;
                     logLine("tilestep: refused '%c' - crossing the revealed trap on tile %d of %ld (warned)",
                             (char)sym, tile + 1, tiles);
-                    postSpeech(axs(AXS_MAP_TRAP_AHEAD));
+                    twSayTrapAhead();
                     return true;
                 }
                 logLine("tilestep: trap warning overridden - walking across tile %d of %ld",
@@ -1616,7 +1772,7 @@ static bool twBeginStepImpl(uintptr_t base, uint32_t sym, uint32_t scan, uintptr
                         g_twTrapAckUntil = GetTickCount() + TW_TRAP_ACK_MS;
                         logLine("tilestep: refused '%c' - at the threshold of the trap on tile %d of %ld (warned)",
                                 (char)sym, next + 1, tiles);
-                        postSpeech(axs(AXS_MAP_TRAP_AHEAD));
+                        twSayTrapAhead();
                         return true;
                     }
                     logLine("tilestep: trap warning overridden - crossing onto tile %d of %ld",
@@ -1702,7 +1858,7 @@ static bool twBeginStepImpl(uintptr_t base, uint32_t sym, uint32_t scan, uintptr
         g_twTrapTileArea = aid; g_twTrapTileIdx = tile; g_twTrapTileSym = sym;
         logLine("tilestep: refused '%c' - the position model would not read, so this trap approach "
                 "has no provable stop (press again to cross anyway)", (char)sym);
-        postSpeech(axs(AXS_MAP_TRAP_AHEAD));
+        twSayTrapAhead();
         return true;
     }
 
@@ -1711,7 +1867,7 @@ static bool twBeginStepImpl(uintptr_t base, uint32_t sym, uint32_t scan, uintptr
                 "nothing to walk", (char)sym, pos, target);
         if (trapApproach) {
             g_twTrapTileArea = aid; g_twTrapTileIdx = tile; g_twTrapTileSym = sym;
-            postSpeech(axs(AXS_MAP_TRAP_AHEAD));
+            twSayTrapAhead();
         } else {
             twAnnounceArrival(base, root, tile, false);
         }
@@ -1871,7 +2027,7 @@ void serviceTileStep(uintptr_t base) {                                      // e
             twRelease(wasTrap ? "parked short of the trap boundary" : "reached the aim point");
             if (wasTrap) {
                 g_twTrapTileArea = area; g_twTrapTileIdx = tile; g_twTrapTileSym = stepSym;
-                postSpeech(axs(AXS_MAP_TRAP_AHEAD));
+                twSayTrapAhead();
             } else {
                 g_twTrapTileArea = 0; g_twTrapTileIdx = -1; g_twTrapTileSym = 0;
                 twAnnounceArrival(base, root, tile, false);
@@ -1913,7 +2069,7 @@ void serviceTileStep(uintptr_t base) {                                      // e
         twRelease(moved ? "the walk stopped before the aim point" : "the party never moved");
         if (moved && wasTrap) {
             g_twTrapTileArea = area; g_twTrapTileIdx = tile; g_twTrapTileSym = stepSym;
-            postSpeech(axs(AXS_MAP_TRAP_AHEAD));
+            twSayTrapAhead();
         } else if (moved) {
             g_twTrapTileArea = 0; g_twTrapTileIdx = -1; g_twTrapTileSym = 0;
             twAnnounceArrival(base, root, tile, false);

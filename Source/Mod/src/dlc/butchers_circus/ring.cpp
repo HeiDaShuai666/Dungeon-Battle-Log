@@ -220,6 +220,7 @@ static void ringSlotLine(uintptr_t base, uintptr_t hero, int rank, int total,
     if (!hero) {
         _snprintf(out, outsz, "%s %s", axs(AXS_RNG_EMPTY_SLOT), rankln);
         out[outsz - 1] = 0;
+        axAppendHint(out, outsz, AXS_PTY_EMPTY_HINT);
         return;
     }
     ptyHeroFragBare(base, hero, out, outsz);
@@ -227,6 +228,7 @@ static void ringSlotLine(uintptr_t base, uintptr_t hero, int rank, int total,
     _snprintf(frag, sizeof frag, ". %s", rankln);
     frag[sizeof frag - 1] = 0;
     strncat(out, frag, outsz - strlen(out) - 1);
+    axAppendHint(out, outsz, AXS_PTY_FILLED_HINT);
 }
 
 static void ringSpeakSlot(uintptr_t base, const char* prefix) {
@@ -266,7 +268,7 @@ static const char* ringTitle(uintptr_t base, char* buf, int bufsz) {
 // ---- the contestant list ----
 
 static void ringRowLine(uintptr_t base, const RingRow* r, int idx, int total,
-                        char* out, int outsz) {
+                        char* out, int outsz, bool withPos = true) {
     if (!r->hero) {
         _snprintf(out, outsz, "%s", axs(AXS_RNG_EMPTY_ROW));
         out[outsz - 1] = 0;
@@ -274,12 +276,15 @@ static void ringRowLine(uintptr_t base, const RingRow* r, int idx, int total,
     }
     ptyHeroFragBare(base, r->hero, out, outsz);
     char posln[96], tail[352];
-    _snprintf(posln, sizeof posln, axs(AXS_RNG_ROW_N_OF_M), idx + 1, total);
-    posln[sizeof posln - 1] = 0;
-    _snprintf(tail, sizeof tail, ".%s%s%s%s %s",
+    posln[0] = 0;
+    if (withPos) {
+        _snprintf(posln, sizeof posln, axs(AXS_RNG_ROW_N_OF_M), idx + 1, total);
+        posln[sizeof posln - 1] = 0;
+    }
+    _snprintf(tail, sizeof tail, ".%s%s%s%s%s%s",
               r->dlcLocked ? " " : "", r->dlcLocked ? axs(AXS_RNG_NEEDS_DLC) : "",
               r->inLineup  ? " " : "", r->inLineup  ? axs(AXS_RNG_IN_LINEUP)  : "",
-              posln);
+              withPos ? " " : "", posln);
     tail[sizeof tail - 1] = 0;
     strncat(out, tail, outsz - strlen(out) - 1);
 }
@@ -290,9 +295,61 @@ static void ringSpeakRow(uintptr_t base, const char* prefix) {
     axStepCursor(&g_ringRow, n, 0);
     char card[512], utter[MAILBOX_SZ];
     ringRowLine(base, &g_ringRows[g_ringRow], g_ringRow, n, card, sizeof card);
+    {
+        const RingRow* r = &g_ringRows[g_ringRow];
+        if (r->hero && !r->dlcLocked) {
+            uintptr_t iface[PTY_MAX_SLOTS], hero[PTY_MAX_SLOTS];
+            int ns = ptySlotStrip(base, iface, hero, PTY_MAX_SLOTS);
+            bool inThisSlot = g_ringForSlot >= 0 && g_ringForSlot < ns && hero[g_ringForSlot] == r->hero;
+            axAppendHint(card, sizeof card, inThisSlot ? AXS_ROS_PICK_REMOVE_HINT : AXS_ROS_PICK_SELECT_HINT);
+        }
+    }
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", card);
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
+}
+
+// ---- THE RING'S FIND ENUMERATOR ----
+int ringFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!axIsRing() || g_ringLeaguesOpen) return 0;
+    uintptr_t iface[PTY_MAX_SLOTS], hero[PTY_MAX_SLOTS];
+    int n = ptySlotStrip(base, iface, hero, PTY_MAX_SLOTS);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        ringSlotLine(base, hero[idx], ringRankOfSlot(idx, n), n, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_ringSlot = idx;
+        logLine("ring: find landed on slot %d (rank %d of %d)", idx, ringRankOfSlot(idx, n), n);
+        ringSpeakSlot(base, nullptr);
+        return 1;
+    }
+    return 0;
+}
+
+// ---- THE CONTESTANT LIST'S FIND ENUMERATOR ----
+int ringListFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!axIsRingList() || g_ringLeaguesOpen) return 0;
+    int n = ringCollect(base, false);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        ringRowLine(base, &g_ringRows[idx], idx, n, out, outsz, /*withPos=*/false);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_ringRow = idx;
+        logLine("ring: find landed on contestant row %d (of %d)", idx, n);
+        ringSpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 // ---- calling the game ----
@@ -1082,6 +1139,13 @@ static void ringSpeakLeagues(uintptr_t base, uintptr_t panel) {
     postSpeech(utter);
 }
 
+static void ringSayLeaguesOpen(AxStrId state) {
+    char line[192];
+    _snprintf(line, sizeof line, "%s", axs(state)); line[sizeof line - 1] = 0;
+    axAppendHint(line, sizeof line, AXS_RNG_LEAGUES_CLOSE_HINT);
+    postSpeech(line);
+}
+
 static void ringLogToolbarGate(uintptr_t base) {
     if (g_ringTbGateLogged) return;
     g_ringTbGateLogged = true;
@@ -1146,7 +1210,7 @@ static void ringServiceToolbar(uintptr_t base) {
             else if (timedOut) {
                 g_ringTbWatch = 0;
                 logLine("ring: the Leagues window did not close on the second click");
-                postSpeech(axs(AXS_RNG_LEAGUES_STILL_OPEN));
+                ringSayLeaguesOpen(AXS_RNG_LEAGUES_STILL_OPEN);
             }
             break;
         default: g_ringTbWatch = 0; break;
@@ -1186,7 +1250,7 @@ bool routeRingKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
             ringToolbarPress(base, RING_TB_LEAGUES_ELEM, g_ringLeaguesOpen ? 3 : 1,
                              g_ringLeaguesOpen ? "Leagues (close)" : "Leagues");
         } else {
-            if (g_ringLeaguesOpen) { postSpeech(axs(AXS_RNG_LEAGUES_OPEN_HINT)); return true; }
+            if (g_ringLeaguesOpen) { ringSayLeaguesOpen(AXS_RNG_LEAGUES_OPEN); return true; }
             ringToolbarPress(base, RING_TB_PRACTICE_ELEM, 2, "Practice Battle");
         }
         return true;
@@ -1196,7 +1260,7 @@ bool routeRingKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         bool ours = sym == SDLK_LEFT || sym == SDLK_RIGHT || sym == SDLK_c || sym == SDLK_SPACE ||
                     sym == SDLK_RETURN || sym == SDLK_KP_ENTER || axDecodeJump(sym, mod, repeat, &jump);
         if (!ours) return false;
-        if (!repeat) postSpeech(axs(AXS_RNG_LEAGUES_OPEN_HINT));
+        if (!repeat) ringSayLeaguesOpen(AXS_RNG_LEAGUES_OPEN);
         return true;
     }
 

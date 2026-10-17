@@ -229,6 +229,7 @@ int          g_tmRow    = 0;
 static bool  g_tmActive = false;     // maintained by checkTownMap (edge-announced)
 static bool  g_tmDumped = false;     // the one-shot collect log has fired this session
 static int   g_tmLayer  = -1;        // last seen town layer; -1 = not in town / unknown
+static bool  g_tmArrivalHintDue = false;   // the first Locations landing of a town visit owes
 
 DWORD g_tmOpenWatchUntil = 0;        // 0 = idle
 char  g_tmOpenName[TM_NAME_MAX];
@@ -518,10 +519,34 @@ int tmRows(uintptr_t base, bool probe) {
     return tmCollectFromPanels(base);
 }
 
+static void tmRowNameWithKey(const TmRow* r, char* out, int outsz) {
+    const char* fmt = axs(AXS_TM_ROW_KEY_FMT);
+    if (fmt[0]) {
+        for (int i = 0; i < TJ_KEY_COUNT; i++) {
+            if (!TJ_KEYS[i].fn || strcmp(TJ_KEYS[i].id, r->id) != 0) continue;
+            kmEnsureLoaded();                            // the row may speak before any key was pressed
+            int f = kmFind(TJ_KEYS[i].fn);
+            if (f < 0 || kmKeyIsBlank(f, 0)) break;
+            char key[64];
+            kmChordName(kmKeyCurrent(f, 0), key, sizeof key);
+            if (key[0]) {
+                _snprintf(out, outsz, fmt, r->name, key);
+                out[outsz - 1] = 0;
+                return;
+            }
+            break;
+        }
+    }
+    strncpy(out, r->name, outsz - 1);
+    out[outsz - 1] = 0;
+}
+
 static void tmRowText(const TmRow* r, char* out, int outsz) {
     const char* state = !r->unlocked ? axs(AXS_TM_ROW_LOCKED)
                       : (r->offSave  ? axs(AXS_TM_ROW_OFF_SAVE) : nullptr);
-    _snprintf(out, outsz, r->isNew ? axs(AXS_TM_ROW_NEW_FMT) : "%s.", r->name);
+    char nameKey[TM_NAME_MAX + 72];
+    tmRowNameWithKey(r, nameKey, sizeof nameKey);
+    _snprintf(out, outsz, r->isNew ? axs(AXS_TM_ROW_NEW_FMT) : "%s.", nameKey);
     out[outsz - 1] = 0;
     int len = (int)strlen(out);
     if (state && len < outsz - 1) {
@@ -530,25 +555,33 @@ static void tmRowText(const TmRow* r, char* out, int outsz) {
     }
 }
 
+static const int TM_TIP_MAX     = 4;
+static const int TM_TIP_LINE_SZ = 512;
+static int tmTipLines(uintptr_t base, const TmRow* r, char lines[][TM_TIP_LINE_SZ], int max);
 static void tmSpeakRow(uintptr_t base, const char* prefix) {
     int n = tmRows(base, false);
     if (n <= 0) { postSpeech(axs(AXS_TM_NO_LOCATIONS)); return; }
     if (g_tmRow >= n) g_tmRow = n - 1;
     if (g_tmRow < 0)  g_tmRow = 0;
-    char row[TM_NAME_MAX + 64];
+    char row[MAILBOX_SZ];
     tmRowText(&g_tmRows[g_tmRow], row, sizeof row);
+    if (axTipWanted()) {
+        char lines[TM_TIP_MAX][TM_TIP_LINE_SZ];
+        int ln = tmTipLines(base, &g_tmRows[g_tmRow], lines, TM_TIP_MAX);
+        axTipGlueLines(row, sizeof row, &lines[0][0], TM_TIP_LINE_SZ, ln, 1);
+        axTipGlueKeywords(row, sizeof row);          // the glossary terms it names (core/keywords.cpp)
+    }
     char pos[48];
     _snprintf(pos, sizeof pos, axs(AXS_POS_N_OF_M), g_tmRow + 1, n);
     pos[sizeof pos - 1] = 0;
     char utter[MAILBOX_SZ];
     _snprintf(utter, sizeof utter, "%s%s %s", prefix ? prefix : "", row, pos);
     utter[sizeof utter - 1] = 0;
+    if (g_tmRows[g_tmRow].unlocked) axAppendHint(utter, sizeof utter, AXS_TM_ROW_OPEN_HINT);
     postSpeech(utter);
 }
 
 // ---- the location's hover tooltip, as a Ctrl+Up/Down buffer ----
-static const int TM_TIP_MAX     = 4;
-static const int TM_TIP_LINE_SZ = 512;
 int g_tmTipLine = 0;                        // buffer cursor; 0 = the row itself
 
 static int tmTipLines(uintptr_t base, const TmRow* r, char lines[][TM_TIP_LINE_SZ], int max) {
@@ -638,18 +671,18 @@ void tmOpenRow(uintptr_t base, const TmRow* r) {
 
 // ---- the TOWN JUMP KEYS: one letter, one location ----
 const TjKey TJ_KEYS[] = {
-    { SDLK_a, "abbey"           },
-    { SDLK_b, "blacksmith"      },
-    { SDLK_c, "stage_coach"     },
-    { SDLK_d, "district"        },   // the estate bar's Districts screen ('ddis')
-    { SDLK_l, "guild"           },
-    { SDLK_m, "statue"          },   // the Ancestor's Memoirs
-    { SDLK_s, "sanitarium"      },
-    { SDLK_t, "tavern"          },
-    { SDLK_v, "camping_trainer" },   // the Survivalist
-    { SDLK_w, "nomad_wagon"     },
-    { SDLK_y, "graveyard"       },
-    { SDLK_z, "circus"          },   // travel to the Butcher's Circus grounds
+    { SDLK_a, "abbey",           "hamlet.jump_abbey"       },
+    { SDLK_b, "blacksmith",      "hamlet.jump_smith"       },
+    { SDLK_c, "stage_coach",     "hamlet.jump_coach"       },
+    { SDLK_d, "district",        "hamlet.jump_districts"   },   // the estate bar's Districts screen ('ddis')
+    { SDLK_l, "guild",           "hamlet.jump_guild"       },
+    { SDLK_m, "statue",          "hamlet.jump_memoirs"     },   // the Ancestor's Memoirs
+    { SDLK_s, "sanitarium",      "hamlet.jump_sanitarium"  },
+    { SDLK_t, "tavern",          "hamlet.jump_tavern"      },
+    { SDLK_v, "camping_trainer", "hamlet.jump_survivalist" },   // the Survivalist
+    { SDLK_w, "nomad_wagon",     "hamlet.jump_wagon"       },
+    { SDLK_y, "graveyard",       "hamlet.jump_graveyard"   },
+    { SDLK_z, "circus",          "hamlet.jump_circus"      },   // travel to the Butcher's Circus grounds
 };
 const int TJ_KEY_COUNT = (int)(sizeof TJ_KEYS / sizeof TJ_KEYS[0]);
 
@@ -689,6 +722,29 @@ static void tmHoverRow(const TmRow* r) {
     if (elem && elemCenter(elem, &fx, &fy)) moveCursorTo(fx, fy);
 }
 
+// ---- THE TOWN MAP'S FIND ENUMERATOR ----
+int tmFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_tmActive) return 0;
+    int n = tmRows(base, false);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        tmRowText(&g_tmRows[idx], out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_tmRow     = idx;
+        g_tmTipLine = 0;                             // a new row: the next Ctrl+Up starts from it
+        logLine("townmap: find landed on row %d (\"%s\")", idx, g_tmRows[idx].name);
+        tmHoverRow(&g_tmRows[g_tmRow]);              // the game's own focus cue follows the cursor
+        tmSpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
+}
+
 bool routeTownMapKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
     if (mod & (KMOD_LALT | KMOD_RALT)) return false;
     bool ctrl = (mod & (KMOD_LCTRL | KMOD_RCTRL)) != 0;
@@ -701,11 +757,7 @@ bool routeTownMapKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat)
         if (g_tmRow < 0)  g_tmRow = 0;
         static char lines[TM_TIP_MAX][TM_TIP_LINE_SZ];
         int ln = tmTipLines(base, &g_tmRows[g_tmRow], lines, TM_TIP_MAX);
-        if (ln <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
-        if (g_tmTipLine < 0 || g_tmTipLine >= ln) g_tmTipLine = 0;
-        g_tmTipLine = (g_tmTipLine + ((sym == SDLK_UP) ? 1 : -1) + ln) % ln;
-        postSpeech(lines[g_tmTipLine]);
-        return true;
+        return axTipStep(&g_tmTipLine, (sym == SDLK_UP) ? 1 : -1, &lines[0][0], TM_TIP_LINE_SZ, ln);
     }
     if (ctrl) return false;
 
@@ -744,6 +796,7 @@ void checkTownMap(uintptr_t base) {
         travelled = g_tmLayer >= 0;                  // -1 = first sight of town, not a journey
         logLine("townmap: town layer %d -> %d%s", g_tmLayer, layer,
                 travelled ? "" : " (first read)");
+        if (!travelled) g_tmArrivalHintDue = true;   // the first Locations landing of this visit
         g_tmLayer   = layer;
         g_tmRow     = 0;
         g_tmTipLine = 0;                             // a new map: the buffer belongs to a new row
@@ -854,6 +907,10 @@ void checkTownMap(uintptr_t base) {
         if (!g_tjChainId[0] && !g_bnSwitchUntil) {
             tmSurfacePrefix(base, root, prefix, sizeof prefix);
             tmSpeakRow(base, prefix);                // land ON something, in one utterance
+            if (g_tmArrivalHintDue) {
+                g_tmArrivalHintDue = false;
+                axAppendHintToLast(AXS_TM_ARRIVAL_HINT);
+            }
         } else {
             logLine("townmap: entry announce held (a town jump is in flight)");
         }

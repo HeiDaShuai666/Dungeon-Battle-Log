@@ -167,25 +167,25 @@ static void exCollect(uintptr_t base, uintptr_t panel) {
     }
 }
 
-static void exRowText(uintptr_t base, uintptr_t panel, char* out, int outsz) {
+static void exRowTextAt(uintptr_t base, uintptr_t panel, int col, int row, char* out, int outsz) {
     out[0] = 0;
     uint32_t src = 0, qty = 0;
     safeReadU32(panel + EX_SEL_SRC_OFF, &src);
     safeReadU32(panel + EX_QTY_OFF, &qty);
     char name[96], srcName[96];
-    if (g_exCol == 0) {
-        if (g_exRow >= g_exLeftN) g_exRow = g_exLeftN ? g_exLeftN - 1 : 0;
+    if (col == 0) {
         if (g_exLeftN == 0) { strncpy(out, axs(AXS_EX_NO_HEIRLOOMS), outsz - 1); out[outsz-1] = 0; return; }
-        ExRow* r = &g_exLeft[g_exRow];
+        if (row < 0 || row >= g_exLeftN) return;
+        ExRow* r = &g_exLeft[row];
         exTypeTitle(base, r->id, name, sizeof name);
         if (r->id == src)
             _snprintf(out, outsz, axs(AXS_EX_HELD_SEL_FMT), name, r->held, qty);
         else
             _snprintf(out, outsz, axs(AXS_EX_HELD_FMT), name, r->held);
     } else {
-        if (g_exRow >= g_exRightN) g_exRow = g_exRightN ? g_exRightN - 1 : 0;
         if (g_exRightN == 0) { strncpy(out, axs(AXS_EX_NOTHING_TO_TRADE_FOR), outsz - 1); out[outsz-1] = 0; return; }
-        ExRow* r = &g_exRight[g_exRow];
+        if (row < 0 || row >= g_exRightN) return;
+        ExRow* r = &g_exRight[row];
         exTypeTitle(base, r->id, name, sizeof name);
         exTypeTitle(base, src, srcName, sizeof srcName);
         if (r->receive > 0)
@@ -194,6 +194,15 @@ static void exRowText(uintptr_t base, uintptr_t panel, char* out, int outsz) {
             _snprintf(out, outsz, axs(AXS_EX_NOTHING_FMT), name);
     }
     out[outsz - 1] = 0;
+}
+
+static void exRowText(uintptr_t base, uintptr_t panel, char* out, int outsz) {
+    if (g_exCol == 0) {
+        if (g_exRow >= g_exLeftN) g_exRow = g_exLeftN ? g_exLeftN - 1 : 0;
+    } else {
+        if (g_exRow >= g_exRightN) g_exRow = g_exRightN ? g_exRightN - 1 : 0;
+    }
+    exRowTextAt(base, panel, g_exCol, g_exRow, out, outsz);
 }
 
 static void exSpeakRow(uintptr_t base, const char* prefix, bool withHeader) {
@@ -217,6 +226,17 @@ static void exSpeakRow(uintptr_t base, const char* prefix, bool withHeader) {
         _snprintf(utter, sizeof utter, "%s%s%s", prefix ? prefix : "", header, row);
     }
     utter[sizeof utter - 1] = 0;
+    if (n > 0) {
+        AxStrId hint = AXS__COUNT;
+        if (g_exCol == 0 && g_exRow < g_exLeftN) {
+            uint32_t src = 0;
+            safeReadU32(panel + EX_SEL_SRC_OFF, &src);
+            hint = (g_exLeft[g_exRow].id == src) ? AXS_EX_ADJUST_HINT : AXS_EX_SELECT_HINT;
+        } else if (g_exCol != 0 && g_exRow < g_exRightN && g_exRight[g_exRow].receive > 0) {
+            hint = AXS_EX_TRADE_HINT;
+        }
+        if (hint != AXS__COUNT) axAppendHint(utter, sizeof utter, hint);
+    }
     postSpeech(utter);
 }
 
@@ -233,6 +253,36 @@ void exReannounce(uintptr_t base) {
     char pfx[128];                                    // the title + the space the frame needs
     _snprintf(pfx, sizeof pfx, "%s ", axs(AXS_EX_TITLE)); pfx[sizeof pfx - 1] = 0;
     exSpeakRow(base, pfx, true);
+}
+
+// ---- THE HEIRLOOM EXCHANGE'S FIND ENUMERATOR ----
+int exFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_exActive) return 0;
+    uintptr_t panel = exPanel(base);
+    if (!panel) return 0;
+    exCollect(base, panel);
+    int total = g_exLeftN + g_exRightN;
+    if (op == AXF_COUNT) return total;
+    if (idx < 0 || idx >= total) return 0;
+    int col = idx < g_exLeftN ? 0 : 1;
+    int row = idx < g_exLeftN ? idx : idx - g_exLeftN;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        exRowTextAt(base, panel, col, row, out, outsz);
+        return out[0] ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        if (g_exPicking) {
+            g_exPicking = false;
+            logLine("exchange: find left the picker sideways");
+        }
+        g_exCol = col;
+        g_exRow = row;
+        logLine("exchange: find landed on %s row %d (item %d)", col ? "get" : "own", row, idx);
+        exSpeakRow(base, nullptr, true);              // the header names the column landed in
+        return 1;
+    }
+    return 0;
 }
 
 static void exProbe(uintptr_t base, uintptr_t panel) {
@@ -294,7 +344,9 @@ static void exSpeakPicker(uintptr_t base, uintptr_t panel) {
     exTypeTitle(base, src, name, sizeof name);
     if (!g_exPickHint) {
         g_exPickHint = true;
-        _snprintf(utter, sizeof utter, axs(AXS_EX_OFFERING_HINT_FMT), qty, name);
+        _snprintf(utter, sizeof utter, axs(AXS_EX_OFFERING_FMT), qty, name);
+        utter[sizeof utter - 1] = 0;
+        axAppendHint(utter, sizeof utter, AXS_EX_OFFERING_HINT);
     } else {
         _snprintf(utter, sizeof utter, axs(AXS_EX_OFFERING_SET_FMT), qty, name);
     }
@@ -361,7 +413,10 @@ static void exTrade(uintptr_t base, uintptr_t panel) {
     ExRow* r = &g_exRight[g_exRow];
     if (g_exTradeWatchUntil) { postSpeech(axs(AXS_EX_TRADE_IN_PROGRESS)); return; }
     if (r->receive <= 0) {
-        postSpeech(axs(AXS_EX_NOTHING_TO_RECEIVE));
+        char line[256];
+        _snprintf(line, sizeof line, "%s", axs(AXS_EX_NOTHING_TO_RECEIVE)); line[sizeof line - 1] = 0;
+        axAppendHint(line, sizeof line, AXS_EX_INCREASE_HINT);   // "" while Control hints is Off
+        postSpeech(line);
         return;
     }
     uint32_t src = 0;

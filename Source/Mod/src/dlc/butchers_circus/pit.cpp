@@ -343,9 +343,10 @@ void servicePit(uintptr_t base) {
             line[sizeof line - 1] = 0;
         } else {
             abStripMarkup(caption);
-            _snprintf(line, sizeof line, axs(AXS_RV_PRESS_ENTER_FMT), caption);
+            _snprintf(line, sizeof line, "%s", caption);
             line[sizeof line - 1] = 0;
         }
+        axAppendHint(line, sizeof line, AXS_RV_PRESS_ENTER);
         logLine("pit: the pick is open -> \"%s\"", line);
         postSpeech(line, false);
     }

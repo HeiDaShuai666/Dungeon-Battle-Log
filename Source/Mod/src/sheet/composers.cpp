@@ -300,6 +300,14 @@ static bool csStatRowFor(uintptr_t base, uintptr_t hero, int i, char* out, int o
 bool csStatRowText(uintptr_t base, int i, char* out, int outsz) {
     return csStatRowFor(base, abSelectedHero(base), i, out, outsz);
 }
+bool csStatName(uintptr_t base, int i, char* out, int outsz) {
+    if (outsz > 0) out[0] = 0;
+    if (i < 0 || i >= kCsStatRowCount || outsz <= 0) return false;
+    if (!resolveKey(base, kCsStatRows[i].key, out, outsz)) return false;
+    abStripMarkup(out);
+    csTrimLabel(out);
+    return out[0] != 0;
+}
 
 // ---- resistances ----
 
@@ -328,7 +336,7 @@ static bool csResistRawId(uintptr_t base, int i, char* out, int outsz) {
 }
 
 // The resistance's localized name, resolved from the raw id.
-static bool csResistName(uintptr_t base, int i, char* out, int outsz) {
+bool csResistName(uintptr_t base, int i, char* out, int outsz) {
     char raw[64];
     if (!csResistRawId(base, i, raw, sizeof raw)) return false;
     char key[96];
@@ -679,7 +687,7 @@ static bool csNeedsStop(const char* s) {
 }
 
 static bool csQuirkRowCompose(uintptr_t base, uintptr_t quirk, uintptr_t entry, bool withKind,
-                              bool* replSpoken, bool* newSpoken, char* out, int outsz) {
+                              bool withDesc, bool* replSpoken, bool* newSpoken, char* out, int outsz) {
     if (replSpoken) *replSpoken = false;
     if (newSpoken)  *newSpoken  = false;
     if (!quirk) return false;
@@ -750,7 +758,8 @@ static bool csQuirkRowCompose(uintptr_t base, uintptr_t quirk, uintptr_t entry, 
         _snprintf(uniq, sizeof uniq, "%s%s.", kindOut ? ". " : " ", axs(AXS_CS_QUIRK_UNIQUE));
 
     char desc[CS_QUIRK_DESC_BUF + 8];
-    bool gotDesc = csQuirkDescRaw(base, quirk, desc, sizeof desc);
+    desc[0] = 0;
+    bool gotDesc = withDesc && csQuirkDescRaw(base, quirk, desc, sizeof desc);
     if (gotDesc) {
         abStripMarkup(desc);
         csFlattenLines(desc, sizeof desc);
@@ -758,7 +767,7 @@ static bool csQuirkRowCompose(uintptr_t base, uintptr_t quirk, uintptr_t entry, 
         logLine("charsheet quirk: \"%s\" description call faulted", id);
     }
 
-    if (!gotDesc || !desc[0])
+    if (withDesc && (!gotDesc || !desc[0]))
         logLine("charsheet quirk: \"%s\" produced no description text", id);
 
     bool haveDesc = gotDesc && desc[0];
@@ -769,8 +778,18 @@ static bool csQuirkRowCompose(uintptr_t base, uintptr_t quirk, uintptr_t entry, 
     return true;
 }
 
-bool csQuirkRowFrom(uintptr_t base, uintptr_t quirk, bool withKind, char* out, int outsz) {
-    return csQuirkRowCompose(base, quirk, 0, withKind, nullptr, nullptr, out, outsz);
+bool csQuirkRowFrom(uintptr_t base, uintptr_t quirk, bool withKind, bool withDesc, char* out, int outsz) {
+    return csQuirkRowCompose(base, quirk, 0, withKind, withDesc, nullptr, nullptr, out, outsz);
+}
+bool csQuirkDescLine(uintptr_t base, uintptr_t quirk, char* out, int outsz) {
+    out[0] = 0;
+    char desc[CS_QUIRK_DESC_BUF + 8];
+    if (!quirk || !csQuirkDescRaw(base, quirk, desc, sizeof desc) || !desc[0]) return false;
+    abStripMarkup(desc);
+    csFlattenLines(desc, sizeof desc);
+    _snprintf(out, outsz, "%s", desc);
+    out[outsz - 1] = 0;
+    return out[0] != 0;
 }
 
 static bool csQuirkRowAt(uintptr_t base, int i, CsQuirkFilter f, bool consume,
@@ -780,8 +799,7 @@ static bool csQuirkRowAt(uintptr_t base, int i, CsQuirkFilter f, bool consume,
     uintptr_t quirk = csQuirkClassAt(base, k);
     uintptr_t entry = csQuirkEntryAt(base, k);
     bool replSpoken = false, newSpoken = false;
-    // withKind=false for every filter: each section's heading is the kind.
-    if (!csQuirkRowCompose(base, quirk, entry, false, &replSpoken, &newSpoken, out, outsz))
+    if (!csQuirkRowCompose(base, quirk, entry, false, false, &replSpoken, &newSpoken, out, outsz))
         return false;
     if (consume && replSpoken && entry) {
         if (safeWriteU8(entry + QUIRK_ENTRY_REPLVIEW_OFF, 1))
@@ -806,6 +824,25 @@ bool csQuirkNegRowText(uintptr_t base, int i, char* out, int outsz) {
 }
 bool csDiseaseRowText(uintptr_t base, int i, char* out, int outsz) {
     return csQuirkRowAt(base, i, CS_QF_DISEASE, true, out, outsz);
+}
+
+static int csQuirkTipAt(uintptr_t base, int i, CsQuirkFilter f, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]) {
+    for (int k = 0; k < AB_TIP_MAX_LINES; k++) lines[k][0] = 0;
+    if (!csQuirkRowAt(base, i, f, false, lines[0], AB_TIP_LINE_SZ)) return 0;
+    int k = csQuirkFilteredIndex(base, i, f);
+    uintptr_t quirk = (k >= 0) ? csQuirkClassAt(base, k) : 0;
+    if (csQuirkDescLine(base, quirk, lines[1], AB_TIP_LINE_SZ)) return 2;
+    logLine("charsheet quirk: row %d (filter %d) produced no description for the tip walk", i, (int)f);
+    return 1;
+}
+int csQuirkPosTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]) {
+    return csQuirkTipAt(base, i, CS_QF_POSITIVE, lines);
+}
+int csQuirkNegTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]) {
+    return csQuirkTipAt(base, i, CS_QF_NEGATIVE, lines);
+}
+int csDiseaseTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]) {
+    return csQuirkTipAt(base, i, CS_QF_DISEASE, lines);
 }
 
 // ------------------------------------------------------------
@@ -866,6 +903,32 @@ bool csCampSkillSelected(uintptr_t base, int i) {
         if ((int)slot == i) return true;
     }
     return false;
+}
+
+int csCampSelList(uintptr_t base, int out[CAMP_SEL_MAX]) {   // exported (internal.h)
+    uintptr_t hero = abSelectedHero(base);
+    if (!hero) return 0;
+    uintptr_t beg = 0, end = 0;
+    if (!safeReadPtr(hero + ACTOR_CAMP_SEL_BEG_OFF, &beg) ||
+        !safeReadPtr(hero + ACTOR_CAMP_SEL_END_OFF, &end)) return 0;
+    if (beg <= 0x10000 || end < beg) return 0;
+    uintptr_t n = (end - beg) / 4;
+    if (n > (uintptr_t)CAMP_SEL_MAX) return 0;      // the struct's own cap; more is a torn read
+    int k = 0;
+    for (uintptr_t s = 0; s < n; s++) {
+        uint32_t v = 0;
+        if (!safeReadU32(beg + s * 4, &v)) return 0;
+        out[k++] = (int)v;
+    }
+    return k;
+}
+
+int csCampSkillSlot(uintptr_t base, int i) {   // exported (internal.h)
+    if (i < 0) return 0;
+    int slots[CAMP_SEL_MAX];
+    int n = csCampSelList(base, slots);
+    for (int s = 0; s < n; s++) if (slots[s] == i) return s + 1;
+    return 0;
 }
 
 uintptr_t csCampSkillClass(uintptr_t base, int i) {
@@ -1531,7 +1594,15 @@ int csPartyScoutLines(uintptr_t base, const uintptr_t* heroes, int nHeroes,
 static bool csTipSrcField(uintptr_t hero, uintptr_t blockOff, uintptr_t fld, float* out) {
     uintptr_t rec = 0;
     if (!safeReadPtr(hero + blockOff + STAT_SRC_PTR_OFF, &rec) || rec <= 0x10000) {
-        logLine("stattip: stat block +%llx has no source record", (unsigned long long)blockOff);
+        static unsigned long long seen[8];
+        static int nSeen = 0;
+        bool known = false;
+        for (int i = 0; i < nSeen; i++) if (seen[i] == (unsigned long long)blockOff) { known = true; break; }
+        if (!known) {
+            if (nSeen < 8) seen[nSeen++] = (unsigned long long)blockOff;
+            logLine("stattip: stat block +%llx has no source record (reported once per session)",
+                    (unsigned long long)blockOff);
+        }
         return false;
     }
     return abReadF32(rec + fld, out);
@@ -1657,6 +1728,11 @@ bool csStatTipLineFor(uintptr_t base, uintptr_t hero, int i, char* out, int outs
     return out[0] != 0;
 }
 
+// ---- THE LANDING'S BRIEF FORM ----
+static bool g_spBrief = false;
+void spSetBriefTooltip(bool on) { g_spBrief = on; }
+bool spBriefTooltip() { return g_spBrief; }
+
 void csStatTipDecorate(uintptr_t base, uintptr_t actor, int i, char* line, int linesz) {
     if (!actor || i < 0 || i >= kCsStatRowCount || linesz <= 0 || !line[0]) return;
 
@@ -1671,6 +1747,7 @@ void csStatTipDecorate(uintptr_t base, uintptr_t actor, int i, char* line, int l
     }
     size_t len = strlen(line);
     if (len && line[len - 1] != '.' && len + 1 < (size_t)linesz) { line[len] = '.'; line[len + 1] = 0; }
+    if (g_spBrief) return;                       // the landing: the word stays, the itemising goes
 
     char tip[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
     for (int k = 0; k < AB_TIP_MAX_LINES; k++) tip[k][0] = 0;
@@ -1859,6 +1936,7 @@ bool csResistTipLineFor(uintptr_t base, uintptr_t hero, int i, char* out, int ou
     out[outsz - 1] = 0;
     size_t len = strlen(out);
     if (len && out[len - 1] != '.' && len + 1 < (size_t)outsz) { out[len] = '.'; out[len + 1] = 0; }
+    if (g_spBrief) return out[0] != 0;
 
     char tip[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
     for (int k = 0; k < AB_TIP_MAX_LINES; k++) tip[k][0] = 0;
@@ -2632,9 +2710,13 @@ bool csCampSkillRowText(uintptr_t base, int i, char* out, int outsz) {
     if (!csCampSkillName(base, cls, name, sizeof name))
         _snprintf(name, sizeof name, axs(AXS_CS_CAMPSKILL_N_FMT), i + 1);
 
-    const char* state = !csCampSkillLearned(base, i) ? axs(AXS_CS_SKILL_NOT_LEARNED)
-                      : csCampSkillSelected(base, i) ? axs(AXS_CS_SKILL_SELECTED)
-                                                     : axs(AXS_CS_SKILL_LEARNED);
+    char state[32];
+    int slot = csCampSkillSlot(base, i);
+    if      (!csCampSkillLearned(base, i)) strncpy(state, axs(AXS_CS_SKILL_NOT_LEARNED), sizeof state - 1);
+    else if (slot > 0)                     _snprintf(state, sizeof state, axs(AXS_CS_SKILL_SLOT_FMT), slot);
+    else if (csCampSkillSelected(base, i)) strncpy(state, axs(AXS_CS_SKILL_SELECTED), sizeof state - 1);
+    else                                   strncpy(state, axs(AXS_CS_SKILL_LEARNED), sizeof state - 1);
+    state[sizeof state - 1] = 0;
     int  cost = csCampSkillCost(cls);
     char costLine[128] = { 0 };
     if (cost > 0) _snprintf(costLine, sizeof costLine, axs(AXS_CS_CAMP_COST_FMT), cost);
@@ -2694,7 +2776,7 @@ void csDumpSheet(uintptr_t base, uintptr_t panel) {
 
             char row[MAILBOX_SZ];
             bool gotRow = quirk && csQuirkRowCompose(base, quirk, csQuirkEntryAt(base, i), true,
-                                                     nullptr, nullptr, row, sizeof row);
+                                                     true, nullptr, nullptr, row, sizeof row);
             logLine("  cs-quirk[%d] rec=%p id=\"%s\" kind=%s row=%s%s%s", i, (void*)quirk,
                     gotId ? id : "(unreadable)", kind ? kind : "(unreadable)",
                     gotRow ? "\"" : "(unreadable)", gotRow ? row : "", gotRow ? "\"" : "");

@@ -338,15 +338,50 @@ static int dstTipLines(uintptr_t base, int i, int line, char* out, int outsz) {
 }
 
 static void dstSpeakRow(uintptr_t base, const char* prefix) {
-    char row[512];
+    char row[MAILBOX_SZ];
     dstRowText(base, g_dstRow, row, sizeof row);
+    if (axTipWanted()) {
+        char probe[512];
+        int total = dstTipLines(base, g_dstRow, 0, probe, sizeof probe);
+        for (int k = 1; k < total; k++) {
+            char line[640];
+            dstTipLines(base, g_dstRow, k, line, sizeof line);
+            axTipGlue(row, sizeof row, line);
+        }
+        axTipGlueKeywords(row, sizeof row);          // the glossary terms it names (core/keywords.cpp)
+    }
     char pos[48];
     _snprintf(pos, sizeof pos, axs(AXS_POS_N_OF_M), g_dstRow + 1, g_dstCount);
     pos[sizeof pos - 1] = 0;
-    char line[640];
+    char line[MAILBOX_SZ];
     _snprintf(line, sizeof line, "%s%s %s", prefix ? prefix : "", row, pos);
     line[sizeof line - 1] = 0;
+    if (g_dstRow >= 0 && g_dstRow < g_dstCount &&
+        !g_dstRows[g_dstRow].built && g_dstRows[g_dstRow].afford)
+        axAppendHint(line, sizeof line, AXS_DST_BUILD_HINT);
     postSpeech(line);
+}
+
+// ---- THE DISTRICTS SCREEN'S FIND ENUMERATOR ----
+int dstFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_dstActive) return 0;
+    dstCollect(base, false);                         // live list, the arrows' rule
+    int n = g_dstCount;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        dstRowText(base, idx, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_dstRow     = idx;
+        g_dstTipLine = 0;
+        logLine("districts: find landed on row %d (\"%s\")", idx, g_dstRows[idx].name);
+        dstSpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 static void dstTitleName(uintptr_t base, char* out, int outsz) {
@@ -481,14 +516,21 @@ bool routeDistrictKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat
     if (g_dstCount <= 0) return false;
     bool ctrl = (mod & (KMOD_LCTRL | KMOD_RCTRL)) != 0;
     if (ctrl && (sym == SDLK_UP || sym == SDLK_DOWN)) {
-        char probe[512];
-        int total = dstTipLines(base, g_dstRow, 0, probe, sizeof probe);
+        static char lines[1 + DST_MAX_BUFFS][640];
+        int own = dstTipLines(base, g_dstRow, 0, lines[0], sizeof lines[0]);
+        if (own > 1 + DST_MAX_BUFFS) own = 1 + DST_MAX_BUFFS;
+        for (int k = 1; k < own; k++) dstTipLines(base, g_dstRow, k, lines[k], sizeof lines[k]);
+        int total = own + axTipKeywordCount(&lines[0][0], sizeof lines[0], own, 1, nullptr);   // 1: line 0 is the row
         int next  = g_dstTipLine + (sym == SDLK_UP ? 1 : -1);
         if (next < 0) next = total - 1;
         if (next >= total) next = 0;
         g_dstTipLine = next;
         char line[640];
-        dstTipLines(base, g_dstRow, g_dstTipLine, line, sizeof line);
+        if (next < own) { _snprintf(line, sizeof line, "%s", lines[next]); line[sizeof line - 1] = 0; }
+        else if (!axTipKeywordLine(&lines[0][0], sizeof lines[0], own, 1, nullptr, next - own, line, sizeof line)) {
+            g_dstTipLine = 0;
+            _snprintf(line, sizeof line, "%s", lines[0]); line[sizeof line - 1] = 0;
+        }
         postSpeech(line);
         return true;
     }

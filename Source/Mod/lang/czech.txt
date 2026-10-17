@@ -96,16 +96,18 @@ SLOT_EMPTY_NO_DELETE=Tato pozice uložení je prázdná.
 SLOT_HINT_LOAD=Enterem načteš kampaň.
 SLOT_HINT_DLC=Shift a Enter zobrazí nebo zapne DLC.
 SLOT_HINT_DELETE=Klávesou Delete smažeš uloženou hru.
-NGC_INTRO_N=Obsah nové hry. Možnosti stažitelného obsahu: %d. Šipkami nahoru a dolů se pohybuješ, Enter přepíná, na konci potvrď tlačítkem OK.
+SLOT_HINT_MODS=Mezerník zobrazí nebo zapne mody.
+NGC_INTRO_N=Obsah nové hry. Možnosti stažitelného obsahu: %d.
 NGC_ITEM_STATE=%s, %s.
-NGC_OK_ROW=OK. Enterem zahájíš kampaň.
+NGC_OK_ROW=OK.
 NGC_NO_OK=Nelze pokračovat.
 DLC_BTN_NONE=Tato pozice uložení nemá žádné možnosti DLC.
 DLC_BTN_FALLBACK=Zapnout nebo zobrazit DLC.
 UGC_BTN_FALLBACK=Zapnout nebo zobrazit modifikace.
-UGC_WINDOW_UNREAD=Okno modifikací zatím nelze přečíst. Zavřete ho klávesou Escape.
-UGC_INTRO_N=Modifikace: %d. Šipkami nahoru a dolů se pohybuješ, Enter přepíná, Escape zavře a uloží.
-DLCVIEW_INTRO_N=Stažitelný obsah této uložené hry. Možnosti: %d. Šipkami nahoru a dolů se pohybuješ, Enter přepíná, Escape zavře.
+UGC_BTN_NONE=Tato pozice uložení nemá žádné možnosti modů.
+UGC_WINDOW_UNREAD=Okno modifikací zatím nelze přečíst.
+UGC_INTRO_N=Modifikace: %d.
+DLCVIEW_INTRO_N=Stažitelný obsah této uložené hry. Možnosti: %d.
 
 # ---- dlc/butchers_circus/dueling.cpp: the Dueling Grounds ----
 DG_MODE_FRIENDS=Seznam přátel
@@ -166,8 +168,7 @@ RB_UNREADABLE=Tabulku hodností nelze přečíst.
 BD_TAB_SECTION_FMT=Karta %d z %d.
 BD_TAB_CURRENT=Vybráno.
 BD_TAB_CHANGED=Ještě nepoužito.
-BD_ROW_RANDOM=Náhodný prapor. Enterem náhodně nastavíš všechny oddíly.
-BD_ROW_APPLY_FMT=%s. Enterem změny použiješ.
+BD_ROW_RANDOM=Náhodný prapor.
 BD_APPLY_FALLBACK=Použít vše
 BD_NO_CHANGES=Žádné změny k použití.
 BD_UNSAVED=Neuložené změny.
@@ -237,14 +238,14 @@ RNG_LEAGUE_TIERS_FMT=%s: stupně: %u.
 RNG_LEAGUES_EMPTY_FMT=%s. Seznam lig je prázdný.
 RNG_LEAGUES_CLOSED=Ligy zavřeny.
 RNG_LEAGUES_DIDNT_OPEN=Okno lig se neotevřelo.
-RNG_LEAGUES_STILL_OPEN=Okno lig je stále otevřené. Stiskni Escape.
-RNG_LEAGUES_OPEN_HINT=Okno lig je otevřené. Zavřeš ho klávesou L nebo Escape.
+RNG_LEAGUES_STILL_OPEN=Okno lig je stále otevřené.
+RNG_LEAGUES_OPEN=Okno lig je otevřené.
 RNG_PRACTICE_DIDNT_OPEN=Dialog cvičného zápasu se neotevřel.
 RNG_TB_MISSING=Tady není k dispozici.
 RNG_TB_BUSY=Ještě probíhá.
 
 # ---- dlc/butchers_circus/pit.cpp: choosing which hero acts ----
-PIT_PICK_OPEN_FALLBACK=Vyber hrdinu, který bude jednat. Stiskni Enter.
+PIT_PICK_OPEN_FALLBACK=Vyber hrdinu, který bude jednat.
 PIT_ACTING_HEAD_FMT=Jedná: %s. Akce.
 PIT_ACTING_FMT=Jedná: %s.
 PIT_CANT_ACT_FMT=%s v tomto tahu nemůže jednat.
@@ -375,8 +376,6 @@ EMB_REQUIRES_FMT=Vyžaduje: %s.
 EMB_REQUIRES_N_FMT=Vyžaduje: %s, %u.
 EMB_ROW_POS_FMT=Výprava %d z %d.
 EMB_ROW_SELECTED=Vybráno.
-EMB_REWARD_FMT=Odměna: %s.
-EMB_REWARD_N_FMT=Odměna: %s, %u.
 EMB_ALREADY_SELECTED_FMT=Už vybráno: %s.
 EMB_STILL_SELECTING=Výběr ještě probíhá.
 EMB_CANT_SELECT_FMT=%s teď nelze vybrat.
@@ -418,7 +417,7 @@ PROV_REMOVED_FMT=Odebráno: %s.
 # ---- Secret rooms: the in-raid map + dungeon view (2026-08-05) ----
 MAP_SECRET_ROOM=Tajná místnost
 SECRET_DOOR_LABEL=Tajné dveře
-SECRET_ENTER_FROM_HALL=Do tajné místnosti se vstupuje z její chodby: postav se na tajné dveře a stiskni klávesu interakce.
+SECRET_ENTER_FROM_HALL=Do tajné místnosti se vstupuje z její chodby.
 
 # ---- "W to open", the game's own interact key, on the two doors it works on (2026-08-23) ----
 DOOR_PRESS_W=Klávesou W otevřeš.
@@ -489,7 +488,7 @@ SHOP_BOUGHT_FREE_FMT=Koupeno: %s. Na prodej zbývá: %d.
 RCT_NONE=Nejsou k dispozici žádní rekruti.
 RCT_POS_FMT=Rekrut %d z %d.
 RCT_ROSTER_FULL_FMT=Soupiska je plná. Hrdinové: %d z %d. Vylepši dostavník, aby se uvolnilo místo.
-RCT_ADD_FMT=Přidat na soupisku: %s. Tlačítko. Enterem hrdinu najmeš, Escape zruší.
+RCT_ADD_FMT=Přidat na soupisku: %s. Tlačítko.
 RCT_THIS_HERO=tohoto hrdinu
 RCT_STILL_RECRUITING=Najímání ještě probíhá.
 RCT_CANT_NOW=Najímání teď nelze provést.
@@ -512,8 +511,8 @@ ACT_WING_POS_FMT=%s. Činnost %d z %d.
 ACT_SLOT_POS_FMT=Místo %d z %d.
 ACT_CARETAKER_HERE=Tento týden je tu správce.
 ACT_CARETAKER_HERE_SLOT=Tento týden je tu správce. S tímto místem nelze nic dělat.
-ACT_STAYING_FMT=%s zůstává tento týden. Enterem hrdinu odvoláš.
-ACT_NOT_CONFIRMED_COST_FMT=%s, zatím nepotvrzeno.%s Enterem potvrdíš, Backspacem hrdinu odvoláš.
+ACT_STAYING_FMT=%s zůstává tento týden.
+ACT_NOT_CONFIRMED_COST_FMT=%s, zatím nepotvrzeno.%s
 ACT_CONTAGION_FMT=%s %s
 ACT_CONTAGION_UP_FMT=Nákaza se zvýšila na %s.
 ACT_CONTAGION_DOWN_FMT=Nákaza se snížila na %s.
@@ -521,21 +520,21 @@ INF_UP_FMT=Zamoření se zvýšilo na %s.
 INF_DOWN_FMT=Zamoření se snížilo na %s.
 ACT_SLOT_LOCKED=Zamčeno. Toto místo otevřeš vylepšením budovy.
 ACT_CLOSED_WEEK=Tento týden zavřeno.
-ACT_EMPTY_CHOOSE=Prázdné. Enterem vybereš hrdinu.
-ACT_EMPTY_FREE_CHOOSE=Prázdné. Tento týden zdarma. Enterem vybereš hrdinu.
+ACT_EMPTY_CHOOSE=Prázdné.
+ACT_EMPTY_FREE_CHOOSE=Prázdné. Tento týden zdarma.
 ACT_FREE_WEEK=Tento týden zdarma.
-ACT_NOT_ELIGIBLE=Nesplňuje podmínky. Enter řekne proč.
+ACT_NOT_ELIGIBLE=Nesplňuje podmínky.
 ACT_A_HERO=Hrdina
 ACT_CHOOSE_HERO_FMT=Vyber hrdinu pro: %s. K dispozici: %d.
-ACT_PICK_BUSY_FMT=%s nemůže přijít: %s
+ACT_PICK_BUSY=Tento hrdina je zaneprázdněn.
 ACT_NOT_PLACED=Neumístěno.
-ACT_PLACED_FMT=%s – umístění: %s. Zatím nepotvrzeno. Enterem potvrdíš, Backspacem hrdinu odvoláš.
+ACT_PLACED_FMT=%s – umístění: %s. Zatím nepotvrzeno.
 ACT_COMMITTED_PAID_FMT=%s – potvrzeno: %s. Zaplaceno %d %s.
 ACT_COMMITTED_FMT=%s – potvrzeno: %s.
 ACT_TAKEN_OUT_REFUND_FMT=%s – odvoláno z: %s. Vráceno %d %s.
 ACT_TAKEN_OUT_OF_FMT=%s – odvoláno z: %s.
 ACT_TAKEN_OUT_FMT=%s – odvoláno.
-ACT_ALREADY_STAYING=Hrdina už tu zůstává. Enterem ho odvoláš.
+ACT_ALREADY_STAYING=Hrdina už tu zůstává.
 ACT_NOTHING_TAKE_OUT=Tady není koho odvolat.
 QT_WORD_LOCK=Uzamknout
 QT_WORD_REMOVE=Odebrat
@@ -559,8 +558,8 @@ QT_DISPLACED_CLEARED_FMT=%s – akce %s zrušena.
 QT_DISPLACED_NOW_FMT=%s: nyní %s.
 QT_TOTAL_COST_FMT=Celkem %d %s.
 QT_NOTHING_CHOSEN_THERE=Tam není nic vybráno.
-QT_NOTHING_CHOSEN_FMT=%s, zatím není vybráno nic k léčbě. Níže jsou Uzamknout a Odebrat: Enterem na jednom z nich otevřeš jeho seznam. Pak zde Enterem potvrdíš. Backspace hrdinu odvolá.
-QT_PENDING_FMT=%s, %s.%s Enterem potvrdíš, Backspacem hrdinu odvoláš.
+QT_NOTHING_CHOSEN_FMT=%s, zatím není vybráno nic k léčbě.
+QT_PENDING_FMT=%s, %s.%s
 QT_CHOOSE_TREAT_FIRST=Nejdřív vyber, co se má léčit. Řádky pod tímto jsou osobnostní rysy tohoto hrdiny.
 QT_CLOSED=Zavřeno.
 HA_NO_HERO=Není tu žádný hrdina, se kterým by se dalo pracovat.
@@ -853,13 +852,13 @@ EX_NOTHING_FMT=%s: při současné nabídce nic.
 EX_NOT_AVAILABLE=Směna tu není k dispozici.
 EX_OFFERING_FMT=Nabízíš %u %s.
 EX_OFFERING_SET_FMT=Nabízíš %u %s. Nastav množství.
-EX_OFFERING_HINT_FMT=Nabízíš %u %s. Šipkami nahoru a dolů nastavíš množství, Enter potvrdí.
+EX_OFFERING_HINT=Šipkami nahoru a dolů nastavíš množství, Enter potvrdí.
 EX_CANT_OFFER=To nelze nabídnout.
 EX_OFFER_MAX=Nabídka už nemůže být vyšší.
 EX_OFFER_MIN=Nabídka už nemůže být nižší.
 EX_OFFER_UNCHANGED=Nabídka se nezměnila.
 EX_TRADE_IN_PROGRESS=Směna probíhá.
-EX_NOTHING_TO_RECEIVE=Při současné nabídce nic nezískáš. Klávesou plus nabídku zvýšíš.
+EX_NOTHING_TO_RECEIVE=Při současné nabídce nic nezískáš.
 EX_TRADE_UNAVAILABLE=Tato směna není k dispozici.
 EX_HELP_PICKING=Šipkami nahoru a dolů nastavíš množství, Enter potvrdí.
 EX_HELP_IDLE=Enterem na rodinné cennosti ji nabídneš a nastavíš množství.
@@ -873,8 +872,8 @@ TE_TITLE=Událost ve vesnici.
 TE_A_HERO=Hrdina
 TE_THIS_HERO=tohoto hrdinu
 TE_PRESS_ENTER_TO_FMT=Enter: %s.
-TE_OFFERED_FMT=Nabízení hrdinové: %d. %s. Šipkami nahoru a dolů procházíš, C prohlédne, Enter najme.
-TE_ADD_PROMPT_FMT=Přidat na soupisku: %s. Tlačítko. Enterem hrdinu najmeš, Escape zruší.
+TE_OFFERED_FMT=Nabízení hrdinové: %d. %s.
+TE_ADD_PROMPT_FMT=Přidat na soupisku: %s. Tlačítko.
 TE_ROSTER_FULL_FMT=Soupiska je plná. Hrdinové: %d z %d. Vylepši dostavník, aby se uvolnilo místo.
 TE_HERO_UNREADABLE=Tohoto hrdinu nelze přečíst.
 TE_CANT_DO_NOW=Teď to nelze udělat.
@@ -953,7 +952,7 @@ PM_EXIT_GAME=Odejít do systému
 
 # ---- frontend/naming.cpp + frontend/tutorial.cpp (string round, 2026-08-11) ----
 NM_ESTATE_HEAD=Pojmenuj panství.
-NM_HELP=Piš pro úpravy, Enter potvrdí, Escape zruší
+NM_HELP=Piš pro úpravy, Enter potvrdí, Escape zruší.
 NM_BLANK=prázdné
 NM_ESTATE_NAMED_FMT=Panství pojmenováno: %s
 NM_SEAL_HELP=Enterem zahájíš kampaň.
@@ -968,8 +967,8 @@ QZ_BTN_ABANDON=Opustit výpravu
 QZ_GOAL_N_FMT=Cíl %d z %d.
 QZ_NOT_READABLE=Nelze přečíst.
 QZ_GOAL_UNREADABLE=Cíl nelze přečíst.
-QZ_HEAD_GOALS_FMT=Výprava. Cíle: %d.
-QZ_HEAD_QUEST=Výprava.
+QZ_HEAD_GOALS_FMT=%s. Cíle: %d.
+QZ_HEAD_NAME=Výprava
 QZ_NOTHING_HERE=Tady nic není.
 QZ_NO_QUEST_INFO=Žádné informace o výpravě.
 QZ_CLOSED=Výprava zavřena.
@@ -996,7 +995,7 @@ RR_DEAD_NO_XP=Mrtvý. Žádné zkušenosti.
 RR_XP_UNKNOWN=Zkušenosti neznámé.
 RR_NEW_QUIRK_N_FMT=Nový osobnostní rys %d z %d.
 RR_NEW_QUIRK=Nový osobnostní rys.
-RR_QUIRK_HIDDEN=Skryto. Enterem odhalíš.
+RR_QUIRK_HIDDEN=Skryto.
 RR_QUIRKS_REVEALED=Osobnostní rysy odhaleny.
 RR_HEAD_RESULTS=Výsledky výpravy.
 RR_HEAD_HEROES=Stránka hrdinů.
@@ -1094,9 +1093,9 @@ MAP_MOVING_TO_FMT=Přesun: %s.
 MAP_STOPPED=Zastaveno.
 MAP_NO_PARTY_POS=Nelze zjistit, kde je družina.
 MAP_PROP_IN_REACH_FMT=%s. Na dosah.
-MAP_DOOR_AT_END_FMT=Dveře: %s. Klávesou W otevřeš.
-MAP_TRAP_AHEAD=Pozor: past. Klávesou W ji zneškodníš.
-MAP_FARMSTEAD_NO_MOVE=Na usedlosti mapa nemůže družinu přesunout. Stiskni R pro pohled na kobku a pak přejdi na poslední řádek a pokračuj dál.
+MAP_DOOR_AT_END_FMT=Dveře: %s.
+MAP_TRAP_AHEAD=Pozor: past.
+MAP_FARMSTEAD_NO_MOVE=Na usedlosti mapa nemůže družinu přesunout.
 
 # ---- raid/dungeonview.cpp: the ROOM'S ROW LIST (string round, 2026-08-09) ----
 RV_POSITION_FMT=Pozice %d
@@ -1119,8 +1118,6 @@ RV_LABEL_ENEMY=Nepřítel
 RV_LABEL_PARTY_MEMBER=Člen družiny
 RV_EXIT_TO_FMT=Východ: %s. %d z %d.
 RV_OBJECT_N_OF_M_FMT=%s. Objekt %d z %d.
-RV_PRESS_ENTER_FMT=%s. Stiskni Enter.
-RV_LAST_ROW_FMT=%s. Je to poslední řádek pohledu na kobku.
 RV_TRAP_UNREACHABLE=Na past nelze dosáhnout.
 RV_DISARMING_WHO_FMT=%s zneškodňuje: %s.
 RV_DISARMING_FMT=Zneškodňování: %s.
@@ -1255,8 +1252,8 @@ EV_TRK_PURGE_NEG=Léčí rys
 EV_TRK_PURGE_POS=Ztráta rysu
 EV_TRK_SUMMON=Přivolání
 EV_TRK_TORCH_UP=Více světla
-EV_CHOOSE_ITEM_FMT=Vyber předmět. %s. Enterem ho použiješ, Escape tě vrátí zpět.
-EV_CHOOSE_ITEM=Vyber předmět. Enterem ho použiješ, Escape tě vrátí zpět.
+EV_CHOOSE_ITEM_FMT=Vyber předmět. %s.
+EV_CHOOSE_ITEM=Vyber předmět.
 EV_BAG_EMPTY=Inventář je prázdný.
 EV_THE_ITEM=Předmět
 EV_ITEM_USED_FMT=Použito: %s.
@@ -1266,7 +1263,7 @@ EV_NO_EFFECT_FALLBACK=Tento předmět neměl žádný účinek.
 EV_CHOICE_FAILED=Tuto volbu nelze provést.
 
 # ---- raid/inventory.cpp: THE PARTY BAG (string round, 2026-08-09) ----
-INV_TITLE=Inventář.
+INV_NAME=Inventář
 INV_NOUN_SLOT=Místo
 INV_EMPTY_FMT=Prázdné. %s %d z %d.
 INV_NAME_COUNT_FMT=%s, %d
@@ -1283,7 +1280,7 @@ INV_EQUIP_CHOOSE_FMT=Nasadit: %s. Vyber cíl. K dispozici: %d.
 INV_ALREADY_USED_ITEM=Tento hrdina už v tomto tahu použil předmět.
 INV_NO_ONE_CAN_USE=Teď nikdo nemůže použít předmět.
 INV_NO_TARGET_SELECTED=Není vybrán žádný cíl.
-INV_MAKE_CAMP_PROMPT=Utábořit se? Enter potvrdí, Escape zruší.
+INV_MAKE_CAMP_PROMPT=Utábořit se?
 INV_MAKING_CAMP=Táboření začíná.
 INV_CANT_CAMP_HERE=Tady se nelze utábořit.
 INV_NO_CAMP_HERE=Tady se nemůžeš utábořit. Palivové dřevo zůstalo.
@@ -1337,8 +1334,8 @@ SM_DEBUGLOG_ON_FMT=Ladicí záznam zapnut. Soubor záznamu: %s
 SM_DEBUGLOG_OFF=Ladicí záznam vypnut.
 SM_DEBUGLOG_FAIL_FMT=Soubor záznamu %s nelze vytvořit. Ladicí záznam zůstává vypnutý.
 SM_CAT_UPDATES=Kontrolovat aktualizace při spuštění
-SM_UPDATES_ON=Kontrola aktualizací zapnuta. Spouštěč při každém spuštění hry hledá novější verzi.
-SM_UPDATES_OFF=Kontrola aktualizací vypnuta. Spouštěč nebude hledat novější verzi.
+SM_UPDATES_ON=Kontrola aktualizací zapnuta. Mod při každém spuštění hry hledá novější verzi.
+SM_UPDATES_OFF=Kontrola aktualizací vypnuta. Mod nebude hledat novější verzi.
 SM_ANN_HEADER=Oznámení. Nastavení: %d.
 SM_ANN_SUBTITLES=Titulky
 SM_ANN_SUBS_ON=Čtení titulků zapnuto.
@@ -1374,7 +1371,7 @@ SM_SP_PCT_FMT=%d%%
 SM_SP_SAPI_NOTE=SAPI teď nemluví. Nastavení je uloženo a použije se, až bude.
 SM_LIST_HEADER_FMT=%s. Příkazy: %d.
 SM_UNASSIGNED=Nepřiřazeno
-SM_CAPTURE_FMT=Stiskni novou klávesu pro: %s Escape zruší.
+SM_CAPTURE_FMT=Stiskni novou klávesu pro: %s
 SM_MENUKEY_REFUSED=%s otevírá tuto nabídku a nelze ji přiřadit.
 SM_ASSIGNED_FMT=Přiřazeno: %s.
 SM_STOLEN_FMT=Tato klávesa patřila jinému příkazu, který je teď nepřiřazený: %s
@@ -1437,7 +1434,7 @@ SM_GRP_BLDG_SUB=Klávesové zkratky budov
 SM_GRP_SKILLS_SUB=Klávesové zkratky dovedností
 SM_SUBMENU=Podnabídka
 SM_GROUPS_HEADER_FMT=Ovládání. Položky: %d.
-SM_BIND_HEADER_FMT=%s. Přiřazení: %d. Enter jedno změní, Delete ho smaže, Backspace obnoví výchozí.
+SM_BIND_HEADER_FMT=%s. Přiřazení: %d.
 SM_ROW_FMT=%s. Klávesnice: %s. Ovladač: %s
 SM_DEV_KEYBOARD=Klávesnice
 SM_DEV_CONTROLLER=Ovladač
@@ -1461,7 +1458,7 @@ SM_SLOT_TO_JEWELER=Ke klenotníkovi
 SM_SLOT_FROM_JEWELER=Zpět k obchodníkovi z povozu
 SM_SLOT_TO_SHARDS=K žoldákům střepů
 SM_SLOT_FROM_SHARDS=Zpět k rekrutům z dostavníku
-SM_CAPTURE_PAD_FMT=Stiskni tlačítko ovladače pro: %s Podrž ho, chceš-li přiřadit dlouhý stisk. Escape zruší.
+SM_CAPTURE_PAD_FMT=Stiskni tlačítko ovladače pro: %s
 SM_MENUKEY_KEEP=Klávesu nabídky nelze smazat.
 SM_CLEARED=Nepřiřazeno.
 SM_RESTORED_FMT=Obnoveno výchozí: %s.
@@ -1568,9 +1565,9 @@ COM_NONE_SECURED=Zatím nic získáno.
 FE_UNLABELED_BUTTON=tlačítko bez popisku
 EX_NO_HEIRLOOMS=Žádné rodinné cennosti.
 EX_NOTHING_TO_TRADE_FOR=Není za co směnit.
-CS_TRK_UNEQUIP_CONFIRM_FMT=Sundat %s? Potvrď dalším stiskem Enteru.
+CS_TRK_UNEQUIP_CONFIRM_FMT=Sundat %s?
 CS_TRK_FALLBACK=cetku
-CS_COM_CAP_FMT=Už máš nasazené dovednosti: %d. Nejdřív jednu sundej, nebo stiskni 1 až %d a dej tuhle na místo.
+CS_COM_CAP_FMT=Už máš nasazené dovednosti: %d. Nejdřív jednu sundej.
 MAP_AC_BATTLE=Bitva
 MAP_AC_AMBUSH=Přepadení
 MAP_AC_TRAP=Past
@@ -1585,11 +1582,12 @@ MAP_AC_AMBUSH_CURIO=Rekvizita s přepadením
 MAP_AC_AMBUSH_TREASURE=Poklad s přepadením
 MAP_AC_SECRET_DOOR=Tajné dveře
 MAP_AC_PRISONER=Vězeň
-MAP_OPEN_FMT=Mapa. %s. %s. Šipky přecházejí mezi místnostmi, Ctrl se šipkami prochází chodbami.
+MAP_NAME=Mapa
+MAP_OPEN_FMT=%s. %s. %s.
 MAP_NOT_WHILE_FIGHTING=Ne během boje.
 MAP_KEY_NOT_TAKEN=Hra nepřijala klávesu pohybu.
 MAP_PARTY_DIDNT_MOVE=Družina se nepohnula.
-AB_HEADER_ACTIONS=Akce.
+AB_HEADER_NAME=Akce
 CAMP_ALREADY_USED=Už použito
 CAMP_NOT_ENOUGH_TIME=Nedostatek času
 CAMP_NO_FOOD=Bez jídla
@@ -1616,3 +1614,300 @@ CLOG_CLEARED=Záznam boje vymazán.
 
 # ---- Added 2026-10-09: a move that cannot leave its rank (the Musketeer's back-2 / forward-0 from rank 4): the Enter refusal; %s is the game's own Back / Forward tooltip lines ----
 TS_CANT_MOVE_FROM_FMT=Z pozice %d se nelze přesunout. Pohyb: %s.
+
+# ---- Added 2026-10-09: the Ctrl+F FIND overlay (core/find.cpp) -- the query typed so far, the match count, the opener, the refusals, and the keymap row name ----
+FD_OPEN_FMT=Hledat. Položky: %d.
+FD_TYPED_FMT=%s. Výsledky: %d.
+FD_TYPED_NONE_FMT=%s. Žádné výsledky.
+FD_CLEARED_FMT=Hledání vymazáno. Položky: %d.
+FD_NO_RESULTS=Žádné výsledky.
+FD_NOTHING_HERE=Na této obrazovce není co hledat.
+FD_EMPTY=Není co hledat: seznam je prázdný.
+FN_FIND=Hledat na této obrazovce
+
+# ---- Added 2026-10-09: the two link rows at the bottom of the F10 menu (Open the readme / Join the Discord): the row names, the two opened lines and the refusal; %s is the web address ----
+SM_CAT_README=Otevřít readme
+SM_CAT_DISCORD=Připojit se na Discord
+SM_LINK_README_OPENED=Otevírám readme v prohlížeči.
+SM_LINK_DISCORD_OPENED=Otevírám pozvánku na Discord v prohlížeči.
+SM_LINK_FAILED_FMT=Prohlížeč se nepodařilo otevřít. Adresa je %s.
+
+# ---- Added 2026-10-09: the F10 "Control hints" row (Announcements) and the hint halves split off the sentences above -- every line that names a key on a mod-built surface is its own entry now (the fact lines kept their key and were shortened in place); %d in CS_COM_CAP_HINT_FMT is the slot count ----
+SM_ANN_HINTS=Nápovědy k ovládání
+SM_ANN_HINTS_ON=Nápovědy k ovládání zapnuty. Mod říká, která klávesa co dělá, například Enter potvrdí.
+SM_ANN_HINTS_OFF=Nápovědy k ovládání vypnuty. Mod už neříká, která klávesa co dělá.
+NGC_INTRO_HINT=Šipkami nahoru a dolů se pohybuješ, Enter přepíná, na konci potvrď tlačítkem OK.
+NGC_OK_HINT=Enterem zahájíš kampaň.
+UGC_WINDOW_UNREAD_HINT=Zavřeš ho klávesou Escape.
+UGC_INTRO_HINT=Šipkami nahoru a dolů se pohybuješ, Enter přepíná, Escape zavře a uloží.
+DLCVIEW_INTRO_HINT=Šipkami nahoru a dolů se pohybuješ, Enter přepíná, Escape zavře.
+BD_ROW_RANDOM_HINT=Enterem náhodně nastavíš všechny oddíly.
+BD_ROW_APPLY_HINT=Enterem změny použiješ.
+RNG_LEAGUES_CLOSE_HINT=Zavřeš ho klávesou L nebo Escape.
+RV_PRESS_ENTER=Stiskni Enter.
+SECRET_ENTER_HINT=Postav se na tajné dveře a stiskni klávesu interakce.
+RCT_ADD_HINT=Enterem hrdinu najmeš, Escape zruší.
+ACT_TAKE_OUT_HINT=Enterem hrdinu odvoláš.
+ACT_CONFIRM_HINT=Enterem potvrdíš, Backspacem hrdinu odvoláš.
+ACT_CHOOSE_HINT=Enterem vybereš hrdinu.
+ACT_NOT_ELIGIBLE_HINT=Enter řekne proč.
+QT_NOTHING_CHOSEN_HINT=Níže jsou Uzamknout a Odebrat: Enterem na jednom z nich otevřeš jeho seznam. Pak zde Enterem potvrdíš. Backspace hrdinu odvolá.
+EX_INCREASE_HINT=Klávesou plus nabídku zvýšíš.
+TE_OFFERED_HINT=Šipkami nahoru a dolů procházíš, C prohlédne, Enter najme.
+CS_TRK_UNEQUIP_CONFIRM_HINT=Potvrď dalším stiskem Enteru.
+CS_COM_CAP_HINT_FMT=Nebo stiskni 1 až %d a dej tuhle na místo.
+RR_REVEAL_HINT=Enterem odhalíš.
+MAP_OPEN_HINT=Šipky: procházení místností, Ctrl se šipkami: procházení chodeb, Home: zpět k družině.
+MAP_TRAP_DISARM_HINT=Klávesou W ji zneškodníš.
+MAP_FARMSTEAD_HINT=Stiskni R pro pohled na kobku a pak přejdi na poslední řádek a pokračuj dál.
+RV_LAST_ROW_HINT=Je to poslední řádek pohledu na kobku.
+EV_CHOOSE_ITEM_HINT=Enterem ho použiješ, Escape tě vrátí zpět.
+INV_MAKE_CAMP_HINT=Enter potvrdí, Escape zruší.
+SM_BIND_HINT=Enter jedno změní, Delete ho smaže, Backspace obnoví výchozí.
+SM_CAPTURE_HINT=Escape zruší.
+SM_CAPTURE_PAD_HINT=Podrž ho, chceš-li přiřadit dlouhý stisk. Escape zruší.
+FD_OPEN_HINT=Pište pro hledání, Escape pro zrušení.
+# ---- Added 2026-10-10: the MOD TUTORIAL dialogs (core/modtutorial.cpp) -- the F10 "Mod tutorials" row, the title screen's five paragraphs, the checkbox and OK rows, the opt-out hint, the no-topic refusal and the keymap row name; %s in MT_OPTOUT_FMT is checked / unchecked ----
+SM_ANN_TUTORIALS=Návody modu
+SM_ANN_TUT_ON=Návody modu zapnuty. Při prvním otevření nové obrazovky se objeví nápověda.
+SM_ANN_TUT_OFF=Návody modu vypnuty. Nápovědy se už samy neobjevují.
+MT_TITLE_P1=Vítejte v Darkest Dungeon! Návody modu jako tento se budou automaticky objevovat v mnoha částech hry, aby vám pomohly naučit se hrát. Můžete si je také zobrazit stisknutím F1 jako kontextovou nápovědu.
+MT_TITLE_P2=Obecné ovládání: pomocí šipek, křížového ovladače nebo levé páčky se pohybujete v uživatelském rozhraní. Enter, nebo A na ovladači, potvrzuje. Escape, nebo B na ovladači, vás vrátí o obrazovku zpět, zruší akci nebo otevře menu pauzy.
+MT_TITLE_P3=Čtení oken: stisknutím čárky se znovu přečte aktivní okno nebo dialog.
+MT_TITLE_P4=Čtení popisků: popisky obsahují podrobné informace o hrdinech, nepřátelích, předmětech, dovednostech a dalším. Ve výchozím nastavení se čtou automaticky; to lze změnit v nastavení modu nebo klávesou F3. Můžete je číst řádek po řádku pomocí Ctrl+šipka nahoru a dolů. Některé popisky mají více částí, mezi nimiž se přesunete pomocí Ctrl+šipka vlevo a vpravo. Na ovladači podržte levou spoušť a pohybujte se křížovým ovladačem nebo levou páčkou.
+MT_TITLE_P5=Hledání: ve většině částí hry můžete hledat stisknutím Ctrl+F.
+MT_TITLE_P6=Nastavení: nastavení modu otevřete stisknutím F10 kdekoli ve hře. Možnosti hry najdete v menu pauzy. Některé možnosti, například hlasitost hry a hudby, jsou posuvníky, které upravíte šipkami vlevo a vpravo.
+MT_TITLE_P7=Podpora: readme na GitHubu obsahuje průvodce pro začátek v každé části Darkest Dungeon. Pokud narazíte na chyby, máte připomínky nebo potřebujete pomoc, zastihnete mě na Discordu. Odkazy na readme a na můj Discord server najdete v nastavení modu.
+MT_TITLE_P8=Pokud už nechcete vidět další zprávy jako tato, zaškrtněte políčko níže a návody modu se vypnou.
+MT_OPTOUT_FMT=Nezobrazovat návody modu, zaškrtávací políčko, %s.
+MT_OK=OK, tlačítko.
+MT_OPTOUT_HINT=Návod můžete i nadále otevřít klávesou F1 nebo je znovu zapnout v nastavení modu.
+MT_NONE_HERE=Pro tuto obrazovku není žádný návod modu.
+MT_CLOSED=Zavřeno.
+FN_MOD_TUTORIAL=Návod modu pro tuto obrazovku
+# ---- Added 2026-10-10 (evening): the CAMPAIGN (save-slot) screen's mod tutorial (core/modtutorial.cpp, six paragraphs: the screen, a new game, naming the estate, deleting, DLC, mods); the mods button's Space hint and its refusal sit in their own blocks above ----
+MT_CAMP_P1=Obrazovka kampaně: Je zde devět pozic pro uložení kampaně, každá se třemi tlačítky napravo (smazat, DLC a mody). V horní části obrazovky je tlačítko pro Butcher's Circus, bezplatný stažitelný soutěžní režim pro více hráčů.
+MT_CAMP_P2=Začátek nové hry: Aktivací prázdné pozice začnete novou hru. Pokud vlastníte nějaké DLC, poté vyberete, který obsah do této kampaně přidat. Následně zvolíte obtížnost a nakonec pojmenujete své panství. Aktivací nově vytvořené uložené hry začnete hrát.
+MT_CAMP_P3=Pojmenování panství: Textové pole je předvyplněno slovem Darkest a pojme nejvýše 10 znaků. Při psaní nebo mazání uslyšíte aktuální text. Stiskem Enteru dokončíte zadávání a vytvoříte novou uloženou hru.
+MT_CAMP_P4=Smazání uložené hry: Napravo od každé pozice je tlačítko Smazat, nebo můžete stisknout klávesu Delete. Před smazáním budete požádáni o potvrzení.
+MT_CAMP_P5=Obsah DLC: Stiskem Shift+Enter nebo tlačítkem napravo od existující uložené hry můžete kdykoli zobrazit DLC zapnutá pro tuto kampaň nebo zapnout další obsah. Jakmile však DLC zapnete, po zbytek této kampaně už ho nelze vypnout.
+MT_CAMP_P6=Zapnutí modů: Stiskem mezerníku nebo tlačítkem napravo od existující uložené hry otevřete správce modů pro tuto kampaň, kde můžete mody zapínat a vypínat. Pamatujte, že vypnutí modu uprostřed kampaně se nedoporučuje, protože by mohlo poškodit uloženou hru.
+# ---- Added 2026-10-10 (night): the DUNGEON VIEW's mod tutorial (core/modtutorial.cpp, twelve paragraphs: the view, heroes, interaction, light, the log, map/inventory, movement, navigation assist, party order, quests, review mode, skills) ----
+MT_DUNG_P1=Pohled na kobku: Většina hry se odehrává v kobkách s bočním posunem. Vaše postavy stojí v řadě na levé straně obrazovky a hledí doprava, tam, kde se objevují předměty, nepřátelé a dveře. Vaše družina je proto číslovaná zprava doleva, zatímco nepřátelé, kteří hledí doleva, jsou číslovaní zleva doprava.
+MT_DUNG_P2=Hrdinové: Družina může mít až čtyři hrdiny. Aktivního hrdinu změníte klávesami Q/E (LB/RB na ovladači). Aktivní hrdina je ten, kdo používá rekvizity, poklady a pasti a koho jejich účinky postihnou. Kartu postavy aktivního hrdiny otevřete kdykoli klávesou C (X na ovladači). Souhrn aktuálního stavu každého člena družiny najdete v jeho popisku.
+MT_DUNG_P3=Interakce: Stiskněte W, abyste použili rekvizity, překážky a poklady, prošli dveřmi a zneškodnili pasti (LT+A na ovladači). Můžete také aktivovat to, co má právě fokus.
+MT_DUNG_P4=Světlo: Stiskněte L, abyste si přečetli aktuální úroveň světla a její účinky. Světlo časem slábne a je třeba je doplňovat pochodněmi. T rozsvítí pochodeň, Shift+T ji ztlumí o jednu úroveň a Ctrl+Shift+T ji úplně uhasí. Na ovladači podržte LT a stiskněte Y pro rozsvícení pochodně, B pro ztlumení, a podržte LT+B pro uhašení.
+MT_DUNG_P5=Záznam: Jak postupujete kobkou, vašim hrdinům se přihodí ledacos. Stiskněte klávesu tečka (LT+RB na ovladači), abyste otevřeli záznam boje, který ukazuje vše, co se stalo. Page Up a Page Down posouvají o deset položek najednou a klávesa Delete vám umožní záznam úplně vymazat.
+MT_DUNG_P6=Mapa/Inventář: Mapa kobky a inventář družiny sdílejí na obrazovce stejný panel. Tab přesune fokus na tento panel a přepíná mezi nimi. Můžete také stisknout M nebo I, abyste rovnou otevřeli mapu nebo inventář (LT/RT na ovladači).
+MT_DUNG_P7=Pohyb: Kobky se skládají z řady místností spojených chodbami. Na mapě vyberete, do které místnosti se vydat dál, a pak družinu provedete chodbami: D jde vpřed, A zpět (pravá páčka na ovladači). Vpřed je vždy doprava, k vybranému cíli.
+MT_DUNG_P8=Navigační pomoc: Shift+A/D vás posune o jedno pole vpřed nebo zpět, aby se hlášení nepřerušovala a abyste nic neminuli. V místnosti vás dovede na dosah každé rekvizity nebo pokladu, který tam s vámi je. Zabrání také tomu, abyste vstoupili do pastí, které družina už na zemi odhalila.
+MT_DUNG_P9=Pořadí družiny: V boji se družina může promíchat. Hrdinu přesunete tak, že na něm stisknete Enter (A na ovladači) a pak vyberete jeho novou pozici. Pro rychlý návrat k výchozímu pořadí družiny po bitvě stiskněte Shift+Enter (podržené A na ovladači) na kterémkoli hrdinovi.
+MT_DUNG_P10=Výpravy: Nad pohledem na kobku najdete panel výpravy s aktuálním cílem a tlačítkem, kterým ustoupíte z boje, opustíte výpravu, nebo výpravu dokončíte a vrátíte se do města. Můžete také stisknout G pro přímý skok na cíle, nebo Shift+Escape jako zkratku pro ústup, opuštění výpravy či návrat do Vesnice (podle situace).
+MT_DUNG_P11=Režim přehledu: Klávesami Alt+1 až Alt+4 rychle zjistíte, kdo stojí na které pozici vaší družiny. V boji Alt+5 až Alt+8 řeknou, kdo kde stojí na straně nepřátel.
+MT_DUNG_P12=Dovednosti: Dovednosti aktivního hrdiny najdete na liště akcí pod pohledem na kobku. Klávesa tilda (vlevo od číslice 1) vás tam také přenese rovnou odkudkoli. V boji můžete klávesami 1 až 5 rychle vybrat dovednost podle její pozice na liště akcí. 5 je vždy akce pohybu.
+# ---- Added 2026-10-10 (night, second round): the in-raid MAP's mod tutorial (core/modtutorial.cpp, four paragraphs: the map and scouting, room to room + Enter, Ctrl+arrows along hallways, Home) ----
+MT_MAP_P1=Mapa: Na mapě vidíte rozložení kobky a vybíráte další cíl. Kolik z ní vidíte, závisí na průzkumu vaší družiny.
+MT_MAP_P2=Šipkami přesouváte kurzor z místnosti do místnosti. Enter na místnosti sousedící s aktuální polohou družiny ji zavede do spojovací chodby.
+MT_MAP_P3=Podržte Ctrl a šipkami přesouvejte kurzor po jednotlivých polích podél chodeb (LT+křížový ovladač nebo levá páčka na ovladači).
+MT_MAP_P4=Home vrátí kurzor na aktuální polohu družiny (stisk levé páčky na ovladači).
+# ---- Added 2026-10-10 (night, third round): the in-raid INVENTORY's mod tutorial (core/modtutorial.cpp, five paragraphs: the grid, using an item, equipping a trinket, rearranging, discarding) ----
+MT_BAG_P1=Inventář: Inventář má 16 políček uspořádaných ve dvou řadách po osmi.
+MT_BAG_P2=Aktivováním předmětu ho můžete použít na jednoho ze svých hrdinů. V boji může každý hrdina použít na sebe jen jeden předmět za tah.
+MT_BAG_P3=Aktivováním cetky ji můžete nasadit jednomu ze svých hrdinů, pokud má volné políčko na cetku.
+MT_BAG_P4=Předměty v inventáři můžete přeskládat mezerníkem (stisk levé páčky na ovladači).
+MT_BAG_P5=Předmět z inventáře odstraníte klávesou Delete (podržené Y na ovladači).
+# ---- Added 2026-10-11: the CHARACTER SHEET's mod tutorial (core/modtutorial.cpp, eleven paragraphs: the sheet, the walk, quirks, base stats, equipment, trinkets, combat skills, camping skills, reassigning skills, diseases, manage) ----
+MT_CS_P1=Karta postavy: Zde vidíte všechny informace o svých hrdinech, nasazujete cetky a měníte jejich bojové a tábornické dovednosti.
+MT_CS_P2=Nahoru/Dolů přechází mezi jednotlivými částmi. Vlevo/Vpravo prochází informace v daném řádku.
+MT_CS_P3=Rysy: Vlastnosti, které tuto postavu ovlivňují. Můžete mít až 5 pozitivních a 5 negativních rysů. Když získáte nový rys, který by překročil limit, nahradí náhodně jiný rys.
+MT_CS_P4=Základní statistiky: Maximální body zdraví, přesnost, ochrana a tak dále vašeho hrdiny. Zvláštní modifikátory se zobrazují v popisku.
+MT_CS_P5=Vybavení: Zbraň a zbroj vlastní každé třídě, které ovlivňují základní statistiky hrdiny a dají se vylepšit ve městě.
+MT_CS_P6=Cetky: Zvláštní předměty, které postavě nasadíte. Každá postava může mít až dvě cetky; nasazují se stiskem Enter na políčku nebo z inventáře.
+MT_CS_P7=Bojové dovednosti: Akce, které může hrdina provést v boji. Popisek každé z nich ukazuje její účinky, z jakých pozic ji lze použít a na jaké pozice může cílit. Všechny používají vaše základní statistiky pro poškození, přesnost a šanci na kritický zásah, ale konkrétní dovednost je může upravit. Například dovednost s údajem 30 procent poškození způsobí 30 procent vašeho základního poškození. Část bojových dovedností obsahuje také souhrn, kolik z právě nasazených dovedností lze použít z každé pozice a na jaké pozice mohou cílit.
+MT_CS_P8=Tábornické dovednosti: Akce, které může hrdina provést při táboření. Popisek každé dovednosti popisuje její účinky, na koho může cílit a kolik času zabere.
+MT_CS_P9=Dovednosti můžete přiřadit znovu stiskem Enter, kterým je vybíráte a odebíráte v pořadí, v jakém se mají objevit na liště akcí. Případně stiskněte čísla 1 až 4, abyste dovednost rychle přiřadili na konkrétní místo.
+MT_CS_P10=Nemoci: Negativní vlastnosti, které lze při dobrodružstvích získat různými způsoby a které je třeba vyléčit ve městě.
+MT_CS_P11=Správa: Možnosti přejmenovat hrdinu nebo ho propustit ze soupisky.
+# ---- Added 2026-10-11: the HAMLET's mod tutorial (core/modtutorial.cpp, nine paragraphs: the hamlet, the Tab walk, locations, roster, resources, the trinket inventory, the activity log, town events, embarking -- a buildings paragraph was P9 here for part of the day and moved to the building topic at the end of the file) ----
+MT_HAM_P1=Vesnice: Tady mezi výpravami spravujete své hrdiny, předměty a další zdroje.
+MT_HAM_P2=Klávesami Tab a Shift+Tab se přesouváte mezi jednotlivými částmi rozhraní vesnice (RT a LT na ovladači).
+MT_HAM_P3=Místa ve vesnici: Mapa je zobrazena jako seznam. Každá budova má určitou funkci a většinu z nich lze vylepšit. Písmenné klávesy otevírají každou budovu přímo (úplný seznam najdete v souboru readme nebo v nastavení ovládání modu).
+MT_HAM_P4=Soupiska: Tady vidíte všechny své hrdiny seřazené ve svislém seznamu. Nahoře je vodorovná lišta s limitem soupisky a možnostmi jejího řazení. Hrdiny můžete také ručně přeskupit: mezerníkem hrdinu zvednete, přesunete se na požadované místo a dalším stiskem mezerníku ho položíte (na ovladači stiskněte levou páčku).
+MT_HAM_P5=Zdroje: Ukazuje, kolik máte zlata, rodinných cenností a dalších zdrojů. Tlačítko Směnit rodinné cennosti slouží k výměně jednoho druhu rodinných cenností za jiný.
+MT_HAM_P6=Inventář cetek: Klávesou I otevřete inventář cetek, které nemá nasazená žádná postava. Nad mřížkou jsou možnosti sundat cetky všem hrdinům nebo seřadit předměty v mřížce. Stiskem Enter na cetce ji nasadíte hrdinovi. Nechtěné cetky můžete prodat za zlato stiskem Shift+Enter.
+MT_HAM_P7=Záznam aktivit: Stiskem tečky otevřete záznam toho, co se stalo v každém uplynulém týdnu.
+MT_HAM_P8=Události ve vesnici: Většinu týdnů, kdy se vrátíte z výpravy, nastane událost ve vesnici, která může mít různé kladné nebo záporné účinky. Dokud jsou tato okna otevřená, můžete si je nechat znovu přečíst čárkou, zavřít je klávesou Escape a kdykoli je znovu otevřít stiskem Shift+tečka.
+MT_HAM_P9=Vyrazit: Stiskem E vyrazíte na další výpravu.
+
+# ---- Added 2026-10-11: the EMBARK screen's mod tutorial (core/modtutorial.cpp, five paragraphs: quest planning, the Tab walk, the quest map, the party lineup, provisions) ----
+MT_EMB_P1=Plánování výpravy: Na této obrazovce vybíráš, na kterou výpravu se vydáš, a sestavuješ družinu hrdinů.
+MT_EMB_P2=Klávesami Tab a Shift+Tab přecházíš mezi jednotlivými částmi.
+MT_EMB_P3=Mapa výprav: Klávesami Vlevo/Vpravo procházíš místa na mapě. Klávesami Nahoru/Dolů si prohlížíš výpravy v daném místě. Další informace o každé výpravě najdeš v její nápovědě. Stiskem Enter výpravu vybereš.
+MT_EMB_P4=Sestava družiny: Pozice jsou číslovány zprava doleva, tak jak se objeví v kobce. Stiskem Enter na místě otevřeš soupisku, kde vybereš, koho na tuto pozici přiřadit. Když vybereš hrdinu, který na dané pozici už stojí, odebereš ho z družiny. Mezerníkem (kliknutím levé páčky na ovladači) hrdiny v družině přeskupíš, aniž bys je odebral.
+MT_EMB_P5=Zásoby: Stiskem E (kliknutí pravé páčky na ovladači) přejdeš k zásobovateli, kde nakoupíš zásoby na výpravu.
+
+# ---- Added 2026-10-11: the PROVISIONING screen's mod tutorial (core/modtutorial.cpp, six paragraphs: provisioning, the Tab walk, the provisioner's two grids, quest info, the party lineup, embarking) ----
+MT_PROV_P1=Zásoby: Na této obrazovce nakupuješ zásoby na své dobrodružství.
+MT_PROV_P2=Klávesami Tab a Shift+Tab přecházíš mezi jednotlivými částmi.
+MT_PROV_P3=Zásobovatel: Hlavní plocha je rozdělena do dvou sloupců. Vlevo je nabídka obchodu, vpravo tvoje zásoby. Klávesou Enter koupíš nebo prodáš zpět jeden kus, klávesami Shift+Enter celou hromádku.
+MT_PROV_P4=Informace o výpravě: Panel s informacemi o výpravě ukazuje údaje o vybrané výpravě a šanci tvé družiny na průzkum.
+MT_PROV_P5=Sestava družiny: Na této obrazovce si můžeš také prohlédnout hrdiny v družině a spravovat je.
+MT_PROV_P6=Vyrazit: Stiskem E (kliknutí pravé páčky) dokončíš přípravy a zahájíš výpravu.
+
+# ---- Added 2026-10-11: a BUILDING interior's mod tutorial (core/modtutorial.cpp, one paragraph, moved out of the hamlet topic the same day: rows and columns, U = LT opens the upgrades, Page Up / Page Down swap buildings) ----
+MT_BLDG_P1=Budovy: Rozhraní každé budovy je zpravidla uspořádáno do řádků a sloupců. Uvnitř budovy stiskem klávesy U (LT na ovladači) otevřete nabídku vylepšení. Klávesami Page Up a Page Down rychle přepínáte mezi budovami.
+
+# ---- Added 2026-10-11: a CAMP's mod tutorial (core/modtutorial.cpp, three paragraphs: the two phases, respite points and the rest button, Q/E and the camping skills on the action bar) ----
+MT_CAMPING_P1=Táboření má dvě fáze. Nejprve vyberete, kolik jídla chcete sníst, z jednoduchého seznamu možností. Ve druhé fázi, fázi dovedností, mohou vaši hrdinové použít tábornické dovednosti, aby se vyléčili, snížili svůj stres a posílili se na to, co je čeká.
+MT_CAMPING_P2=Během fáze dovedností uslyšíte v hlášení pohledu na kobku, kolik bodů oddechu máte. Každá tábornická dovednost stojí určitý počet těchto bodů. Jakmile vám zbývá 6 nebo méně, objeví se na liště akcí tlačítko Odpočívat, které táboření ukončí a vrátí vás do běžné kobky.
+MT_CAMPING_P3=Klávesami Q/E (LB/RB na ovladači) změníte vybraného hrdinu a jeho tábornické dovednosti najdete na liště akcí pod pohledem na kobku. V jejich popiscích se dozvíte víc o tom, co každá dovednost dělá.
+
+# ---- Added 2026-10-11: THE BUTCHER'S CIRCUS mod tutorials (core/modtutorial.cpp, one topic per Circus screen: the Banner Designer (five paragraphs), the Dueling Grounds (two), the Prize Box (one), the Ranking Board (two), The Ring (six)) ----
+MT_BANNER_P1=Návrhář praporů: Tvůj prapor je něco jako tvůj hráčský znak, který ostatní hráči vidí během zápasu. Skládá se ze šesti částí, které odemykáš jako odměny za dokončené zápasy.
+MT_BANNER_P2=Tato obrazovka je rozvržena docela jednoduše. Fokus přijde do svislého seznamu záložek, jedna pro každou část tvého praporu. Pod těmito záložkami je tlačítko pro náhodný výběr a tlačítko pro použití všech změn. Napravo od záložek je mřížka s jednotlivými částmi pro vybranou záložku.
+MT_BANNER_P3=Stiskem Ctrl+Enter uložíš změny.
+MT_BANNER_P4=Stiskem R získáš náhodný prapor.
+MT_BANNER_P5=Stiskem klávesy B si necháš přečíst úplné shrnutí svého současného návrhu praporu.
+MT_DUEL_P1=Soubojiště: Tady můžeš vyzvat ostatní hráče na soukromý zápas. Má dva sloupce: vlevo seznam přátel, kde stiskem Enter na kterémkoli z přátel online pošleš pozvánku, a vpravo část, kde můžeš pozvat hráče zadáním jeho Steam ID. Případně můžeš vytvořit ID lobby, které vás spojí, když oba zadáte totéž.
+MT_DUEL_P2=Po připojení si vybereš družinu a stiskem E oznámíš, že jsi připraven. Jakmile jsou hráči připraveni, zápas začne.
+MT_PRIZE_P1=Bedna s cenami: Tady vidíš, kolik prestiže jsi nasbíral, jaké odměny jsi odemkl a co odemkneš na vyšších úrovních. Je to jednoduchá mřížka. Nahoru/Dolů procházíš úrovně prestiže, Vlevo/Vpravo si prohlížíš podrobnosti odměn dané úrovně. Stiskem Enter na části praporu přejdeš na její náhled v návrháři praporů.
+MT_RANK_P1=Žebříček: Tady vidíš svou hodnost pro více hráčů a historii zápasů. Nahoře je uvedena tvá současná hodnost, jaká hodnost je další a tvůj postup k ní. Když zápas vyhraješ, získáš lebky, které tě posouvají k další hodnosti. Prohra v zápase může stát lebky a dokonce tě srazit o hodnost níž.
+MT_RANK_P2=Pod informacemi o hodnosti je seznam se dvěma záložkami nahoře: Historie matchmakingu pro veřejné zápasy a Historie výzev pro tvou bilanci na soubojišti. Šipkami Vlevo/Vpravo přepínáš záložky, Nahoru/Dolů procházíš seznam. U každého řádku uslyšíš výsledek boje, hrdiny v obou družinách a kdo byl v boji zabit.
+MT_RING_P1=Ring: Tohle je hlavní část The Butcher's Circus, kde sestavuješ družinu, vybavuješ ji cetkami a posíláš ji do boje. Všechno zde platí i pro soukromé zápasy přes soubojiště.
+MT_RING_P2=Sestava družiny a její ovládání jsou stejné jako v kampani pro jednoho hráče. Enter vybírá, C otevře karty postav, mezerník přeskupuje.
+MT_RING_P3=Nasazování cetek funguje také úplně stejně jako v kampani. Stiskni Enter na políčkách cetek na kartě hrdiny, nebo stiskem I otevři inventář cetek, stiskni Enter na cetce a pak vyber, komu ji chceš nasadit.
+MT_RING_P4=Až budeš připraven začít zápas s jiným hráčem, stiskni E (kliknutí pravé páčky na ovladači). Tvůj první zápas bude výukový, proti soupeři řízenému počítačem.
+MT_RING_P5=Stiskem P spustíš cvičný zápas nebo zopakuješ výuku (LB na ovladači).
+MT_RING_P6=Stiskem L otevřeš přehled jednotlivých ligových hodností (RB na ovladači).
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's batch (main menu, pause menu + options sliders, hamlet arrival + jump letters, buildings + upgrades + recruits, trinket inventory, resources bar, heirloom exchange). All thirteen are AXH entries: blank while the F10 "Control hints" row is Off ----
+ENTER_ACTIVATE_HINT=Enterem aktivuješ.
+FE_TITLE_HINT=Escape: možnosti hry, F10: nastavení modu, F1: nápověda modu.
+OPT_ADJUST_HINT=Šipkami doleva a doprava měníš hodnotu.
+TM_ARRIVAL_HINT=Tab a Shift+Tab: další a předchozí část, tečka: záznam aktivit, Shift+tečka: událost ve vesnici, R: zdroje, I: inventář, E: vyrazit.
+TM_ROW_KEY_FMT=%s (%s)
+BLD_ARRIVAL_HINT=Klávesou U otevřeš vylepšení, Page Up a Page Down: předchozí a další budova.
+BLD_UPGRADE_HINT=Enterem vylepšíš.
+RCT_ROW_HINT=Enter najme, C otevře kartu postavy.
+RI_TRINKET_HINT=Enter nasadí hrdinovi, Shift a Enter prodá.
+RI_TRINKET_CIRCUS_HINT=Enter nasadí hrdinovi.
+EX_SELECT_HINT=Enterem vybereš.
+EX_ADJUST_HINT=Enterem upravíš nabídku.
+EX_TRADE_HINT=Enterem směníš.
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's second batch (roster rows + sort buttons, the sheet's two skill grids + Manage, the embark quest list, the party lineup, the provisioner's two grids). All AXH: blank while the F10 "Control hints" row is Off ----
+ROS_HERO_HINT=Enter nebo C otevře kartu postavy, mezerník přeskupí.
+ROS_PICK_SELECT_HINT=Enterem vybereš, C otevře kartu postavy.
+ROS_PICK_REMOVE_HINT=Enterem odebereš, C otevře kartu postavy.
+CS_SKILL_SELECT_HINT_FMT=Enterem vybereš, čísla 1 až %d: rychlé přiřazení.
+CS_SKILL_DESELECT_HINT_FMT=Enterem zrušíš výběr, čísla 1 až %d: rychlé přiřazení.
+PTY_EMPTY_HINT=Enterem vybereš hrdinu.
+PTY_FILLED_HINT=Enterem změníš, mezerníkem přeskupíš skupinu.
+PROV_BUY_HINT=Enter koupí jeden kus, Shift a Enter celý balík.
+PROV_SELL_HINT=Enter prodá jeden kus, Shift a Enter celý balík.
+
+# ---- Added 2026-10-12: THE UPDATE CHECK moved from the retired launcher into the mod (core/updatecheck.cpp): the one "update available" line, spoken once at startup in the session language. %s 1 = the newer version, %s 2 = the installed one, digits only ----
+UPDATE_AVAILABLE_FMT=Je k dispozici aktualizace modu pro přístupnost: verze %s. Máte verzi %s. Spusťte instalátor Blindest Dungeon a aktualizujte.
+
+# ---- Added 2026-10-12: CONTROL HINTS, the dev's DUNGEON batch (the quest bar's key and button row, the action bar's key / portrait / skill, skip and reorder buttons with their greyed state, the dungeon view's arrival keys and its party and object rows, the targeting layer's commit line, the map's and the bag's panel lines with the Tab switch, each bag item, the combat log's header, the light meter's torch keys). All AXH: blank while the F10 "Control hints" row is Off ----
+AB_PORTRAIT_HINT=C: karta postavy.
+AB_PORTRAIT_HINT_SWAP=C: karta postavy, Q a E: změna vybraného hrdiny.
+AB_SKIP_HINT=Enterem přeskočíš tah tohoto hrdiny.
+AB_REORDER_HINT=Enterem obnovíš výchozí pořadí družiny.
+RV_HEAD_HINT=R: přehled místnosti, L: aktuální světlo, tečka: otevřít záznam boje.
+RV_PARTY_ROW_HINT=Enterem přesuneš, Shift a Enter: výchozí pořadí družiny.
+RV_PROP_USE_HINT=Enterem nebo klávesou W použiješ.
+RV_TRAP_DISARM_HINT=Enterem nebo klávesou W zneškodníš.
+RV_PROP_WALK_HINT=Enterem k tomu dojdeš.
+TS_USE_ON_HINT_FMT=Enterem použiješ %s na: %s.
+TS_USE_HINT_FMT=Enterem použiješ %s.
+TS_MOVE_TO_HINT_FMT=Enterem se přesuneš na pozici %d.
+INV_EQUIP_ON_HINT_FMT=Enterem nasadíš %s hrdinovi: %s.
+MAP_TAB_HINT=Tabulátorem přejdeš do inventáře.
+INV_TAB_HINT=Tabulátorem přejdeš na mapu.
+INV_ROW_HINT=Enter: použít předmět, Delete: zahodit, mezerník: přeskupit.
+INV_ROW_TRINKET_HINT=Enter: nasadit hrdinovi, Delete: zahodit, mezerník: přeskupit.
+INV_ROW_NO_USE_HINT=Delete: zahodit, mezerník: přeskupit.
+CLOG_OPEN_HINT=Escape: zavřít, Page Up a Page Down: posun o deset řádků, Delete: vymazat záznam boje.
+LIGHT_KEYS_HINT=T: rozsvítit pochodeň, Shift a T: ztlumit pochodeň, Ctrl Shift T: uhasit pochodeň.
+
+# ---- Added 2026-10-13: CONTROL HINTS, the dev's SWEEP batch (the loot window, the camp's Rest button, the raid map's rooms, the hamlet locations, the districts, the building shops and the shard mercenaries, the glossary and help's close key, the F10 menu's value rows, the banner designer's preview key, the ranking board's sections). All AXH: blank while the F10 "Control hints" row is Off ----
+LOOT_ROW_HINT=Enterem vezmeš, mezerník: vzít vše.
+AB_REST_HINT=Enterem ukončíš táboření.
+MAP_TRAVEL_HINT=Enterem se vydáš na cestu.
+TM_ROW_OPEN_HINT=Enterem otevřeš.
+DST_BUILD_HINT=Enterem postavíš.
+SHOP_BUY_HINT=Enterem koupíš.
+RCT_SHARD_ROW_HINT=Enter najme, C otevře kartu postavy.
+GL_CLOSE_HINT=Escape zavře.
+SM_CHOICE_HINT=Enterem aktivuješ, šipky vlevo a vpravo: změna nastavení.
+BD_PREVIEW_KEY_HINT=B: náhled praporu.
+RB_SECTION_HINT=Šipky vlevo a vpravo: přepnutí sekce.
+
+# ---- Added 2026-10-14: the Medical Ward's pick filter (its roster list shows only the heroes with a disease; this is the line the slot row speaks when there is none) ----
+ACT_NO_DISEASED_HERO=Žádný hrdina na soupisce nemá nemoc k léčení.
+
+# ---- Added 2026-10-16: the tooltip channel (F10 -> Announcements -> "Automatically speak tooltips": the row and its On / Off outcome lines) ----
+SM_ANN_TOOLTIPS=Číst popisky automaticky
+SM_ANN_TIPS_ON=Automatické popisky zapnuty. Popisek řádku se přečte hned po řádku.
+SM_ANN_TIPS_OFF=Automatické popisky vypnuty. Popisek řádku se přečte jen na vyžádání.
+
+# ---- Added 2026-10-16: raid results, heroes page -- the hero the Farmstead's Endless Harvest took instead of killing (Color of Madness "in time and space"); the game swaps the portrait, this is the picture in words ----
+RR_LOST_TIME_SPACE=Ztracen v čase a prostoru.
+
+# ---- Added 2026-10-16: raid results, the heirloom totals row (the game's per-kind counter strip under the heirloom grid; %s of the first = the list, each item = the second with the count and the game's own kind name) ----
+RR_HEIRLOOM_TOTAL_FMT=Celkem rodinných cenností: %s.
+RR_HEIRLOOM_TOTAL_ITEM_FMT=%d %s
+
+# ---- Added 2026-10-16: raid results, the Color of Madness WAVE skin (Endless Harvest): the shard row = the game's title + the number; the two fallbacks for the DLC's own "Collected Comet Shards" / "KILLS: %d" when the key is missing ----
+RR_WAVE_SHARDS_FMT=%s: %d.
+RR_SECT_SHARDS=Nasbírané kometové úlomky
+RR_WAVE_KILLS_FMT=Zabití: %d.
+
+# ---- Added 2026-10-16: the F10 Announcements row "Expand abbreviations" and its table. The ABBR_* half is NOT a translation of the English letters: it is what the game's own text in this language writes (comma-separated when it uses more than one), matched as whole words; the _FULL half is what to say instead. Sweep of the shipped string tables: the Czech tables write PŘE, KRIT, POŠ, DOT, ZDR, MAX ZDR, OCHR (twice PP), RYCH. ----
+SM_ANN_ABBREV=Rozepisovat zkratky
+SM_ANN_ABBREV_ON=Rozepisování zkratek zapnuto. Zkrácené statistiky se čtou celými slovy.
+SM_ANN_ABBREV_OFF=Rozepisování zkratek vypnuto. Zkrácené statistiky se čtou tak, jak je píše hra.
+ABBR_ACC=PŘE
+ABBR_ACC_FULL=přesnost
+ABBR_CRIT=KRIT
+ABBR_CRIT_FULL=šance na kritický zásah
+ABBR_DMG=POŠ
+ABBR_DMG_FULL=poškození
+ABBR_DOT=DOT
+ABBR_DOT_FULL=průběžné poškození
+ABBR_HP=ZDR
+ABBR_HP_FULL=zdraví
+ABBR_MAX_HP=MAX ZDR
+ABBR_MAX_HP_FULL=maximální zdraví
+ABBR_PROT=OCHR, PP
+ABBR_PROT_FULL=ochrana
+ABBR_SPD=RYCH
+ABBR_SPD_FULL=rychlost
+
+# ---- Added 2026-10-16: the F10 Announcements row "Glossary definitions" (its three values and three outcome lines) and KW_DEF_FMT, the one line "<term>: <definition>" -- both halves are the game's own glossary text in this language, so only the punctuation is the translator's ----
+SM_ANN_KEYWORDS=Definice z glosáře
+SM_ANN_KW_V_SPOKEN=Čtené s popisky
+SM_ANN_KW_V_BUFFER=Jen v zásobníku popisků
+SM_ANN_KW_SPOKEN=Definice z glosáře se čtou s popisky. Popisek končí definicí každého pojmu z glosáře, který zmiňuje.
+SM_ANN_KW_BUFFER=Definice z glosáře jen v zásobníku popisků. Následují za vlastními řádky popisku, když se čte na vyžádání.
+SM_ANN_KW_OFF=Definice z glosáře vypnuty.
+KW_DEF_FMT=%s: %s
+
+# ---- Added 2026-10-16: the quest tooltip's rewards heading (the fallback for the game's own town_quest_rewards; the two per-line "Reward: %s" formats it replaced were removed above) ----
+EMB_REWARDS_HEAD=Odměny
+
+# ---- Added 2026-10-17: the item card's value line in the raid bag and the loot window (the game's hover "[Value: N Gold Each]"; %d the unit value, %s the game's currency name, the second %d a stack's sum) -- the 2026-10-16 results-screen wording, moved to the grids that show it ----
+INV_VALUE_FMT=Hodnota: %d %s.
+INV_VALUE_EACH_FMT=Hodnota: %d %s, celkem: %d.
+
+# ---- Added 2026-10-17: the welcome tutorial's Control hints paragraph and the two F10 toggles' key names (F2 control hints, F3 automatic tooltips); MT_TITLE_P4 above gained its second sentence in place ----
+MT_TITLE_HINTS=Nápověda k ovládání: mod ti u každé obrazovky a každého prvku řekne, jaké příkazy máš k dispozici. Vypnout ji můžeš v nastavení modu nebo klávesou F2.
+FN_CONTROL_HINTS=Nápověda k ovládání zapnuto nebo vypnuto
+FN_AUTO_TOOLTIPS=Automatické popisky zapnuto nebo vypnuto
+
+# ---- Added 2026-10-17: the Expand abbreviations table's round / rounds pair (the game's DOT, mark and stealth durations: 'pts/rd for 3 rds'). Same rule as the ABBR_* block: the spelling half is what the game writes in this language, the _FULL half the word to say. Sweep: the Czech tables write kolo / kol in full; the English spellings are kept for the places the game leaves English in ----
+ABBR_RD=rd
+ABBR_RD_FULL=kolo
+ABBR_RDS=rds
+ABBR_RDS_FULL=kol

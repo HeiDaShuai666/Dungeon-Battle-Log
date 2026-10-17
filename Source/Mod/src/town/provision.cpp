@@ -300,7 +300,7 @@ static void provFreeHint(uintptr_t base, const char* rawItemId, int freeCount,
 }
 
 static bool provSlotText(uintptr_t base, uintptr_t sys, int section, int slot,
-                         char* out, int outsz) {
+                         char* out, int outsz, bool withPos, bool withDesc) {
     uintptr_t beg = 0; int slots = 0;
     if (!invItemVectorAt(sys, &beg, &slots)) return false;
     if (slot < 0 || slot >= slots) return false;
@@ -308,10 +308,13 @@ static bool provSlotText(uintptr_t base, uintptr_t sys, int section, int slot,
     uint32_t amount = 0;
     if (!safeReadU32(item + ITEM_AMOUNT_OFF, &amount)) return false;
     char posS[64];
-    _snprintf(posS, sizeof posS, axs(AXS_ITEM_N_OF_M), slot + 1, slots);
-    posS[sizeof posS - 1] = 0;
+    posS[0] = 0;
+    if (withPos) {
+        _snprintf(posS, sizeof posS, axs(AXS_ITEM_N_OF_M), slot + 1, slots);
+        posS[sizeof posS - 1] = 0;
+    }
     if ((int32_t)amount < 1) {
-        _snprintf(out, outsz, "%s %s", axs(AXS_PROV_ROW_EMPTY), posS);
+        _snprintf(out, outsz, "%s%s%s", axs(AXS_PROV_ROW_EMPTY), withPos ? " " : "", posS);
         out[outsz - 1] = 0;
         return true;
     }
@@ -364,13 +367,13 @@ static bool provSlotText(uintptr_t base, uintptr_t sys, int section, int slot,
     char desckey[192], desc[512];
     _snprintf(desckey, sizeof desckey, "%s%s%s", INV_DESC_PREFIX, type, itemId);
     desckey[sizeof desckey - 1] = 0;
-    bool hasDesc = resolveKey(base, desckey, desc, sizeof desc) && desc[0];
+    bool hasDesc = withDesc && resolveKey(base, desckey, desc, sizeof desc) && desc[0];
 
-    if (amount > 1) _snprintf(out, outsz, "%s, %u.%s %s%s%s",
-                              name, amount, money, posS,
+    if (amount > 1) _snprintf(out, outsz, "%s, %u.%s%s%s%s%s",
+                              name, amount, money, withPos ? " " : "", posS,
                               hasDesc ? " " : "", hasDesc ? desc : "");
-    else            _snprintf(out, outsz, "%s.%s %s%s%s",
-                              name, money, posS,
+    else            _snprintf(out, outsz, "%s.%s%s%s%s%s",
+                              name, money, withPos ? " " : "", posS,
                               hasDesc ? " " : "", hasDesc ? desc : "");
     out[outsz - 1] = 0;
     return true;
@@ -395,12 +398,18 @@ static void provSpeakSlot(uintptr_t base, const char* prefix) {
     if (*cur >= slots) *cur = slots - 1;
     if (*cur < 0)      *cur = 0;
     char row[MAILBOX_SZ], utter[MAILBOX_SZ];
-    if (!provSlotText(base, sys, g_provSection, *cur, row, sizeof row)) {
+    if (!provSlotText(base, sys, g_provSection, *cur, row, sizeof row, true, axTipWanted())) {
         _snprintf(row, sizeof row, axs(AXS_PROV_ITEM_UNREADABLE_FMT), *cur + 1, slots);
         row[sizeof row - 1] = 0;
     }
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", row);
     utter[sizeof utter - 1] = 0;
+    {
+        uint32_t amount = 0;
+        safeReadU32(beg + (uintptr_t)*cur * ITEM_STRIDE + ITEM_AMOUNT_OFF, &amount);
+        if ((int32_t)amount >= 1)
+            axAppendHint(utter, sizeof utter, g_provSection == 0 ? AXS_PROV_BUY_HINT : AXS_PROV_SELL_HINT);
+    }
     postSpeech(utter);
 }
 
@@ -615,12 +624,20 @@ static void provInfoSpeak(uintptr_t base, const char* prefix) {
     } else {
         axStepCursor(&g_provInfoRow, n, 0);            // re-clamp against the live row count
         const char* t = g_provInfoText[g_provInfoRow];
-        size_t tl = strlen(t);
-        bool ends = tl && strchr(".!?", t[tl - 1]);
+        char rowbuf[MAILBOX_SZ];
+        _snprintf(rowbuf, sizeof rowbuf, "%s", t);
+        rowbuf[sizeof rowbuf - 1] = 0;
+        if (axTipWanted()) {
+            int ln = provInfoTips(base, g_provInfoRow);
+            axTipGlueLines(rowbuf, sizeof rowbuf, &g_provInfoTipLines[0][0], AB_TIP_LINE_SZ, ln, 1);
+            axTipGlueKeywords(rowbuf, sizeof rowbuf);   // the glossary terms it names (core/keywords.cpp)
+        }
+        size_t tl = strlen(rowbuf);
+        bool ends = tl && strchr(".!?", rowbuf[tl - 1]);
         char pos[48];
         _snprintf(pos, sizeof pos, axs(AXS_POS_N_OF_M), g_provInfoRow + 1, n);
         pos[sizeof pos - 1] = 0;
-        _snprintf(utter, sizeof utter, "%s%s%s %s", prefix ? prefix : "", t, ends ? "" : ".", pos);
+        _snprintf(utter, sizeof utter, "%s%s%s %s", prefix ? prefix : "", rowbuf, ends ? "" : ".", pos);
     }
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
@@ -661,11 +678,7 @@ static bool routeProvInfoKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t
         if (n <= 0) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
         axStepCursor(&g_provInfoRow, n, 0);
         int ln = provInfoTips(base, g_provInfoRow);
-        if (ln <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
-        if (g_provInfoTip < 0 || g_provInfoTip >= ln) g_provInfoTip = 0;
-        g_provInfoTip = (g_provInfoTip + ((sym == SDLK_UP) ? 1 : -1) + ln) % ln;
-        postSpeech(g_provInfoTipLines[g_provInfoTip]);
-        return true;
+        return axTipStep(&g_provInfoTip, (sym == SDLK_UP) ? 1 : -1, &g_provInfoTipLines[0][0], AB_TIP_LINE_SZ, ln);
     }
     if (ctrl) return false;
 
@@ -692,9 +705,86 @@ static bool routeProvInfoKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t
     return false;
 }
 
+// ---- THE PROVISIONING SCREEN'S FIND ENUMERATOR ----
+int provFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_provActive) return 0;
+    int slots[2] = { 0, 0 };
+    uintptr_t sys[2] = { 0, 0 };
+    for (int s = 0; s < 2; s++) {
+        uintptr_t beg = 0; int cnt = 0;
+        sys[s] = provSystem(base, s);
+        if (sys[s] && invItemVectorAt(sys[s], &beg, &cnt) && cnt > 0) slots[s] = cnt;
+    }
+    int infoN = provInfoRows(base);
+    if (infoN < 0) infoN = 0;
+    int total = slots[0] + slots[1] + infoN;
+    if (op == AXF_COUNT) return total;
+    if (idx < 0 || idx >= total) return 0;
+    int section = 0, at = idx;
+    if (at >= slots[0]) { at -= slots[0]; section = 1; }
+    if (section == 1 && at >= slots[1]) { at -= slots[1]; section = PROV_SECTION_INFO; }
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        if (section == PROV_SECTION_INFO) {
+            _snprintf(out, outsz, "%s", g_provInfoText[at]);
+            out[outsz - 1] = 0;
+            return 1;
+        }
+        char row[MAILBOX_SZ];
+        if (!provSlotText(base, sys[section], section, at, row, sizeof row, false, false))
+            return 0;                                // an unreadable slot has no words to find
+        _snprintf(out, outsz, "%s. %s", provSectionSpoken(section), row);
+        out[outsz - 1] = 0;
+        return 1;
+    }
+    if (op == AXF_GO) {
+        char prefix[64];
+        _snprintf(prefix, sizeof prefix, "%s. ", provSectionSpoken(section));
+        prefix[sizeof prefix - 1] = 0;
+        if (section == PROV_SECTION_INFO) {
+            if (g_provSection != PROV_SECTION_INFO) g_provGridBack = g_provSection;
+            g_provSection = PROV_SECTION_INFO;
+            g_provInfoRow = at;
+            g_provInfoTip = 0;
+            logLine("provision: find landed on quest-info row %d", at);
+            provInfoSpeak(base, prefix);             // re-clamps against the live row count
+            return 1;
+        }
+        g_provSection       = section;
+        g_provSlot[section] = at;
+        logLine("provision: find landed on %s slot %d", provSectionName(section), at);
+        provSpeakSlot(base, prefix);                 // re-clamps against the live slot count
+        return 1;
+    }
+    return 0;
+}
+
 bool routeProvisionKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
     if (mod & (KMOD_LALT | KMOD_RALT)) return false;
     if (g_provSection == PROV_SECTION_INFO) return routeProvInfoKey(base, sym, mod, repeat);
+    if ((mod & (KMOD_LCTRL | KMOD_RCTRL)) && (sym == SDLK_UP || sym == SDLK_DOWN)) {
+        if (repeat) return true;
+        static int s_tipLine = 0, s_tipSec = -1, s_tipSlot = -1;
+        int slot = g_provSlot[g_provSection];
+        if (s_tipSec != g_provSection || s_tipSlot != slot) { s_tipSec = g_provSection; s_tipSlot = slot; s_tipLine = 0; }
+        uintptr_t sys = provSystem(base, g_provSection);
+        static char lines[2][AB_TIP_LINE_SZ];
+        int n = 0;
+        if (sys && provSlotText(base, sys, g_provSection, slot, lines[0], AB_TIP_LINE_SZ, true, false)) {
+            n = 1;
+            uintptr_t beg = 0; int slots = 0;
+            if (invItemVectorAt(sys, &beg, &slots) && slot >= 0 && slot < slots) {
+                uintptr_t item = beg + (uintptr_t)slot * ITEM_STRIDE;
+                uint32_t amount = 0;
+                if (safeReadU32(item + ITEM_AMOUNT_OFF, &amount) && (int32_t)amount >= 1) {
+                    InvCard c;
+                    invCardRead(base, item, &c);
+                    n = invCardLines(&c, lines, 1, 2);
+                }
+            }
+        }
+        return axTipStep(&s_tipLine, sym == SDLK_UP ? 1 : -1, &lines[0][0], AB_TIP_LINE_SZ, n);
+    }
     if (mod & (KMOD_LCTRL | KMOD_RCTRL)) return false;
 
     int dRow = 0, dCol = 0, jump = 0;
@@ -954,8 +1044,10 @@ void checkProvision(uintptr_t base) {
         if (!g_provDumped) g_provProbeAt = GetTickCount() + 400;   // past the open tween
         logLine("provision: active");
         char pre[96];
-        _snprintf(pre, sizeof pre, "%s %s %s. ", axs(AXS_PROV_TITLE), axs(AXS_PROV_E_HINT),
-                  provSectionSpoken(g_provSection));
+        _snprintf(pre, sizeof pre, "%s", axs(AXS_PROV_TITLE)); pre[sizeof pre - 1] = 0;
+        axAppendHint(pre, sizeof pre, AXS_PROV_E_HINT);
+        size_t pn = strlen(pre);
+        _snprintf(pre + pn, sizeof pre - pn, " %s. ", provSectionSpoken(g_provSection));
         pre[sizeof pre - 1] = 0;
         provSpeakSlot(base, pre);
     } else if (!on && g_provActive) {

@@ -12,7 +12,10 @@ static const uintptr_t RR_STATE_OFF       = 0x1768;
 static const uintptr_t RR_REVEAL_MASK_OFF = 0x1938;
 static const uintptr_t RR_QUEST_INV_OFF   = 0x2f8;
 static const uintptr_t RR_PARTY_INV_OFF   = 0x3c8;
-                                                       // heirlooms, split by item type when drawn
+// ---- THE WAVE RESULTS ----
+static const uintptr_t RR_RES_WAVE_OFF    = 0x374;     // results+: char, nonzero = the wave skin
+static const uintptr_t RR_D_KILLS_OFF     = 0x18a4;    // display+: int, the run's kill count
+static const uintptr_t RR_D_SHARDS_OFF    = 0x18a0;    // display+: float, comet shards collected
 static const uintptr_t RR_HREC_VEC_BEG    = 0x430;
 static const uintptr_t RR_HREC_VEC_END    = 0x438;     // results+: vector end (was 0x3e8)
 static const uintptr_t RR_HREC_STRIDE     = 0x28;
@@ -23,9 +26,10 @@ static const uintptr_t RR_HREC_QUIRK_END  = 0x18;      // record+: vector end
 static const uintptr_t RR_PROFILE_HERO_BEG= 0x20;      // profile+: roster-entry vector begin
 static const uintptr_t RR_PROFILE_HERO_END= 0x28;      // profile+: vector end
 static const uintptr_t RR_ENTRY_HERO_OFF  = 0x08;      // entry+: the Hero object, inline
+static const uint32_t  RR_STATUS_DEAD     = 3;         // roster status: dead (no XP line, dead portrait)
+static const uint32_t  RR_STATUS_LOST_A   = 7;         // roster status: "in_time_and_space" (Color of
+static const uint32_t  RR_STATUS_LOST_B   = 8;         //   Madness), two variants, one portrait swap
 static const uintptr_t RR_ENTRY_STATUS_OFF= 0x1540;    // entry+: int status; 3 = dead (dead (was 0x14c0;
-static const uintptr_t RR_ITEM_DEF_OFF    = 0x598;
-static const uintptr_t RR_ITEMDEF_VALUE_OFF = 0xa4;    // Inventory::Item+: int32 gold value (was 0x98)
 static const int64_t   RR_BTN_FWRD        = 0x66777264; // 'fwrd' — Next / Return to Town
 static const int64_t   RR_BTN_BACK        = 0x6261636b; // 'back' — the game-wide back id (logged only)
 static const uint32_t  RR_MASK_ID_BASE    = 0x6d61736b; // 'mask' + N — un-revealed quirk click zones
@@ -65,6 +69,20 @@ int rrState(uintptr_t base) {
     uint32_t s = 0;
     if (!safeReadU32(d + RR_STATE_OFF, &s)) return -1;
     return (int)s;
+}
+
+static char      g_rrQuestTitle[256] = { 0 };
+static uintptr_t g_rrQuestTitled     = 0;      // the Quest pointer the title was read from
+static void rrLatchQuestTitle(uintptr_t base) {
+    uintptr_t q = qtQuest(base);
+    if (!q || q == g_rrQuestTitled) return;
+    char name[256];
+    embQuestName(base, q, name, sizeof name);
+    if (!name[0]) return;
+    strncpy(g_rrQuestTitle, name, sizeof g_rrQuestTitle - 1);
+    g_rrQuestTitle[sizeof g_rrQuestTitle - 1] = 0;
+    g_rrQuestTitled = q;
+    logLine("results: quest title latched \"%s\" (quest %p)", g_rrQuestTitle, (void*)q);
 }
 
 static bool rrOutcomeText(uintptr_t base, char* out, int outsz) {
@@ -109,30 +127,30 @@ static bool rrItemIsHeirloom(uintptr_t item) {
     return strcmp(type, "heirloom") == 0;
 }
 
+// ---- THE PER-ITEM VALUE ----
+static bool rrItemUnitValue(uintptr_t base, uintptr_t item, bool* isGold, int32_t* value) {
+    return invItemUnitValue(base, item, isGold, value);
+}
+
 static long long rrTreasureTotal(uintptr_t base, uintptr_t system) {
     uintptr_t items[RR_MAX_ITEMS];
     int n = rrSystemItems(system, items, RR_MAX_ITEMS);
-    uint32_t goldHash = 0;
-    safeReadU32(base + RR_GOLD_TYPEHASH_RVA, &goldHash);
     long long total = 0;
     for (int i = 0; i < n; i++) {
-        uint32_t amount = 0, typeHash = 0;
+        uint32_t amount = 0;
         safeReadU32(items[i] + ITEM_AMOUNT_OFF, &amount);
-        safeReadU32(items[i] + ITEM_TYPEHASH_OFF, &typeHash);
-        if (goldHash && typeHash == goldHash) {
+        bool gold = false; int32_t value = 0;
+        if (!rrItemUnitValue(base, items[i], &gold, &value)) {
+            logLine("results gold: item %d has no cached definition — value skipped", i + 1);
+            continue;
+        }
+        if (gold) {
             total += (long long)(int32_t)amount;
             logLine("results gold: item %d is gold, amount %d", i + 1, (int32_t)amount);
             continue;
         }
-        uintptr_t def = 0;
-        if (!safeReadPtr(items[i] + RR_ITEM_DEF_OFF, &def) || def <= 0x10000) {
-            logLine("results gold: item %d has no cached definition — value skipped", i + 1);
-            continue;
-        }
-        uint32_t value = 0;
-        safeReadU32(def + RR_ITEMDEF_VALUE_OFF, &value);
-        total += (long long)(int32_t)value * (int32_t)amount;
-        logLine("results gold: item %d value %d x %d", i + 1, (int32_t)value, (int32_t)amount);
+        total += (long long)value * (int32_t)amount;
+        logLine("results gold: item %d value %d x %d", i + 1, value, (int32_t)amount);
     }
     if (total < 0) total = 0;
     if (total > 2000000000LL) total = 2000000000LL;     // the game's own cap
@@ -147,25 +165,19 @@ static void rrSectionTitle(uintptr_t base, const char* locKey, const char* fallb
 }
 
 static void rrItemRowText(uintptr_t base, uintptr_t item, int pos, int total,
-                          char* out, int outsz) {
+                          char* out, int outsz, int card = INV_CARD_AUTO) {
     char type[64], itemId[64], key[192], name[256];
     invItemName(base, item, type, itemId, key, name);
     uint32_t amount = 0;
     safeReadU32(item + ITEM_AMOUNT_OFF, &amount);
 
-    char rarity[96] = { 0 }, clsreq[256] = { 0 }, fx[768] = { 0 };
-    char charges[384] = { 0 }, trig[1536] = { 0 };
     bool trinket = invItemIsTrinket(item);
-    if (trinket) {
-        uintptr_t rec = bldTrinketRecord(base, item);
-        if (rec) {
-            bldTrinketRarity(base, rec, rarity, sizeof rarity, false);
-            bldTrinketClassReq(base, rec, clsreq, sizeof clsreq, false);
-            bldTrinketCharges(base, item, rec, charges, sizeof charges, false);
-            bldTrinketTriggers(base, rec, trig, sizeof trig, false);
-        }
-        bldTrinketEffects(base, item, fx, sizeof fx, false);
-    }
+    InvCard c;
+    if (trinket && invCardWanted(card)) invCardRead(base, item, &c);
+    else                                memset(&c, 0, sizeof c);
+    c.value[0] = 0;
+    const char* rarity = c.rarity;  const char* clsreq = c.clsreq;  const char* charges = c.charges;
+    const char* trig   = c.trig;    const char* fx     = c.fx;
 
     char head[384];
     if (amount > 1) _snprintf(head, sizeof head, "%s, %u", name, amount);
@@ -176,12 +188,17 @@ static void rrItemRowText(uintptr_t base, uintptr_t item, int pos, int total,
     _snprintf(posText, sizeof posText, axs(AXS_INV_POS_FMT), axs(AXS_LOOT_NOUN_ITEM), pos, total);
     posText[sizeof posText - 1] = 0;
     _snprintf(out, outsz, "%s%s%s%s%s%s%s%s%s%s%s. %s",
-              head, rarity[0] ? ". " : "", rarity, clsreq[0] ? ". " : "", clsreq,
+              head,
+              rarity[0] ? ", " : "", rarity, clsreq[0] ? ", " : "", clsreq,
               charges[0] ? ". " : "", charges,
               fx[0] ? ". " : "", fx,
               trig[0] ? ". " : "", trig,
               posText);
     out[outsz - 1] = 0;
+    if (card == INV_CARD_AUTO && invCardWanted(card)) {
+        invCardNoteKeywords(&c);
+        axTipGlueKeywords(out, outsz);
+    }
 
     if (trinket)
         logLine("results trinket: \"%s\" rarity=\"%s\" class=\"%s\" effects=%s charges=\"%s\""
@@ -190,6 +207,15 @@ static void rrItemRowText(uintptr_t base, uintptr_t item, int pos, int total,
 }
 
 // ---- Page 1: one flat list — outcome, quest rewards, treasure (+ total), heirlooms ----
+static inline int rrHeirloomTotalRows(int heirN) { return heirN > 0 ? 1 : 0; }
+
+static bool rrIsWave(uintptr_t base) {
+    uintptr_t results = rrResults(base);
+    uint8_t flag = 0;
+    return results && safeReadU8(results + RR_RES_WAVE_OFF, &flag) && flag != 0;
+}
+static int rrWaveRows(uintptr_t base) { return rrIsWave(base) ? 2 : 0; }
+
 static int rrPage1Layout(uintptr_t base, int* questN, int* treasN, int* heirN, int* goldRow) {
     *questN = *treasN = *heirN = 0; *goldRow = 0;
     uintptr_t results = rrResults(base);
@@ -200,7 +226,75 @@ static int rrPage1Layout(uintptr_t base, int* questN, int* treasN, int* heirN, i
     for (int i = 0; i < pn; i++)
         (rrItemIsHeirloom(items[i]) ? *heirN : *treasN)++;
     *goldRow = (pn > 0) ? 1 : 0;
-    return 1 + *questN + *treasN + *goldRow + *heirN;
+    return 1 + *questN + *treasN + *goldRow + *heirN + rrHeirloomTotalRows(*heirN) + rrWaveRows(base);
+}
+
+static bool rrWaveRowText(uintptr_t base, int which, char* out, int outsz) {
+    uintptr_t d = rrDisplay(base);
+    if (!d) return false;
+    if (which == 0) {
+        float shards = 0.0f;
+        uint32_t bits = 0;
+        if (safeReadU32(d + RR_D_SHARDS_OFF, &bits)) memcpy(&shards, &bits, sizeof shards);
+        int n = (shards > 0.0f && shards < 2.0e9f) ? (int)shards : 0;   // the game's cvttss2si
+        char title[128];
+        rrSectionTitle(base, "raid_results_party_shard_inventory_title", axs(AXS_RR_SECT_SHARDS),
+                       title, sizeof title);
+        _snprintf(out, outsz, axs(AXS_RR_WAVE_SHARDS_FMT), title, n);
+        out[outsz - 1] = 0;
+        logLine("results wave: shards %.2f -> %d", shards, n);
+        return true;
+    }
+    if (which == 1) {
+        uint32_t kills = 0;
+        safeReadU32(d + RR_D_KILLS_OFF, &kills);
+        char fmt[128] = { 0 };
+        bool fmtOk = resolveKey(base, "raid_results_kill_count_format", fmt, sizeof fmt) && fmt[0];
+        if (fmtOk) {
+            int pct = 0; const char* p1 = nullptr;
+            for (const char* p = fmt; *p; p++)
+                if (*p == '%') { pct++; p1 = p + 1; }
+            fmtOk = (pct == 1 && p1 && *p1 == 'd');
+        }
+        if (fmtOk) { abStripMarkup(fmt); _snprintf(out, outsz, fmt, (int)kills); }
+        else       _snprintf(out, outsz, axs(AXS_RR_WAVE_KILLS_FMT), (int)kills);
+        out[outsz - 1] = 0;
+        logLine("results wave: kills %d (game format %s)", (int)kills, fmtOk ? "used" : "MISSING, fallback");
+        return true;
+    }
+    return false;
+}
+
+// ---- THE HEIRLOOM TOTALS ROW ----
+static void rrHeirloomTotalText(uintptr_t base, const uintptr_t* heir, int hn,
+                                char* out, int outsz) {
+    const int MAXK = 8;
+    uint32_t kindHash[MAXK]; long long kindSum[MAXK]; int kn = 0;
+    for (int i = 0; i < hn; i++) {
+        uint32_t idHash = 0, amount = 0;
+        safeReadU32(heir[i] + ITEM_IDHASH_OFF, &idHash);
+        safeReadU32(heir[i] + ITEM_AMOUNT_OFF, &amount);
+        int k = 0;
+        while (k < kn && kindHash[k] != idHash) k++;
+        if (k == kn) {
+            if (kn == MAXK) { logLine("results heirlooms: more than %d kinds -- the rest dropped", MAXK); break; }
+            kindHash[kn] = idHash; kindSum[kn] = 0; kn++;
+        }
+        kindSum[k] += (long long)(int32_t)amount;
+    }
+    char list[512] = { 0 };
+    for (int k = 0; k < kn; k++) {
+        char name[96], item[160];
+        resCurrencyTitle(base, kindHash[k], "raidresults", name, sizeof name);
+        _snprintf(item, sizeof item, axs(AXS_RR_HEIRLOOM_TOTAL_ITEM_FMT), (int)kindSum[k], name);
+        item[sizeof item - 1] = 0;
+        size_t n = strlen(list);
+        _snprintf(list + n, sizeof list - n, "%s%s", n ? ", " : "", item);
+        list[sizeof list - 1] = 0;
+        logLine("results heirlooms: kind %08x \"%s\" x %lld", kindHash[k], name, kindSum[k]);
+    }
+    _snprintf(out, outsz, axs(AXS_RR_HEIRLOOM_TOTAL_FMT), list);
+    out[outsz - 1] = 0;
 }
 
 static int rrPage1RowSection(uintptr_t base, int row) {
@@ -211,7 +305,9 @@ static int rrPage1RowSection(uintptr_t base, int row) {
     if (r < questN) return 1;
     r -= questN;
     if (r < treasN + goldRow) return 2;
-    return 3;
+    r -= treasN + goldRow;
+    if (r < heirN + rrHeirloomTotalRows(heirN)) return 3;
+    return 4;
 }
 
 static void rrPage1SectionName(uintptr_t base, int section, char* out, int outsz) {
@@ -227,7 +323,7 @@ static void rrPage1SectionName(uintptr_t base, int section, char* out, int outsz
                        axs(AXS_RR_SECT_HEIRLOOMS), out, outsz);
 }
 
-static bool rrPage1RowText(uintptr_t base, int row, char* out, int outsz) {
+static bool rrPage1RowText(uintptr_t base, int row, char* out, int outsz, int card = INV_CARD_AUTO) {
     int questN, treasN, heirN, goldRow;
     int total = rrPage1Layout(base, &questN, &treasN, &heirN, &goldRow);
     if (row < 0 || row >= total) return false;
@@ -236,6 +332,12 @@ static bool rrPage1RowText(uintptr_t base, int row, char* out, int outsz) {
         if (!rrOutcomeText(base, out, outsz))
             _snprintf(out, outsz, "%s", axs(AXS_RR_OUTCOME_FALLBACK));
         out[outsz - 1] = 0;
+        if (g_rrQuestTitle[0]) {
+            size_t n = strlen(out);
+            bool ended = n && strchr(".!?", out[n - 1]);
+            _snprintf(out + n, outsz - (int)n, "%s %s.", ended ? "" : ".", g_rrQuestTitle);
+            out[outsz - 1] = 0;
+        }
         return true;
     }
 
@@ -247,7 +349,7 @@ static bool rrPage1RowText(uintptr_t base, int row, char* out, int outsz) {
         uintptr_t items[RR_MAX_ITEMS];
         int n = rrSystemItems(results + RR_QUEST_INV_OFF, items, RR_MAX_ITEMS);
         if (r >= n) return false;
-        rrItemRowText(base, items[r], r + 1, n, out, outsz);
+        rrItemRowText(base, items[r], r + 1, n, out, outsz, card);
         return true;
     }
     r -= questN;
@@ -262,7 +364,7 @@ static bool rrPage1RowText(uintptr_t base, int row, char* out, int outsz) {
     }
 
     if (r < tn) {                                      // collected treasure
-        rrItemRowText(base, treas[r], r + 1, tn, out, outsz);
+        rrItemRowText(base, treas[r], r + 1, tn, out, outsz, card);
         return true;
     }
     r -= tn;
@@ -278,10 +380,47 @@ static bool rrPage1RowText(uintptr_t base, int row, char* out, int outsz) {
     r -= goldRow;
 
     if (r < hn) {                                      // collected heirlooms
-        rrItemRowText(base, heir[r], r + 1, hn, out, outsz);
+        rrItemRowText(base, heir[r], r + 1, hn, out, outsz, card);
         return true;
     }
+    r -= hn;
+
+    if (hn > 0 && r == 0) {                            // the heirloom totals (the game's strip)
+        rrHeirloomTotalText(base, heir, hn, out, outsz);
+        return true;
+    }
+    r -= rrHeirloomTotalRows(hn);
+
+    if (r < rrWaveRows(base))                          // the wave skin: shards, then kills
+        return rrWaveRowText(base, r, out, outsz);
     return false;
+}
+
+static uintptr_t rrPage1RowItem(uintptr_t base, int row) {
+    int questN, treasN, heirN, goldRow;
+    int total = rrPage1Layout(base, &questN, &treasN, &heirN, &goldRow);
+    if (row <= 0 || row >= total) return 0;
+    uintptr_t results = rrResults(base);
+    if (!results) return 0;
+    int r = row - 1;
+    uintptr_t items[RR_MAX_ITEMS];
+    if (r < questN) {
+        int n = rrSystemItems(results + RR_QUEST_INV_OFF, items, RR_MAX_ITEMS);
+        return (r < n) ? items[r] : 0;
+    }
+    r -= questN;
+    int pn = rrSystemItems(results + RR_PARTY_INV_OFF, items, RR_MAX_ITEMS);
+    uintptr_t treas[RR_MAX_ITEMS], heir[RR_MAX_ITEMS];
+    int tn = 0, hn = 0;
+    for (int i = 0; i < pn; i++) {
+        if (rrItemIsHeirloom(items[i])) heir[hn++] = items[i];
+        else                            treas[tn++] = items[i];
+    }
+    if (r < tn) return treas[r];
+    r -= tn;
+    if (goldRow && r == 0) return 0;
+    r -= goldRow;
+    return (r < hn) ? heir[r] : 0;
 }
 
 // ---- Page 2: per-hero records — name/rank, XP gained, new quirks ----
@@ -401,7 +540,13 @@ static void rrHeroHeaderText(uintptr_t base, int heroIdx, char* out, int outsz) 
     uintptr_t rec = rrHeroRecAt(base, heroIdx);
     uint32_t rosterId = 0;
     if (rec) safeReadU32(rec + RR_HREC_ROSTER_ID, &rosterId);
-    uintptr_t hero = rec ? rrLiveHeroById(base, (int)rosterId) : 0;
+    uintptr_t entry = rec ? rrRosterEntryById(base, (int)rosterId) : 0;
+    uintptr_t hero  = entry ? entry + RR_ENTRY_HERO_OFF : 0;
+    uint32_t status = 0;
+    if (entry) safeReadU32(entry + RR_ENTRY_STATUS_OFF, &status);
+    bool lost = (status == RR_STATUS_LOST_A || status == RR_STATUS_LOST_B);
+    if (lost) logLine("results: hero %d roster=%d status=%u -- lost in time and space", heroIdx + 1,
+                      (int)rosterId, status);
 
     char label[224] = { 0 };
     if (hero) {
@@ -426,8 +571,9 @@ static void rrHeroHeaderText(uintptr_t base, int heroIdx, char* out, int outsz) 
     char pos[96];
     _snprintf(pos, sizeof pos, axs(AXS_INV_POS_FMT), axs(AXS_RR_NOUN_HERO), heroIdx + 1, total);
     pos[sizeof pos - 1] = 0;
-    if (label[0]) _snprintf(out, outsz, "%s. %s", label, pos);
-    else          _snprintf(out, outsz, "%s", pos);
+    const char* lostText = lost ? axs(AXS_RR_LOST_TIME_SPACE) : "";
+    if (label[0]) _snprintf(out, outsz, "%s. %s%s%s", label, lostText, lost ? " " : "", pos);
+    else          _snprintf(out, outsz, "%s%s%s", lostText, lost ? " " : "", pos);
     out[outsz - 1] = 0;
 }
 
@@ -475,7 +621,7 @@ static int rrHeroRowCount(uintptr_t base, int heroIdx) {
     return 2 + rrHeroNewQuirks(base, heroIdx, quirks, RR_MAX_QUIRKS);
 }
 
-static bool rrHeroRowText(uintptr_t base, int heroIdx, int row, char* out, int outsz) {
+static bool rrHeroRowText(uintptr_t base, int heroIdx, int row, char* out, int outsz, int card = INV_CARD_AUTO) {
     if (row == 0) { rrHeroHeaderText(base, heroIdx, out, outsz); return true; }
 
     uintptr_t rec = rrHeroRecAt(base, heroIdx);
@@ -490,7 +636,7 @@ static bool rrHeroRowText(uintptr_t base, int heroIdx, int row, char* out, int o
         if (entry) safeReadU32(entry + RR_ENTRY_STATUS_OFF, &status);
         logLine("results: hero %d roster=%d entry=%p status=%u", heroIdx + 1, (int)rosterId,
                 (void*)entry, status);
-        if (hero && status == 3) {
+        if (hero && status == RR_STATUS_DEAD) {
             _snprintf(out, outsz, "%s", axs(AXS_RR_DEAD_NO_XP));
             out[outsz - 1] = 0;
             return true;
@@ -548,12 +694,15 @@ static bool rrHeroRowText(uintptr_t base, int heroIdx, int row, char* out, int o
     tail[sizeof tail - 1] = 0;
 
     if (!rrHeroRevealed(base, heroIdx)) {
-        _snprintf(out, outsz, "%s %s", axs(AXS_RR_QUIRK_HIDDEN), tail);
+        char hidden[160];
+        _snprintf(hidden, sizeof hidden, "%s", axs(AXS_RR_QUIRK_HIDDEN)); hidden[sizeof hidden - 1] = 0;
+        axAppendHint(hidden, sizeof hidden, AXS_RR_REVEAL_HINT);
+        _snprintf(out, outsz, "%s %s", hidden, tail);
         out[outsz - 1] = 0;
         return true;
     }
     char body[768] = { 0 };
-    if (csQuirkRowFrom(base, quirks[q], true, body, sizeof body)) {
+    if (csQuirkRowFrom(base, quirks[q], true, invCardWanted(card), body, sizeof body)) {
         if (qn > 1) {
             size_t bl = strlen(body);
             const char* gap = (bl && (body[bl - 1] == '.' || body[bl - 1] == '!' ||
@@ -566,6 +715,11 @@ static bool rrHeroRowText(uintptr_t base, int heroIdx, int row, char* out, int o
         _snprintf(out, outsz, "%s", tail);
     }
     out[outsz - 1] = 0;
+    if (body[0] && card == INV_CARD_AUTO && invCardWanted(card)) {
+        char desc[CS_QUIRK_DESC_BUF + 8];
+        if (csQuirkDescLine(base, quirks[q], desc, sizeof desc)) axTipNoteKeywords(desc);
+        axTipGlueKeywords(out, outsz);
+    }
     return true;
 }
 
@@ -641,7 +795,7 @@ static void rrSpeakEntry(uintptr_t base, int state, const char* prefix) {
         rrPage1SectionName(base, rrPage1RowSection(base, g_rrRow), sect, sizeof sect);
         int questN, treasN, heirN, goldRow;
         int total = rrPage1Layout(base, &questN, &treasN, &heirN, &goldRow);
-        int rewards = total - 1 - goldRow;
+        int rewards = total - 1 - goldRow - rrHeirloomTotalRows(heirN) - rrWaveRows(base);   // items only
         char counts[128];
         counts[0] = ' ';
         if (rewards > 0) _snprintf(counts + 1, sizeof counts - 1, axs(AXS_RR_REWARD_COUNT_FMT), rewards);
@@ -653,6 +807,86 @@ static void rrSpeakEntry(uintptr_t base, int state, const char* prefix) {
     }
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
+}
+
+// ---- THE RESULTS SCREEN'S FIND ENUMERATOR ----
+int rrFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    int state = rrState(base);
+    if (state < 0) return 0;
+    if (bcrIsArena(base)) return 0;
+    if (state != 2) {
+        int questN, treasN, heirN, goldRow;
+        int total = rrPage1Layout(base, &questN, &treasN, &heirN, &goldRow);
+        if (total < 0) total = 0;
+        if (op == AXF_COUNT) return total;
+        if (total <= 0) return 0;
+        if (op == AXF_LABEL) {
+            if (!out || outsz <= 0 || idx < 0 || idx >= total) return 0;
+            return rrPage1RowText(base, idx, out, outsz) ? 1 : 0;
+        }
+        if (op == AXF_GO) {
+            if (idx < 0) idx = 0;
+            if (idx >= total) idx = total - 1;
+            char buf[MAILBOX_SZ];
+            if (!rrPage1RowText(base, idx, buf, sizeof buf)) {
+                logLine("results: find page-1 row %d did not read (of %d)", idx, total);
+                return 0;
+            }
+            int fromSec = rrPage1RowSection(base, g_rrRow);
+            int toSec   = rrPage1RowSection(base, idx);
+            char sect[128] = { 0 };
+            if (toSec != fromSec) rrPage1SectionName(base, toSec, sect, sizeof sect);
+            logLine("results: find landed on page-1 row %d (of %d) sec %d -> %d", idx, total,
+                    fromSec, toSec);
+            g_rrRow = idx;
+            if (sect[0]) {
+                char utter[MAILBOX_SZ];
+                _snprintf(utter, sizeof utter, "%s. %s", sect, buf);
+                utter[sizeof utter - 1] = 0;
+                postSpeech(utter);
+            } else {
+                postSpeech(buf);
+            }
+            return 1;
+        }
+        return 0;
+    }
+    int heroes = rrHeroCount(base);
+    if (heroes < 0) heroes = 0;
+    if (idx < 0) idx = 0;
+    int total = 0;
+    int hero = -1, row = -1;
+    for (int h = 0; h < heroes; h++) {
+        int rows = rrHeroRowCount(base, h);
+        if (rows <= 0) continue;
+        if (idx >= total && idx < total + rows) { hero = h; row = idx - total; }
+        total += rows;
+    }
+    if (op == AXF_COUNT) return total;
+    if (total <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || hero < 0) return 0;
+        return rrHeroRowText(base, hero, row, out, outsz) ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        if (hero < 0) {                         // off the end: the last row of the last hero
+            hero = heroes - 1;
+            while (hero > 0 && rrHeroRowCount(base, hero) <= 0) hero--;
+            row = rrHeroRowCount(base, hero) - 1;
+            if (row < 0) row = 0;
+        }
+        char buf[MAILBOX_SZ];
+        if (!rrHeroRowText(base, hero, row, buf, sizeof buf)) {
+            logLine("results: find hero %d row %d did not read", hero + 1, row);
+            return 0;
+        }
+        g_rrHero    = hero;
+        g_rrHeroRow = row;
+        logLine("results: find landed on hero %d row %d (of %d flat)", hero + 1, row, total);
+        postSpeech(buf);
+        return 1;
+    }
+    return 0;
 }
 
 void rrReannounce(uintptr_t base) {
@@ -671,6 +905,7 @@ void checkRaidResults(uintptr_t base) {
 
     uintptr_t d = rrDisplay(base);
     if (!d) {
+        rrLatchQuestTitle(base);
         if (g_rrActive) {
             g_rrActive = false; g_rrAnnounced = false; g_rrLastState = -1;
             g_rrRow = 0; g_rrHero = 0; g_rrHeroRow = 0; g_rrRevealPending = false;
@@ -790,12 +1025,43 @@ static bool rrOrphanDialogCancel(uintptr_t base, const char* key) {
 
 bool routeResultsKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
                      // 29: de-static'd; the AX_RESULTS row itself stays with the context table)
-    if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) return false;
+    if (mod & (KMOD_LALT | KMOD_RALT)) return false;
     int state = rrState(base);
     if (state < 0) return false;                       // screen is going away; the game's key
     if (bcrIsArena(base))                              // a Circus match: its own six-row list
         return bcrRouteKey(base, sym, mod, repeat);
     bool heroesPage = (state == 2);
+
+    if (mod & (KMOD_LCTRL | KMOD_RCTRL)) {
+        if (sym != SDLK_UP && sym != SDLK_DOWN) return false;
+        if (repeat) return true;
+        static int s_tipLine = 0, s_tipKey = -1;
+        int key = heroesPage ? (1000000 + g_rrHero * 1000 + g_rrHeroRow) : g_rrRow;
+        if (s_tipKey != key) { s_tipKey = key; s_tipLine = 0; }
+        static char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+        int ln = 0;
+        if (heroesPage) {
+            if (rrHeroRowText(base, g_rrHero, g_rrHeroRow, lines[0], AB_TIP_LINE_SZ, INV_CARD_OFF)) {
+                ln = 1;
+                uintptr_t quirks[RR_MAX_QUIRKS];
+                int qn = rrHeroNewQuirks(base, g_rrHero, quirks, RR_MAX_QUIRKS);
+                int q = g_rrHeroRow - 2;
+                if (q >= 0 && q < qn && rrHeroRevealed(base, g_rrHero) &&
+                    csQuirkDescLine(base, quirks[q], lines[1], AB_TIP_LINE_SZ)) ln = 2;
+            }
+        } else if (rrPage1RowText(base, g_rrRow, lines[0], AB_TIP_LINE_SZ, INV_CARD_OFF)) {
+            ln = 1;
+            uintptr_t item = rrPage1RowItem(base, g_rrRow);
+            if (item && invItemIsTrinket(item)) {
+                InvCard c;
+                invCardRead(base, item, &c);
+                c.desc[0]  = 0;                        // the results rows never spoke flavour text
+                c.value[0] = 0;                        // ...nor the value: this screen shows none
+                ln = invCardLines(&c, lines, 1, AB_TIP_MAX_LINES);
+            }
+        }
+        return axTipStep(&s_tipLine, sym == SDLK_UP ? 1 : -1, &lines[0][0], AB_TIP_LINE_SZ, ln);
+    }
 
     if (sym == SDLK_ESCAPE) {
         if (repeat) return true;

@@ -139,6 +139,12 @@ bool emitSynth(void* ev) {
         logLine("synth emit: d9607a was %d (mouse suppressed) — forcing 0", (int)sup);
         safeWriteU8(g_base + MOUSE_SUPPRESS_RVA, 0);
     }
+    static bool    haveLastMove = false;
+    static int32_t lastMoveX = 0, lastMoveY = 0;
+    if (s.type == SDL_EVT_MOUSEMOTION) {
+        if (haveLastMove && s.x == lastMoveX && s.y == lastMoveY) return true;
+        haveLastMove = true; lastMoveX = s.x; lastMoveY = s.y;
+    }
     logLine("synth emit type=0x%x state=%d design=(%d,%d) win=(%.0f,%.0f)",
             s.type, (int)s.state, (int)s.x, (int)s.y, wx, wy);
     return true;
@@ -497,7 +503,7 @@ void serviceInputProbe(uintptr_t base) {
             float dx = gx - pwx, dy = gy - pwy;
             if (dx < 0) dx = -dx; if (dy < 0) dy = -dy;
             DWORD now = GetTickCount();
-            if ((dx > 0.5f || dy > 0.5f) && (now - g_probeFightTick) > 1000) {
+            if ((dx > 0.5f || dy > 0.5f) && (now - g_probeFightTick) > 30000) {
                 g_probeFightTick = now;
                 logLine("ctrlprobe: cursor fight — game holds (%.0f,%.0f), mod pinned (%.0f,%.0f) "
                         "[design (%.0f,%.0f)]",

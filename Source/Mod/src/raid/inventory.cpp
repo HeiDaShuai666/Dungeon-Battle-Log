@@ -78,17 +78,113 @@ bool invItemName(uintptr_t base, uintptr_t item,
     return false;
 }
 
-static void invAppendClause(char* out, int outsz, const char* clause) {
+static void invAppendClause(char* out, int outsz, const char* clause, const char* sep = ". ") {
     if (!clause || !clause[0]) return;
     size_t n = strlen(out);
     if ((int)n + 3 >= outsz) return;
-    _snprintf(out + n, outsz - (int)n, ". %s", clause);
+    _snprintf(out + n, outsz - (int)n, "%s%s", sep, clause);
     out[outsz - 1] = 0;
+}
+
+// ---- THE UNIT VALUE ----
+static const uintptr_t INV_ITEM_DEF_OFF      = 0x598;   // ItemStack+: cached Inventory::Item* (may be 0)
+static const uintptr_t INV_ITEMDEF_VALUE_OFF = 0xa4;    // Inventory::Item+: int32 gold value
+bool invItemUnitValue(uintptr_t base, uintptr_t item, bool* isGold, int32_t* value) {
+    uint32_t typeHash = 0, goldHash = 0;
+    safeReadU32(item + ITEM_TYPEHASH_OFF, &typeHash);
+    safeReadU32(base + RR_GOLD_TYPEHASH_RVA, &goldHash);
+    *isGold = (goldHash != 0 && typeHash == goldHash);
+    *value = 0;
+    if (*isGold) return true;
+    uintptr_t def = 0;
+    if (!safeReadPtr(item + INV_ITEM_DEF_OFF, &def) || def <= 0x10000) return false;
+    uint32_t v = 0;
+    if (!safeReadU32(def + INV_ITEMDEF_VALUE_OFF, &v)) return false;
+    *value = (int32_t)v;
+    return true;
+}
+void invItemValueText(uintptr_t base, uintptr_t item, char* out, int outsz) {
+    out[0] = 0;
+    if (invItemIsTrinket(item)) return;
+    bool gold = false; int32_t value = 0;
+    if (!invItemUnitValue(base, item, &gold, &value) || gold || value <= 0) return;
+    uint32_t amount = 0;
+    safeReadU32(item + ITEM_AMOUNT_OFF, &amount);
+    char goldName[64];
+    resCurrencyTitleById(base, "gold", "card", goldName, sizeof goldName);
+    if (amount > 1) {
+        long long sum = (long long)value * (int32_t)amount;
+        if (sum > 2000000000LL) sum = 2000000000LL;
+        _snprintf(out, outsz, axs(AXS_INV_VALUE_EACH_FMT), value, goldName, (int)sum);
+    } else {
+        _snprintf(out, outsz, axs(AXS_INV_VALUE_FMT), value, goldName);
+    }
+    out[outsz - 1] = 0;
+}
+
+// ---- THE ITEM CARD ----
+void invCardRead(uintptr_t base, uintptr_t item, InvCard* c) {
+    memset(c, 0, sizeof *c);
+    if (!item) return;
+    if (invItemIsTrinket(item)) {
+        uintptr_t rec = bldTrinketRecord(base, item);
+        if (rec) {
+            bldTrinketRarity(base, rec, c->rarity, sizeof c->rarity, false);
+            bldTrinketClassReq(base, rec, c->clsreq, sizeof c->clsreq, false);
+            bldTrinketCharges(base, item, rec, c->charges, sizeof c->charges, false);
+            bldTrinketTriggers(base, rec, c->trig, sizeof c->trig, false);
+        }
+        bldTrinketEffects(base, item, c->fx, sizeof c->fx, false);
+    }
+    char type[64] = { 0 }, itemId[64] = { 0 }, key[192] = { 0 }, name[256] = { 0 };
+    invItemName(base, item, type, itemId, key, name);
+    char desckey[192];
+    _snprintf(desckey, sizeof desckey, "%s%s%s", INV_DESC_PREFIX, type, itemId);
+    desckey[sizeof desckey - 1] = 0;
+    if (!resolveKey(base, desckey, c->desc, sizeof c->desc)) c->desc[0] = 0;
+    invItemValueText(base, item, c->value, sizeof c->value);
+}
+void invCardReadRec(uintptr_t base, uintptr_t rec, InvCard* c) {
+    memset(c, 0, sizeof *c);
+    if (!rec) return;
+    bldTrinketRarity(base, rec, c->rarity, sizeof c->rarity, false);
+    bldTrinketClassReq(base, rec, c->clsreq, sizeof c->clsreq, false);
+    bldTrinketEffectsRec(base, rec, c->fx, sizeof c->fx, false);
+    bldTrinketTriggers(base, rec, c->trig, sizeof c->trig, false);
+}
+int invCardLines(const InvCard* c, char lines[][AB_TIP_LINE_SZ], int at, int max) {
+    const char* piece[7] = { c->rarity, c->clsreq, c->charges, c->fx, c->trig, c->desc, c->value };
+    for (int p = 0; p < 7 && at < max; p++) {
+        if (!piece[p][0]) continue;
+        _snprintf(lines[at], AB_TIP_LINE_SZ, "%s", piece[p]);
+        lines[at][AB_TIP_LINE_SZ - 1] = 0;
+        at++;
+    }
+    return at;
+}
+void invCardNoteKeywords(const InvCard* c) {
+    const char* piece[7] = { c->rarity, c->clsreq, c->charges, c->fx, c->trig, c->desc, c->value };
+    for (int p = 0; p < 7; p++) axTipNoteKeywords(piece[p]);
+}
+int invSlotTipLines(uintptr_t base, uintptr_t system, int slot, const char* noun,
+                    int posNum, int posTotal, char lines[][AB_TIP_LINE_SZ], int max) {
+    if (max <= 0) return 0;
+    for (int k = 0; k < max; k++) lines[k][0] = 0;
+    if (!invSystemSlotText(base, system, slot, noun, posNum, posTotal, lines[0], AB_TIP_LINE_SZ,
+                           nullptr, INV_CARD_OFF)) return 0;
+    uintptr_t beg = 0; int slots = 0;
+    if (!invItemVectorAt(system, &beg, &slots) || slot < 0 || slot >= slots) return 1;
+    uintptr_t item = beg + (uintptr_t)slot * ITEM_STRIDE;
+    uint32_t amount = 0;
+    if (!safeReadU32(item + ITEM_AMOUNT_OFF, &amount) || (int32_t)amount < 1) return 1;   // empty: no card
+    InvCard c;
+    invCardRead(base, item, &c);
+    return invCardLines(&c, lines, 1, max);
 }
 
 bool invSystemSlotText(uintptr_t base, uintptr_t system, int slot, const char* noun,
                        int posNum, int posTotal, char* out, int outsz,
-                       const char* tag) {
+                       const char* tag, int card) {
     uintptr_t beg = 0; int slots = 0;
     if (!invItemVectorAt(system, &beg, &slots)) return false;
     if (slot < 0 || slot >= slots) return false;
@@ -110,34 +206,28 @@ bool invSystemSlotText(uintptr_t base, uintptr_t system, int slot, const char* n
     char type[64] = { 0 }, itemId[64] = { 0 }, key[192] = { 0 }, name[256] = { 0 };
     bool resolved = invItemName(base, item, type, itemId, key, name);
 
-    char desckey[192], desc[512];
-    _snprintf(desckey, sizeof desckey, "%s%s%s", INV_DESC_PREFIX, type, itemId);
-    desckey[sizeof desckey - 1] = 0;
-    bool hasDesc = resolveKey(base, desckey, desc, sizeof desc) && desc[0];
-
-    char rarity[96] = { 0 }, clsreq[256] = { 0 }, fx[768] = { 0 };
-    char charges[384] = { 0 }, trig[1536] = { 0 };
-    uintptr_t trec = 0;
-    int nfx = 0, nch = 0, ntr = 0;
-    if (invItemIsTrinket(item)) {
-        trec = bldTrinketRecord(base, item);
-        if (trec) {
-            bldTrinketRarity(base, trec, rarity, sizeof rarity, false);
-            bldTrinketClassReq(base, trec, clsreq, sizeof clsreq, false);
-            nch = bldTrinketCharges(base, item, trec, charges, sizeof charges, false);
-            ntr = bldTrinketTriggers(base, trec, trig, sizeof trig, false);
-        }
-        nfx = bldTrinketEffects(base, item, fx, sizeof fx, false);
-        logLine("inv trinket \"%s\" rec=%p rarity=\"%s\" class=\"%s\" fx=%d charges=%d triggers=%d",
-                itemId, (void*)trec, rarity, clsreq, nfx, nch, ntr);
-    }
+    InvCard c;
+    bool withCard = invCardWanted(card);
+    if (withCard) invCardRead(base, item, &c);
+    else          memset(&c, 0, sizeof c);
+    const char* rarity  = c.rarity;
+    const char* clsreq  = c.clsreq;
+    const char* charges = c.charges;
+    const char* fx      = c.fx;
+    const char* trig    = c.trig;
+    const char* desc    = c.desc;
+    bool hasDesc = desc[0] != 0;
+    if (withCard && invItemIsTrinket(item))
+        logLine("inv trinket \"%s\" rarity=\"%s\" class=\"%s\" fx=%s charges=%s triggers=%s",
+                itemId, rarity, clsreq, fx[0] ? "yes" : "none", charges[0] ? "yes" : "none",
+                trig[0] ? "yes" : "none");
 
     if (amount > 1) _snprintf(out, outsz, axs(AXS_INV_NAME_COUNT_FMT), name, (int)amount);
     else            _snprintf(out, outsz, "%s", name);
     out[outsz - 1] = 0;
     invAppendClause(out, outsz, tag);
-    invAppendClause(out, outsz, rarity);
-    invAppendClause(out, outsz, clsreq);
+    invAppendClause(out, outsz, rarity, ", ");
+    invAppendClause(out, outsz, clsreq, ", ");
     invAppendClause(out, outsz, charges);
     invAppendClause(out, outsz, fx);
     invAppendClause(out, outsz, trig);
@@ -150,6 +240,14 @@ bool invSystemSlotText(uintptr_t base, uintptr_t system, int slot, const char* n
         _snprintf(out + n, outsz - (int)n, " %s", desc);
         out[outsz - 1] = 0;
     }
+    if (withCard && c.value[0]) {
+        size_t n = strlen(out);
+        while (n > 0 && out[n - 1] == ' ') out[--n] = 0;
+        bool ended = n && strchr(".!?", out[n - 1]);
+        _snprintf(out + n, outsz - (int)n, "%s %s", ended ? "" : ".", c.value);
+        out[outsz - 1] = 0;
+    }
+    if (withCard && card == INV_CARD_AUTO) { invCardNoteKeywords(&c); axTipGlueKeywords(out, outsz); }
 
     logLine("inv %s=%d/%d amount=%u type=\"%s\" id=\"%s\" key=\"%s\" desc=%s tag=%s -> \"%s\" (%s)",
             noun, slotNum, slotTot, amount, type, itemId, key, hasDesc ? "yes" : "MISS",
@@ -162,6 +260,42 @@ bool invSlotText(uintptr_t base, int slot, char* out, int outsz, const char* tag
     if (!safeReadPtr(base + MAP_ROOT_RVA, &root) || root <= 0x10000) return false;
     return invSystemSlotText(base, root + INV_SYSTEM_OFF, slot, axs(AXS_INV_NOUN_SLOT),
                              0, 0, out, outsz, tag);
+}
+
+// ---- THE BAG ROW'S CONTROL HINT ----
+static bool ruFightingNow(uintptr_t base);
+static bool invItemUsableOnHero(uintptr_t item) {
+    char type[64] = { 0 }, id[64] = { 0 };
+    if (!safeReadCStr(item + ITEM_TYPE_OFF, type, sizeof type)) return false;
+    if (strcmp(type, "provision") == 0) return true;
+    if (strcmp(type, "supply") != 0) return false;
+    if (!safeReadCStr(item + ITEM_ID_OFF, id, sizeof id)) return true;   // unreadable id: fail open
+    return strcmp(id, "shovel") != 0 && strcmp(id, "skeleton_key") != 0;
+}
+
+bool invBagRowText(uintptr_t base, int slot, char* out, int outsz) {
+    const char* tag = invNavTag(base, slot);
+    if (!invSlotText(base, slot, out, outsz, tag)) return false;
+    if (tag) return true;
+    uintptr_t beg = 0; int slots = 0;
+    if (!invItemVector(base, &beg, &slots) || slot < 0 || slot >= slots) return true;
+    uintptr_t item = beg + (uintptr_t)slot * ITEM_STRIDE;
+    int32_t amount = 0;
+    if (!safeReadU32(item + ITEM_AMOUNT_OFF, (uint32_t*)&amount) || amount < 1) return true;
+    AxStrId hint;
+    if (invItemIsTrinket(item))        hint = ruFightingNow(base) ? AXS_INV_ROW_NO_USE_HINT : AXS_INV_ROW_TRINKET_HINT;
+    else if (invItemUsableOnHero(item)) hint = AXS_INV_ROW_HINT;
+    else                                hint = AXS_INV_ROW_NO_USE_HINT;
+    axAppendHint(out, outsz, hint);   // "" while the F10 "Control hints" row is Off
+    return true;
+}
+
+void invPanelTitle(char* out, int outsz) {
+    char name[160];
+    kmLabelWithKey(axs(AXS_INV_NAME), "dungeon.panels", 1, name, sizeof name);
+    _snprintf(out, outsz, "%s.", name);
+    out[outsz - 1] = 0;
+    axAppendHint(out, outsz, AXS_INV_TAB_HINT);
 }
 
 bool resolveInventory(uintptr_t base, int64_t id, char* out, int outsz) {
@@ -565,6 +699,8 @@ static bool iuBegin(uintptr_t base) {
     if (g_iuIsCamp) {
         g_iuCursor = 0;
         _snprintf(msg, sizeof msg, "%s", axs(AXS_INV_MAKE_CAMP_PROMPT));
+        msg[sizeof msg - 1] = 0;
+        axAppendHint(msg, sizeof msg, AXS_INV_MAKE_CAMP_HINT);   // "" while Control hints is Off
     } else {
         _snprintf(msg, sizeof msg, axs(g_iuIsTrinket ? AXS_INV_EQUIP_CHOOSE_FMT
                                                      : AXS_INV_USE_CHOOSE_FMT), name, n);
@@ -585,23 +721,20 @@ void iuAbandon(const char* why) {
     logLine("itemuse: abandoned (%s)", why);
 }
 
-static void iuSpeakRow(uintptr_t base, uintptr_t* heroes, int n, int idx) {
-    g_rvCursor  = rvRoomIndexOfActor(base, heroes[idx]);
-    g_rvTipLine = 0;
-    g_rvTipCol  = 0;
-    char out[MAILBOX_SZ]; out[0] = 0;
+static void iuRowLabel(uintptr_t base, uintptr_t hero, int idx, char* out, int outsz) {
+    out[0] = 0;
     char frag[160];
-    if (abHeroLabelOf(base, heroes[idx], frag, sizeof frag)) _snprintf(out, sizeof out, "%s", frag);
-    else _snprintf(out, sizeof out, axs(AXS_INV_HERO_N_FMT), idx + 1);
-    out[sizeof out - 1] = 0;
+    if (abHeroLabelOf(base, hero, frag, sizeof frag)) _snprintf(out, outsz, "%s", frag);
+    else _snprintf(out, outsz, axs(AXS_INV_HERO_N_FMT), idx + 1);
+    out[outsz - 1] = 0;
     size_t len;
-    if (abHeroHealth(base, heroes[idx], frag, sizeof frag)) {
+    if (abHeroHealth(base, hero, frag, sizeof frag)) {
         len = strlen(out);
-        _snprintf(out + len, sizeof out - len, ". %s", frag);
+        _snprintf(out + len, (size_t)outsz - len, ". %s", frag);
     }
-    if (abHeroStress(base, heroes[idx], frag, sizeof frag)) {
+    if (abHeroStress(base, hero, frag, sizeof frag)) {
         len = strlen(out);
-        _snprintf(out + len, sizeof out - len, ". %s", frag);
+        _snprintf(out + len, (size_t)outsz - len, ". %s", frag);
     }
     if (g_iuIsTrinket) {
         uintptr_t beg = 0;
@@ -609,7 +742,7 @@ static void iuSpeakRow(uintptr_t base, uintptr_t* heroes, int n, int idx) {
         if (invItemVector(base, &beg, &slots) && g_iuSlot >= 0 && g_iuSlot < slots) {
             uintptr_t item = beg + (uintptr_t)g_iuSlot * ITEM_STRIDE;
             bool sure = false;
-            bool fits = bldTrinketFitsHero(base, item, heroes[idx], &sure);
+            bool fits = bldTrinketFitsHero(base, item, hero, &sure);
             if (sure && !fits) {
                 char req[160];
                 req[0] = 0;
@@ -621,17 +754,65 @@ static void iuSpeakRow(uintptr_t base, uintptr_t* heroes, int n, int idx) {
                 else        _snprintf(why, sizeof why, "%s", axs(AXS_INV_CANT_WEAR));
                 why[sizeof why - 1] = 0;
                 len = strlen(out);
-                _snprintf(out + len, sizeof out - len, ". %s", why);
+                _snprintf(out + len, (size_t)outsz - len, ". %s", why);
             }
         }
     }
+    out[outsz - 1] = 0;
+}
+
+static void iuSpeakRow(uintptr_t base, uintptr_t* heroes, int n, int idx) {
+    g_rvCursor  = rvRoomIndexOfActor(base, heroes[idx]);
+    g_rvTipLine = 0;
+    g_rvTipCol  = 0;
+    char out[MAILBOX_SZ];
+    iuRowLabel(base, heroes[idx], idx, out, sizeof out);
     char tpos[256];
     _snprintf(tpos, sizeof tpos, axs(AXS_INV_TARGET_N_OF_M), idx + 1, n);
     tpos[sizeof tpos - 1] = 0;
-    len = strlen(out);
+    size_t len = strlen(out);
     _snprintf(out + len, sizeof out - len, ". %s", tpos);
     out[sizeof out - 1] = 0;
+    rvAppendActorTip(base, heroes[idx], out, sizeof out);
+    {
+        const char* fmt = axs(g_iuIsTrinket ? AXS_INV_EQUIP_ON_HINT_FMT : AXS_TS_USE_ON_HINT_FMT);
+        if (fmt[0]) {
+            char who[160] = { 0 };
+            safeReadCStr(heroes[idx] + HERO_NAME_OFF, who, sizeof who);
+            if (!who[0] && !abHeroLabelOf(base, heroes[idx], who, sizeof who))
+                _snprintf(who, sizeof who, "%s", axs(AXS_THE_HERO_LC));
+            who[sizeof who - 1] = 0;
+            char hint[480];
+            _snprintf(hint, sizeof hint, fmt, g_iuName, who);
+            hint[sizeof hint - 1] = 0;
+            axAppendHintText(out, sizeof out, hint);
+        }
+    }
     postSpeech(out);
+}
+
+// ---- THE ITEM-USE PICKER'S FIND ENUMERATOR ----
+int iuFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_iuActive || g_iuIsCamp) return 0;
+    uintptr_t heroes[RV_MAX_MEMBERS];
+    int n = iuTargetList(base, heroes, RV_MAX_MEMBERS);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        iuRowLabel(base, heroes[idx], idx, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;
+        g_iuCursor = idx;
+        logLine("itemuse: find landed on hero %d of %d", idx, n);
+        iuSpeakRow(base, heroes, n, g_iuCursor);
+        return 1;
+    }
+    return 0;
 }
 
 static void iuCommit(uintptr_t base, uintptr_t hero) {
@@ -779,7 +960,10 @@ bool routeItemUseKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat)
 
     if (g_iuIsCamp) {
         if (confirm) { iuCommit(base, heroes[0]); return true; }
-        postSpeech(axs(AXS_INV_MAKE_CAMP_PROMPT));
+        char q[256];
+        _snprintf(q, sizeof q, "%s", axs(AXS_INV_MAKE_CAMP_PROMPT)); q[sizeof q - 1] = 0;
+        axAppendHint(q, sizeof q, AXS_INV_MAKE_CAMP_HINT);
+        postSpeech(q);
         return true;
     }
 
@@ -1050,6 +1234,19 @@ bool routeInvKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         if (!g_ihHeld) return ihPickUp(base);
         return ihDrop(base);
     }
+    if ((mod & (KMOD_LCTRL | KMOD_RCTRL)) && !(mod & (KMOD_LALT | KMOD_RALT)) &&
+        (sym == SDLK_UP || sym == SDLK_DOWN)) {
+        if (repeat) return true;
+        if (g_invSlot < 0) { postSpeech(axs(AXS_NO_ROW_SELECTED)); return true; }
+        static int  s_tipLine = 0, s_tipSlot = -1;
+        if (s_tipSlot != g_invSlot) { s_tipSlot = g_invSlot; s_tipLine = 0; }
+        uintptr_t root = 0;
+        if (!safeReadPtr(base + MAP_ROOT_RVA, &root) || root <= 0x10000) return true;
+        static char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+        int n = invSlotTipLines(base, root + INV_SYSTEM_OFF, g_invSlot, axs(AXS_INV_NOUN_SLOT),
+                                0, 0, lines, AB_TIP_MAX_LINES);
+        return axTipStep(&s_tipLine, sym == SDLK_UP ? 1 : -1, &lines[0][0], AB_TIP_LINE_SZ, n);
+    }
     if (!(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
         if (sym == SDLK_RETURN || sym == SDLK_KP_ENTER) {
             if (repeat) return true;
@@ -1080,7 +1277,7 @@ bool routeInvKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
             if (slots <= 0) { logLine("invnav: no slots to navigate"); return true; }
             int jt = (jump > 0) ? slots - 1 : 0;
             char buf[MAILBOX_SZ];
-            if (!invSlotText(base, jt, buf, sizeof buf, invNavTag(base, jt))) {
+            if (!invBagRowText(base, jt, buf, sizeof buf)) {
                 logLine("invnav: slot %d did not read", jt);
                 return true;
             }
@@ -1131,7 +1328,7 @@ bool routeInvKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
     }
 
     char buf[MAILBOX_SZ];
-    if (!invSlotText(base, target, buf, sizeof buf, invNavTag(base, target))) {
+    if (!invBagRowText(base, target, buf, sizeof buf)) {
         logLine("invnav: slot %d did not read", target);
         return true;
     }
@@ -1139,6 +1336,32 @@ bool routeInvKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
     g_invSlot = target;
     postSpeech(buf);
     return true;
+}
+
+// ---- THE BAG'S FIND ENUMERATOR ----
+int invFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    int slots = invSlotCount(base);
+    if (slots < 0) slots = 0;
+    if (op == AXF_COUNT) return slots;
+    if (slots <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= slots) return 0;
+        return invBagRowText(base, idx, out, outsz) ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= slots) idx = slots - 1;      // the bag shrank under the snapshot
+        char buf[MAILBOX_SZ];
+        if (!invBagRowText(base, idx, buf, sizeof buf)) {
+            logLine("invnav: find slot %d did not read", idx);
+            return 0;
+        }
+        logLine("invnav: find landed on slot %d (of %d)", idx, slots);
+        g_invSlot = idx;
+        postSpeech(buf);
+        return 1;
+    }
+    return 0;
 }
 
 static const int TRK_WATCH_MAX = 24;

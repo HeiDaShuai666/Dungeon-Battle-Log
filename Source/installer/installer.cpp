@@ -14,15 +14,30 @@
 #include <string>
 #include <vector>
 #include <cstdio>
-#include "../shared/gamedir.h" // game-dir detection, shared with the launcher
+#include "../shared/gamedir.h"
 
 // ---- config ----
 static const wchar_t* kTitle         = L"Blindest Dungeon Installer";
 static const wchar_t* kExeName       = L"Darkest.exe";
 static const wchar_t* kLegacyManifestName = L"ddaccess-install.json";
-static const wchar_t* kManifestRes   = L"DDACCESS_MANIFEST"; // RCDATA resource in ddaccess.dll
-static const wchar_t* kModDll        = L"ddaccess.dll"; // marker for an unmanaged install
-static const wchar_t* kLauncherName  = L"DarkestAccess.exe"; // the mod's one-click launcher
+static const wchar_t* kManifestRes   = L"DDACCESS_MANIFEST"; // RCDATA resource in the mod DLL
+static const wchar_t* kModDll        = L"version.dll";  // marker for an unmanaged install
+static const wchar_t* kLegacyModDll  = L"ddaccess.dll";
+static const wchar_t* kRetiredFiles[] = {
+    L"ddaccess.dll",
+    L"DarkestAccess.exe",
+    L"prism.dll",
+    L"NOTICE",
+    L"Tolk.dll",
+    L"nvdaControllerClient64.dll",
+    L"SAAPI64.dll",
+    L"readme.md",
+    L"ddaccess-install.json",
+    L"version-stub.log",
+};
+static const wchar_t* kRetiredDir = L"ddaccess-lang";
+static const wchar_t* kDebugLog   = L"ddaccess-debug.log";
+static const wchar_t* kDebugLogPrev = L"ddaccess-debug.prev.log";
 
 static const wchar_t* kReleasesHost  = L"api.github.com";
 static const wchar_t* kReleasesPath  = L"/repos/Vicorin/Blindest-Dungeon/releases/latest";
@@ -218,6 +233,8 @@ static bool readManifest(const std::wstring& gameDir, Manifest& m) {
     std::string j;
     if (readManifestResource(gameDir + L"\\" + kModDll, j) && parseManifestJson(j, m))
         return true;
+    if (readManifestResource(gameDir + L"\\" + kLegacyModDll, j) && parseManifestJson(j, m))
+        return true;
     // Legacy fallback: a pre-v0.10 install recorded a loose JSON file instead.
     FILE* f = _wfopen((gameDir + L"\\" + kLegacyManifestName).c_str(), L"rb");
     if (!f) return false;
@@ -256,30 +273,10 @@ static void rmTree(const std::wstring& dir) {
     RemoveDirectoryW(dir.c_str());
 }
 
-static bool copyTreeInto(const std::wstring& srcDir, const std::wstring& dstDir,
-                         const std::wstring& relRoot, std::vector<std::wstring>& written) {
-    CreateDirectoryW(dstDir.c_str(), nullptr);
-    WIN32_FIND_DATAW fd;
-    HANDLE h = FindFirstFileW((srcDir + L"\\*").c_str(), &fd);
-    if (h == INVALID_HANDLE_VALUE) return false;
-    bool ok = true;
-    do {
-        std::wstring name = fd.cFileName;
-        if (name == L"." || name == L"..") continue;
-        std::wstring s = srcDir + L"\\" + name;
-        std::wstring d = dstDir + L"\\" + name;
-        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            if (!copyTreeInto(s, d, relRoot, written)) ok = false;
-        } else {
-            if (CopyFileW(s.c_str(), d.c_str(), FALSE)) {
-                // relative path = d minus relRoot + backslash
-                std::wstring rel = d.substr(relRoot.size() + 1);
-                written.push_back(rel);
-            } else { ok = false; }
-        }
-    } while (FindNextFileW(h, &fd));
-    FindClose(h);
-    return ok;
+static void sweepRetired(const std::wstring& gameDir) {
+    for (const wchar_t* name : kRetiredFiles)
+        DeleteFileW((gameDir + L"\\" + name).c_str());
+    rmTree(gameDir + L"\\" + kRetiredDir);
 }
 
 // The zip wraps everything in a single "<Name>-v<ver>" folder; return that folder.
@@ -346,11 +343,22 @@ static void doInstall(const std::wstring& gameDir) {
     bool hadOld = readManifest(gameDir, old);
 
     std::wstring payload = singleSubfolder(extractDir);
-    std::vector<std::wstring> written;
-    if (!copyTreeInto(payload, gameDir, gameDir, written) || written.empty()) {
-        say(L"Copying files into the game folder failed. Are you running as administrator?");
+    std::wstring srcDll  = payload + L"\\" + kModDll;
+    if (!fileExists(srcDll)) {
+        say(L"The downloaded package has no version.dll in it. Nothing was changed.");
         rmTree(work); return;
     }
+    if (!CopyFileW(srcDll.c_str(), (gameDir + L"\\" + kModDll).c_str(), FALSE)) {
+        DWORD e = GetLastError();
+        if (e == ERROR_SHARING_VIOLATION || e == ERROR_LOCK_VIOLATION)
+            say(L"version.dll is in use. Close Darkest Dungeon and anything else started "
+                L"from the game folder, then try again.");
+        else
+            say(L"Copying version.dll into the game folder failed. Are you running as administrator?");
+        rmTree(work); return;
+    }
+    std::vector<std::wstring> written;
+    written.push_back(kModDll);
 
     if (hadOld) {
         for (const std::wstring& rel : old.files) {
@@ -359,9 +367,8 @@ static void doInstall(const std::wstring& gameDir) {
                 if (_wcsicmp(rel.c_str(), w.c_str()) == 0) { still = true; break; }
             if (!still) DeleteFileW((gameDir + L"\\" + rel).c_str());
         }
-        RemoveDirectoryW((gameDir + L"\\ddaccess-lang").c_str());
     }
-    DeleteFileW((gameDir + L"\\" + kLegacyManifestName).c_str());
+    sweepRetired(gameDir);
 
     rmTree(work);
 
@@ -371,7 +378,7 @@ static void doInstall(const std::wstring& gameDir) {
         say(L"Install complete. Version " + fresh.version + L" is now installed. Press Play "
             L"to start the game; the mod speaks at the main menu.");
     } else {
-        say(L"Install complete (version " + tag + L"), but this build of ddaccess.dll has no "
+        say(L"Install complete (version " + tag + L"), but this build of version.dll has no "
             L"embedded install record, so the installer will treat it as a manual install.");
     }
 }
@@ -386,9 +393,10 @@ static void doUninstall(const std::wstring& gameDir) {
         std::wstring full = gameDir + L"\\" + rel;
         if (DeleteFileW(full.c_str())) ++removed;
     }
-    // Remove the mod's language subfolder if it is now empty.
-    RemoveDirectoryW((gameDir + L"\\ddaccess-lang").c_str());
-    DeleteFileW((gameDir + L"\\" + kLegacyManifestName).c_str());
+    if (DeleteFileW((gameDir + L"\\" + kModDll).c_str())) ++removed;
+    sweepRetired(gameDir);
+    DeleteFileW((gameDir + L"\\" + kDebugLog).c_str());
+    DeleteFileW((gameDir + L"\\" + kDebugLogPrev).c_str());
     say(L"Uninstalled: removed " + std::to_wstring(removed) + L" file(s). The game is back to vanilla.");
 }
 
@@ -488,7 +496,7 @@ static void updateUi(bool speak) {
 
     bool modPresent = !g_gameDir.empty() &&
                       (managed || fileExists(g_gameDir + L"\\" + kModDll));
-    bool playable   = !g_gameDir.empty() && fileExists(g_gameDir + L"\\" + kLauncherName);
+    bool playable   = modPresent;
     if (playable && !g_busy) status += L" Press Play to start the game.";
 
     SetWindowTextW(g_primary, primaryLabel.c_str());
@@ -578,6 +586,7 @@ static void startWork(int action) {
 }
 
 // ---- Play ----
+static const wchar_t* kSteamUrl = L"steam://rungameid/262060"; // Darkest Dungeon 1's app id
 static HRESULT shellExecInExplorer(const std::wstring& file, const std::wstring& dir) {
     IShellWindows* psw = nullptr;
     HRESULT hr = CoCreateInstance(__uuidof(ShellWindows), nullptr, CLSCTX_LOCAL_SERVER,
@@ -643,24 +652,25 @@ static void launchGame() {
         announceStatus();
         return;
     }
-    std::wstring exe = g_gameDir + L"\\" + kLauncherName;
-    if (!fileExists(exe)) {
-        say(L"DarkestAccess.exe was not found in the game folder. Install the mod first.");
+    if (!fileExists(g_gameDir + L"\\" + kModDll)) {
+        say(L"version.dll was not found in the game folder. Install the mod first.");
         announceStatus();
         return;
     }
-    HRESULT hr = shellExecInExplorer(exe, g_gameDir);
+    bool viaSteam = fileExists(g_gameDir + L"\\steam_api64.dll");
+    std::wstring target = viaSteam ? std::wstring(kSteamUrl) : g_gameDir + L"\\" + kExeName;
+    HRESULT hr = shellExecInExplorer(target, g_gameDir);
     if (FAILED(hr)) {
-        HINSTANCE h = ShellExecuteW(nullptr, L"open", exe.c_str(), nullptr,
+        HINSTANCE h = ShellExecuteW(nullptr, L"open", target.c_str(), nullptr,
                                     g_gameDir.c_str(), SW_SHOWNORMAL);
         if ((INT_PTR)h <= 32) {
-            say(L"Could not start the game launcher.");
+            say(L"Could not start the game.");
             announceStatus();
             return;
         }
     }
-    say(L"Launching Darkest Dungeon with the accessibility mod. The mod speaks at the "
-        L"main menu. You can exit this installer.");
+    say(L"Starting Darkest Dungeon. The mod speaks within a few seconds of the game "
+        L"window appearing. You can exit this installer.");
     announceStatus();
 }
 

@@ -143,7 +143,7 @@ static bool embNameId(uintptr_t base, uintptr_t quest, char* out, int outsz) {
     return true;
 }
 
-static void embQuestName(uintptr_t base, uintptr_t quest, char* out, int outsz) {
+void embQuestName(uintptr_t base, uintptr_t quest, char* out, int outsz) {
     char id[0x100], key[0x140];
     out[0] = 0;
     if (!embNameId(base, quest, id, sizeof id)) { strncpy(out, axs(AXS_EMB_UNKNOWN_QUEST), outsz - 1); out[outsz-1] = 0; return; }
@@ -630,7 +630,7 @@ static const EmbRow* embFocus(uintptr_t base, EmbRow* rows, EmbCols* cols) {
     return &rows[cols->row[g_embCol][g_embRow]];
 }
 
-static void embRowText(uintptr_t base, const EmbRow* r, int pos, int count, char* out, int outsz) {
+static void embRowBody(uintptr_t base, const EmbRow* r, char* out, int outsz) {
     char name[EMB_NAME_MAX], specs[192], cost[96];
     embQuestName(base, r->quest, name, sizeof name);
     embSpecifics(base, r->quest, specs, sizeof specs);
@@ -638,18 +638,25 @@ static void embRowText(uintptr_t base, const EmbRow* r, int pos, int count, char
     int32_t sel = -1;
     uintptr_t camp = embCampaign(base);
     if (camp) safeReadU32(camp + EMB_QSEL_IDX, (uint32_t*)&sel);
-    char posS[64];
-    _snprintf(posS, sizeof posS, axs(AXS_EMB_ROW_POS_FMT), pos + 1, count);
-    posS[sizeof posS - 1] = 0;
-    _snprintf(out, outsz, "%s.%s%s%s%s%s%s %s",
+    _snprintf(out, outsz, "%s.%s%s%s%s%s%s",
               name,
               specs[0] ? " " : "", specs,          // embSpecifics self-terminates its sentences
               cost[0] ? " " : "", cost,            // a whole sentence, or empty
-              sel == r->qIdx ? " " : "", sel == r->qIdx ? axs(AXS_EMB_ROW_SELECTED) : "",
-              posS);
+              sel == r->qIdx ? " " : "", sel == r->qIdx ? axs(AXS_EMB_ROW_SELECTED) : "");
     out[outsz - 1] = 0;
 }
 
+static void embRowText(uintptr_t base, const EmbRow* r, int pos, int count, char* out, int outsz) {
+    char body[MAILBOX_SZ];
+    embRowBody(base, r, body, sizeof body);
+    char posS[64];
+    _snprintf(posS, sizeof posS, axs(AXS_EMB_ROW_POS_FMT), pos + 1, count);
+    posS[sizeof posS - 1] = 0;
+    _snprintf(out, outsz, "%s %s", body, posS);
+    out[outsz - 1] = 0;
+}
+
+static int embTipLines(uintptr_t base, uintptr_t quest, char lines[][EMB_TIP_LINE_SZ], int max);
 static void embSpeakRow(uintptr_t base, const char* prefix, bool withCol) {
     EmbRow rows[EMB_MAX_ROWS];
     EmbCols cols;
@@ -674,7 +681,54 @@ static void embSpeakRow(uintptr_t base, const char* prefix, bool withCol) {
     _snprintf(utter, sizeof utter, "%s%s%s%s%s%s%s%s%s", prefix ? prefix : "", prefix ? " " : "",
               loc, loc[0] ? ". " : "", inv, inv[0] ? " " : "", roam, roam[0] ? " " : "", row);
     utter[sizeof utter - 1] = 0;
+    if (axTipWanted()) {
+        static char lines[EMB_TIP_MAX][EMB_TIP_LINE_SZ];
+        int ln = embTipLines(base, r->quest, lines, EMB_TIP_MAX);
+        axTipGlueLines(utter, sizeof utter, &lines[0][0], EMB_TIP_LINE_SZ, ln, 1);
+        axTipGlueKeywords(utter, sizeof utter);      // the glossary terms it names (core/keywords.cpp)
+    }
+    {
+        int32_t sel = -1;
+        uintptr_t camp = embCampaign(base);
+        if (camp) safeReadU32(camp + EMB_QSEL_IDX, (uint32_t*)&sel);
+        if (sel != r->qIdx) axAppendHint(utter, sizeof utter, AXS_EX_SELECT_HINT);
+    }
     postSpeech(utter);
+}
+
+// ---- THE QUEST LIST'S FIND ENUMERATOR ----
+int embFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_embActive) return 0;
+    EmbRow rows[EMB_MAX_ROWS];
+    EmbCols cols;
+    int n = embCollect(base, rows, EMB_MAX_ROWS);
+    embGroup(rows, n, &cols);
+    int total = 0;
+    for (int c = 0; c < cols.n; c++) total += cols.cnt[c];
+    if (op == AXF_COUNT) return total;
+    if (idx < 0 || idx >= total) return 0;
+    // idx -> (column, row within it), walking the columns in their order
+    int c = 0, r = idx;
+    while (c < cols.n && r >= cols.cnt[c]) { r -= cols.cnt[c]; c++; }
+    if (c >= cols.n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        char loc[EMB_NAME_MAX], body[MAILBOX_SZ];
+        embColName(base, &cols, c, loc, sizeof loc);
+        embRowBody(base, &rows[cols.row[c][r]], body, sizeof body);
+        _snprintf(out, outsz, "%s%s%s", loc, loc[0] ? ". " : "", body);
+        out[outsz - 1] = 0;
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_embCol     = c;
+        g_embRow     = r;
+        g_embTipLine = 0;
+        logLine("embark: find landed on location %d quest %d (item %d)", c, r, idx);
+        embSpeakRow(base, nullptr, true);        // the location name leads, as on a column change
+        return 1;
+    }
+    return 0;
 }
 
 static void embTitle(uintptr_t base, char* out, int outsz) {
@@ -731,15 +785,27 @@ static int embTipLines(uintptr_t base, uintptr_t quest, char lines[][EMB_TIP_LIN
     }
     uintptr_t rb = 0; int rslots = 0;
     if (invItemVectorAt(quest + EMB_Q_REWARDS, &rb, &rslots)) {
+        bool headed = false;
         for (int i = 0; i < rslots && n < max; i++) {
             uintptr_t item = rb + (uintptr_t)i * ITEM_STRIDE;
             uint32_t amount = 0;
             if (!safeReadU32(item + ITEM_AMOUNT_OFF, &amount) || (int32_t)amount < 1) continue;
             char type[64], itemId[64], ikey[192], name[256];
             if (!invItemName(base, item, type, itemId, ikey, name)) continue;
+            if (!headed) {
+                if (!resolveKey(base, "town_quest_rewards", lines[n], EMB_TIP_LINE_SZ)) {
+                    logLine("embark: town_quest_rewards did not resolve -- the mod's heading");
+                    _snprintf(lines[n], EMB_TIP_LINE_SZ, "%s", axs(AXS_EMB_REWARDS_HEAD));
+                }
+                abStripMarkup(lines[n]);
+                lines[n][EMB_TIP_LINE_SZ - 1] = 0;
+                n++;
+                headed = true;
+                if (n >= max) break;
+            }
             char head[320];
-            if (amount > 1) _snprintf(head, sizeof head, axs(AXS_EMB_REWARD_N_FMT), name, amount);
-            else            _snprintf(head, sizeof head, axs(AXS_EMB_REWARD_FMT), name);
+            if (amount > 1) _snprintf(head, sizeof head, axs(AXS_INV_NAME_COUNT_FMT), name, (int)amount);
+            else            _snprintf(head, sizeof head, "%s", name);
             head[sizeof head - 1] = 0;
             if (strcmp(type, "trinket") == 0) {
                 char rarity[96] = {0}, clsreq[256] = {0}, fx[768] = {0};
@@ -782,11 +848,7 @@ bool routeEmbarkKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
         if (!focus) { postSpeech(axs(AXS_EMB_NO_QUESTS)); return true; }
         static char lines[EMB_TIP_MAX][EMB_TIP_LINE_SZ];
         int ln = embTipLines(base, focus->quest, lines, EMB_TIP_MAX);
-        if (ln <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
-        if (g_embTipLine < 0 || g_embTipLine >= ln) g_embTipLine = 0;
-        g_embTipLine = (g_embTipLine + ((sym == SDLK_UP) ? 1 : -1) + ln) % ln;
-        postSpeech(lines[g_embTipLine]);
-        return true;
+        return axTipStep(&g_embTipLine, (sym == SDLK_UP) ? 1 : -1, &lines[0][0], EMB_TIP_LINE_SZ, ln);
     }
     if (ctrl) return false;
 

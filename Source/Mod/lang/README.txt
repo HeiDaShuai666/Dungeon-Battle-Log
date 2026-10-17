@@ -12,7 +12,7 @@
 #   F10 mod menu, and the mod logs the name in ddaccess-debug.log in the game folder as:
 #   axlang: session language "..." ).
 # - These files are COMPILED INTO the mod: Mod\build.ps1 embeds every <language>.txt in this
-#   folder into ddaccess.dll on every build. Nothing ships or deploys beside the game any more
+#   folder into version.dll (the mod DLL; named ddaccess.dll until 2026-10-12) on every build. Nothing ships or deploys beside the game any more
 #   (the old external ddaccess-lang\ folder was retired 2026-08-12). To test a new or changed
 #   file, re-run Mod\build.ps1 -- or send the file to the mod's maintainer to build in.
 # - The mod reads the game's language once at startup and keeps it for the session. A

@@ -229,6 +229,27 @@ void resolveLabel(uintptr_t base, uintptr_t tbwVtbl, int64_t id,
     }
 }
 
+// ---- THE FOCUSED ITEM'S CONTROL HINT ----
+static AxStrId axFocusHintFor(uintptr_t base, int64_t id) {
+    AxContext ctx = currentAxContext();
+    if (ctx != AX_TITLE && ctx != AX_PAUSE) return AXS__COUNT;
+    uint32_t cc = (uint32_t)(uint64_t)id;
+    if (cc - CONFIRM_ANSWER_BASE < (uint32_t)CONFIRM_ANSWER_MAX) return AXS__COUNT;
+    if (lookupPause(cc)) return AXS_ENTER_ACTIVATE_HINT;
+    int ok = optRowHintKind(cc);
+    if (ok == 2) return AXS_OPT_ADJUST_HINT;
+    if (ok == 1) return AXS_ENTER_ACTIVATE_HINT;
+    uintptr_t display = frontEndDisplay(base);
+    if (display && frontEndState(display) == FE_STATE_TITLE) return AXS_ENTER_ACTIVATE_HINT;
+    return AXS__COUNT;
+}
+void resolveLabelForSpeech(uintptr_t base, uintptr_t tbwVtbl, int64_t id, char* text, int textsz) {
+    resolveLabel(base, tbwVtbl, id, text, textsz);
+    if (!text[0]) return;
+    AxStrId h = axFocusHintFor(base, id);
+    if (h != AXS__COUNT) axAppendHint(text, textsz, h);   // "" while Control hints is Off
+}
+
 static bool isUserActionEvent(uint32_t t) {
     return t == SDL_EVT_KEYDOWN || t == SDL_EVT_MOUSEBUTTONDOWN ||
            t == SDL_EVT_JOYBUTTONDOWN || t == SDL_EVT_CONTROLLERBUTTONDOWN;
@@ -269,7 +290,8 @@ static void frameCheck() {
         if (isOptionId((uint32_t)id) &&
             (long)(now - g_lastActionTick) <= OPT_RESCAN_WINDOW_MS) {
             char vtext[512];
-            resolveLabel(g_base, g_tbwVtbl, id, vtext, sizeof vtext);   // refreshes g_optValueOnly
+            resolveLabelForSpeech(g_base, g_tbwVtbl, id, vtext, sizeof vtext);   // refreshes g_optValueOnly
+                                                                                 // (hinted, like the memory it is compared with)
             if (vtext[0] && strcmp(vtext, g_axLastSpoken) != 0) {
                 // Speak only the value ("Low" / "79" / "english"); fall back to the whole line.
                 postSpeech(g_optValueOnly[0] ? g_optValueOnly : vtext);
@@ -287,16 +309,17 @@ static void frameCheck() {
     }
 
     char text[512];
-    resolveLabel(g_base, g_tbwVtbl, id, text, sizeof text);
+    resolveLabelForSpeech(g_base, g_tbwVtbl, id, text, sizeof text);   // the label + its control hint
     g_axSpokenId = id;
 
     if (g_titlePrefixPending) {
         g_titlePrefixPending = false;
         uintptr_t disp = frontEndDisplay(g_base);
         if (disp && frontEndState(disp) == FE_STATE_TITLE && text[0]) {
-            char combined[600];
+            char combined[768];
             _snprintf(combined, sizeof combined, "%s. %s", kTitleScreenName, text);
             combined[sizeof combined - 1] = 0;
+            axAppendHint(combined, sizeof combined, AXS_FE_TITLE_HINT);   // "" while Control hints is Off
             postSpeech(combined);
             strncpy(g_axLastSpoken, text, sizeof g_axLastSpoken - 1);
             g_axLastSpoken[sizeof g_axLastSpoken - 1] = 0;
@@ -352,8 +375,8 @@ bool routePanelJump(uintptr_t base, bool toMap, uint8_t repeat) {
             return true;
         }
         char buf[MAILBOX_SZ];
-        if (g_invSlot >= 0 && invSlotText(base, g_invSlot, buf, sizeof buf)) postSpeech(buf);
-        else postSpeech(axs(AXS_INV_TITLE));
+        if (g_invSlot >= 0 && invBagRowText(base, g_invSlot, buf, sizeof buf)) postSpeech(buf);
+        else { invPanelTitle(buf, sizeof buf); postSpeech(buf); }
         return true;
     }
 
@@ -457,55 +480,59 @@ struct AxContextDef {
     bool isMessage;
     // ---- PAD FOCUS SYNC ----
     bool (*focusSync)(uintptr_t base, int64_t id, uint32_t owner);
+    // ---- FIND ----
+    AxFindFn find;
 };
 
 static const AxContextDef kAxContexts[] = {
+    { AX_FIND,     axIsFind,     routeFindKey,     true, "find",     fdReannounce },
     { AX_SETTINGS, axIsSettings, routeSettingsKey, true, "settings", smReannounce },
+    { AX_MODTUT,   axIsModTut,   routeModTutKey,   true, "modtutorial", mtReannounce, true },
     // modal layers: the game's focus sits underneath and must not be voiced
     { AX_NAMING,  axIsNaming,  nullptr,          true,  "naming"    },
     { AX_LOADING, axIsLoading, nullptr,          true,  "loading",  lsReannounce, true },
     { AX_TUTORIAL, tutPopupActive, routeTutorialKey, true, "tutorial", tutReannounce, true },
-    { AX_GLOSSARY, axIsGlossary, routeGlossaryKey, true, "glossary", glReannounce },
-    { AX_HELP, axIsHelp, routeHelpKey, true, "help", hpReannounce, true },
-    { AX_CONTROLS, axIsControls, routeControlsKey, true, "controls", cpReannounce, true },
-    { AX_PAUSE,   axIsPause,   routeFrontEndKey, false, "pause",    feReannounce, false, feFocusSync },
-    { AX_DIALOG,  axIsDialog,  routeDialogKey,   false, "dialog",   cdReannounce, true },
+    { AX_GLOSSARY, axIsGlossary, routeGlossaryKey, true, "glossary", glReannounce, false, nullptr, glFind },
+    { AX_HELP, axIsHelp, routeHelpKey, true, "help", hpReannounce, true, nullptr, hpFind },
+    { AX_CONTROLS, axIsControls, routeControlsKey, true, "controls", cpReannounce, true, nullptr, cpFind },
+    { AX_PAUSE, axIsPause, routeFrontEndKey, false, "pause", feReannounce, false, feFocusSync, feFind },
+    { AX_DIALOG, axIsDialog, routeDialogKey, false, "dialog", cdReannounce, true, nullptr, feFind },
     { AX_JOURNAL, axIsJournal, routeJournalKey,  true,  "journal",  jpReannounce, true },
     { AX_TOWNEVENT, axIsTownEvent, nullptr, true, "townevent", teReannounce, true },
-    { AX_CHARSHEET, axIsTownEventSheet, routeCharSheetKey, true, "charsheet", nullptr, false, csFocusSync },
-    { AX_RESULTS, axIsResults, routeResultsKey,  true,  "results",  rrReannounce },
-    { AX_TOWNLOG, axIsTownLog, routeTownLogKey,  true,  "townlog",  tlReannounce },
-    { AX_EXCHANGE, axIsExchange, routeExchangeKey, true, "exchange", exReannounce, false, exFocusSync },
-    { AX_TRKPICK,  axIsTrkPick,  routeTrkPickKey,  true, "trinketpick", trkReannounce },
-    { AX_REALMINV, axIsRealmInv, routeRealmInvKey, true, "realminv", riReannounce, false, riFocusSync },
-    { AX_RINGLIST, axIsRingList, routeRingListKey, true, "ringlist", ringReannounce, false, ringFocusSync },
-    { AX_RING,     axIsRing,     routeRingKey,     true, "ring",     ringReannounce, false, ringFocusSync },
-    { AX_ROSTER, axIsRoster, routeRosterKey, true, "roster", rosReannounce },
-    { AX_PARTY, axIsParty, routePartyKey, true, "party", ptyReannounce, false, ptyFocusSync },
-    { AX_PROVISION, axIsProvision, routeProvisionKey, true, "provision", provReannounce, false, provFocusSync },
-    { AX_EMBARK, axIsEmbark, routeEmbarkKey, true, "embark", embReannounce, false, embFocusSync },
-    { AX_RESOURCES, axIsResources, routeResourcesKey, true, "resources", resReannounce },
-    { AX_BLDG, axIsBld, routeBldKey, true, "building", bldReannounce, false, bldFocusSync },
-    { AX_DISTRICT, axIsDistrict, routeDistrictKey, true, "districts", dstReannounce, false, dstFocusSync },
-    { AX_TOWNMAP, axIsTownMap, routeTownMapKey, true, "townmap", tmReannounce, false, tmFocusSync },
+    { AX_CHARSHEET, axIsTownEventSheet, routeCharSheetKey, true, "charsheet", nullptr, false, csFocusSync, csFind },
+    { AX_RESULTS, axIsResults, routeResultsKey, true, "results", rrReannounce, false, nullptr, rrFind },
+    { AX_TOWNLOG, axIsTownLog, routeTownLogKey, true, "townlog", tlReannounce, false, nullptr, tlFind },
+    { AX_EXCHANGE, axIsExchange, routeExchangeKey, true, "exchange", exReannounce, false, exFocusSync, exFind },
+    { AX_TRKPICK, axIsTrkPick, routeTrkPickKey, true, "trinketpick", trkReannounce, false, nullptr, trkFind },
+    { AX_REALMINV, axIsRealmInv, routeRealmInvKey, true, "realminv", riReannounce, false, riFocusSync, riFind },
+    { AX_RINGLIST, axIsRingList, routeRingListKey, true, "ringlist", ringReannounce, false, ringFocusSync, ringListFind },
+    { AX_RING, axIsRing, routeRingKey, true, "ring", ringReannounce, false, ringFocusSync, ringFind },
+    { AX_ROSTER, axIsRoster, routeRosterKey, true, "roster", rosReannounce, false, nullptr, rosFind },
+    { AX_PARTY, axIsParty, routePartyKey, true, "party", ptyReannounce, false, ptyFocusSync, ptyFind },
+    { AX_PROVISION, axIsProvision, routeProvisionKey, true, "provision", provReannounce, false, provFocusSync, provFind },
+    { AX_EMBARK, axIsEmbark, routeEmbarkKey, true, "embark", embReannounce, false, embFocusSync, embFind },
+    { AX_RESOURCES, axIsResources, routeResourcesKey, true, "resources", resReannounce, false, nullptr, resFind },
+    { AX_BLDG, axIsBld, routeBldKey, true, "building", bldReannounce, false, bldFocusSync, bldFind },
+    { AX_DISTRICT, axIsDistrict, routeDistrictKey, true, "districts", dstReannounce, false, dstFocusSync, dstFind },
+    { AX_TOWNMAP, axIsTownMap, routeTownMapKey, true, "townmap", tmReannounce, false, tmFocusSync, tmFind },
     { AX_RAIDFINISH, axIsRaidFinish, routeRaidFinishKey, true, "raidfinish" },
-    { AX_LOOT,    axIsLoot,    routeLootKey,     true,  "loot",     lootReannounce },
-    { AX_EVENT,   axIsEvent,   routeEventKey,    true,  "event",    evReannounce, true, evFocusSync },
-    { AX_MEAL,    axIsMeal,    routeMealKey,     true,  "meal",     mealReannounce, false, mealFocusSync },
-    { AX_CAMPTARGET, axIsCampTarget, routeCampTargetKey, true, "camptarget", nullptr, false, ctFocusSync },
-    { AX_CHARSHEET, axIsCharSheet, routeCharSheetKey, true, "charsheet", nullptr, false, csFocusSync },
-    { AX_LOG,     axIsLog,     routeLogKey,      true,  "combatlog" },
-    { AX_ITEMUSE, axIsItemUse, routeItemUseKey,  false, "itemuse"   },
-    { AX_TARGET,  axIsTarget,  routeTargetKey,   false, "target"    },
+    { AX_LOOT, axIsLoot, routeLootKey, true, "loot", lootReannounce, false, nullptr, lootFind },
+    { AX_EVENT, axIsEvent, routeEventKey, true, "event", evReannounce, true, evFocusSync, evFind },
+    { AX_MEAL, axIsMeal, routeMealKey, true, "meal", mealReannounce, false, mealFocusSync, mealFind },
+    { AX_CAMPTARGET, axIsCampTarget, routeCampTargetKey, true, "camptarget", nullptr, false, ctFocusSync, ctFind },
+    { AX_CHARSHEET, axIsCharSheet, routeCharSheetKey, true, "charsheet", nullptr, false, csFocusSync, csFind },
+    { AX_LOG, axIsLog, routeLogKey, true, "combatlog", nullptr, false, nullptr, clogFind },
+    { AX_ITEMUSE, axIsItemUse, routeItemUseKey, false, "itemuse", nullptr, false, nullptr, iuFind },
+    { AX_TARGET, axIsTarget, routeTargetKey, false, "target", nullptr, false, nullptr, tsFind },
     { AX_QUESTDONE, axIsQuestDone, routeQuestDoneKey, true, "questdone", qcReannounce, true, qcFocusSync },
-    { AX_QUEST,   axIsQuest,   routeQuestKey,    false, "quest"     },
-    { AX_ROOM,    axIsRoom,    routeRoomKey,     false, "room",     nullptr, false, abFocusSync },
-    { AX_ACTIONS, axIsActions, routeActionKey,   false, "actions",  nullptr, false, abFocusSync },
-    { AX_MAP,     axIsMap,     routeMapKey,      true,  "map"       },
-    { AX_INV,     axIsInv,     routeInvKey,      false, "inventory", nullptr, false, abFocusSync },
+    { AX_QUEST, axIsQuest, routeQuestKey, false, "quest", nullptr, false, nullptr, qtFind },
+    { AX_ROOM, axIsRoom, routeRoomKey, false, "room", nullptr, false, abFocusSync, rvFind },
+    { AX_ACTIONS, axIsActions, routeActionKey, false, "actions", nullptr, false, abFocusSync, abFind },
+    { AX_MAP,     axIsMap,     routeMapKey,      true,  "map",      nullptr, false, nullptr, mapFind },
+    { AX_INV, axIsInv, routeInvKey, false, "inventory", nullptr, false, abFocusSync, invFind },
     { AX_INGAME,  axIsInGame,  nullptr,          false, "ingame",   nullptr, false, abFocusSync },
     // front-end, and the catch-all
-    { AX_TITLE,   axIsTitle,   routeFrontEndKey, false, "title",    feReannounce, false, feFocusSync },
+    { AX_TITLE, axIsTitle, routeFrontEndKey, false, "title", feReannounce, false, feFocusSync, feFind },
 };
 static const int kAxContextCount = (int)(sizeof kAxContexts / sizeof kAxContexts[0]);
 
@@ -678,7 +705,9 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
     AxContext ctx = d ? d->ctx : AX_NONE;
 
     // ---- The mod settings menu (F10), and the key-remap translation ----
+    if (ctx == AX_FIND) return routeFindKey(base, sym, mod, rep);
     if (ctx == AX_SETTINGS) return routeSettingsKey(base, sym, mod, rep);
+    if (ctx == AX_MODTUT && routeModTutKey(base, sym, mod, rep)) return true;
     {
         int kfn = -1, kslot = -1;
         int kr = kmRoute(base, ctx, &sym, &mod, &kfn, &kslot);
@@ -692,6 +721,54 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
         if (!rep) {
             if (g_twStepping) twInterrupt(sym);
             smOpen(base);
+        }
+        return true;
+    }
+
+    // ---- Ctrl+F: the FIND overlay ----
+    if (sym == SDLK_f && (mod & (KMOD_LCTRL | KMOD_RCTRL)) && !g_textInputActive &&
+        !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LSHIFT | KMOD_RSHIFT)) &&
+        !(ctx == AX_BLDG && (g_bldRecDrag != 0 || g_qtOpen))) {
+        if (!rep) {
+            if (g_twStepping) twInterrupt(sym);
+            if (d && d->find) fdOpen(base, d->find, d->name);
+            else {
+                logLine("find: context \"%s\" has no enumerator", d ? d->name : "none");
+                postSpeech(axs(AXS_FD_NOTHING_HERE));
+            }
+        }
+        return true;
+    }
+
+    // ---- F1: the MOD TUTORIAL for this screen ----
+    if (sym == SDLK_F1 && !g_textInputActive &&
+        !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL |
+                 KMOD_LSHIFT | KMOD_RSHIFT)) &&
+        !(ctx == AX_BLDG && (g_bldRecDrag != 0 || g_qtOpen))) {
+        if (!rep) {
+            if (g_twStepping) twInterrupt(sym);
+            mtOpenF1(base);
+        }
+        return true;
+    }
+
+    // ---- F2 / F3: the two ANNOUNCEMENT TOGGLES ----
+    if ((sym == SDLK_F2 || sym == SDLK_F3) && !g_textInputActive &&
+        !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL |
+                 KMOD_LSHIFT | KMOD_RSHIFT)) &&
+        !(ctx == AX_BLDG && (g_bldRecDrag != 0 || g_qtOpen))) {
+        if (!rep) {
+            if (sym == SDLK_F2) {
+                bool on = !axControlHints();
+                axSetControlHints(on);
+                logLine("hotkey: F2 -> control hints %s", on ? "on" : "off");
+                postSpeech(axs(on ? AXS_SM_ANN_HINTS_ON : AXS_SM_ANN_HINTS_OFF));
+            } else {
+                bool on = !axAutoTooltips();
+                axSetAutoTooltips(on);
+                logLine("hotkey: F3 -> automatic tooltips %s", on ? "on" : "off");
+                postSpeech(axs(on ? AXS_SM_ANN_TIPS_ON : AXS_SM_ANN_TIPS_OFF));
+            }
         }
         return true;
     }
@@ -746,8 +823,10 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
 
     if (sym == SDLK_m && !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
         if (ctx == AX_ACTIONS || ctx == AX_ROOM || ctx == AX_MAP || ctx == AX_INV ||
-            ctx == AX_INGAME || ctx == AX_QUEST || ctx == AX_ITEMUSE || ctx == AX_LOOT)
+            ctx == AX_INGAME || ctx == AX_QUEST || ctx == AX_ITEMUSE || ctx == AX_LOOT) {
+            if (!rep) mtNoteLanding(true);       // the ask is the landing (core/modtutorial.cpp)
             return routePanelJump(base, true, rep);
+        }
     }
 
     if (sym == SDLK_r && !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
@@ -842,7 +921,8 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
 
     if (sym == SDLK_l && !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
         if (ctx == AX_ACTIONS || ctx == AX_MAP || ctx == AX_INV || ctx == AX_INGAME ||
-            ctx == AX_ROOM || ctx == AX_QUEST || ctx == AX_LOG || ctx == AX_ITEMUSE) {
+            ctx == AX_ROOM || ctx == AX_QUEST || ctx == AX_LOG || ctx == AX_ITEMUSE ||
+            ctx == AX_TARGET || ctx == AX_CAMPTARGET) {
             if (!rep) speakMeter(base);
             return true;                              // claimed: one readout per press
         }
@@ -864,7 +944,8 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
     if (sym == SDLK_t && (mod & (KMOD_LSHIFT | KMOD_RSHIFT)) &&
         !(mod & (KMOD_LALT | KMOD_RALT))) {
         if (ctx == AX_ACTIONS || ctx == AX_MAP || ctx == AX_INV || ctx == AX_INGAME ||
-            ctx == AX_ROOM || ctx == AX_QUEST || ctx == AX_LOG || ctx == AX_ITEMUSE) {
+            ctx == AX_ROOM || ctx == AX_QUEST || ctx == AX_LOG || ctx == AX_ITEMUSE ||
+            ctx == AX_TARGET || ctx == AX_CAMPTARGET) {
             if (!rep) requestTorchDouse(base, (mod & (KMOD_LCTRL | KMOD_RCTRL)) != 0);
             return true;                          // claimed: one action per press, never repeating
         }
@@ -873,15 +954,18 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
 
     if (sym == SDLK_t && !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
         if (!rep && (ctx == AX_ACTIONS || ctx == AX_MAP || ctx == AX_INV || ctx == AX_INGAME ||
-                     ctx == AX_ROOM || ctx == AX_QUEST || ctx == AX_LOG || ctx == AX_ITEMUSE))
+                     ctx == AX_ROOM || ctx == AX_QUEST || ctx == AX_LOG || ctx == AX_ITEMUSE ||
+                     ctx == AX_TARGET || ctx == AX_CAMPTARGET))
             armTorchWatch(base);
         return false;
     }
 
     if (sym == SDLK_i && !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
         if (ctx == AX_ACTIONS || ctx == AX_ROOM || ctx == AX_MAP || ctx == AX_INV ||
-            ctx == AX_INGAME || ctx == AX_QUEST || ctx == AX_ITEMUSE || ctx == AX_LOOT)
+            ctx == AX_INGAME || ctx == AX_QUEST || ctx == AX_ITEMUSE || ctx == AX_LOOT) {
+            if (!rep) mtNoteLanding(false);      // the ask is the landing (core/modtutorial.cpp)
             return routePanelJump(base, false, rep);
+        }
         if (ctx == AX_REALMINV || ctx == AX_TRKPICK || ctx == AX_EXCHANGE || ctx == AX_RESOURCES ||
             ctx == AX_TOWNMAP || ctx == AX_PARTY || ctx == AX_ROSTER ||
             ctx == AX_TOWNLOG || ctx == AX_BLDG || ctx == AX_DISTRICT || ctx == AX_EMBARK ||
@@ -1078,8 +1162,10 @@ int OurPoll(void* ev) {
         checkTutorialDismissed(g_base);
         checkTownEventDismissed(g_base); // ...and the town-event popup does the same
         checkRestingPoint(g_base);
+        mtService(g_base);
         serviceOptAdjust();
         axLangService(g_base);
+        axUpdateCheckService();
         frameCheck();
     }
     return r;

@@ -84,7 +84,12 @@ int csResolveLevel(uintptr_t base, uintptr_t hero) {
         if (xp < th) break;
         level = (int)i;
     }
-    logLine("charsheet rank: xp=%u thresholds=%llu -> level %d", xp, (unsigned long long)count, level);
+    static uint32_t lastXp = 0xffffffffu;
+    static int      lastLevel = -2;
+    if (xp != lastXp || level != lastLevel) {
+        lastXp = xp; lastLevel = level;
+        logLine("charsheet rank: xp=%u thresholds=%llu -> level %d", xp, (unsigned long long)count, level);
+    }
     return level;
 }
 
@@ -553,11 +558,12 @@ static void csCampProbe(uintptr_t base, const char* when) {
 
 // ---- ASSIGN A SKILL TO AN ACTION-BAR SLOT ----
 typedef uint8_t (*CsComToggleFn)(void* hero, uint32_t idx);
-static bool csSehToggleSkill(uintptr_t base, uintptr_t hero, int i) {
+static bool csSehToggleSkill(uintptr_t base, uintptr_t hero, int i, bool camp) {
     if (!hero || i < 0) return false;
-    __try { return ((CsComToggleFn)(base + CS_COMSKILL_TOGGLE_RVA))((void*)hero, (uint32_t)i) != 0; }
+    uintptr_t fn = base + (camp ? CS_CAMPSKILL_TOGGLE_RVA : CS_COMSKILL_TOGGLE_RVA);
+    __try { return ((CsComToggleFn)fn)((void*)hero, (uint32_t)i) != 0; }
     __except (EXCEPTION_EXECUTE_HANDLER) {
-        logLine("charsheet comskill: toggle FAULTED (hero=%p idx=%d)", (void*)hero, i);
+        logLine("charsheet %s: toggle FAULTED (hero=%p idx=%d)", camp ? "camskill" : "comskill", (void*)hero, i);
         return false;
     }
 }
@@ -569,17 +575,17 @@ struct CsSlotResult {
     int  movedTo;       // that skill's new 1-based slot
 };
 
-static bool csComAssignSlot(uintptr_t base, int want, int slot, CsSlotResult* res) {
+static bool csComAssignSlot(uintptr_t base, int want, int slot, CsSlotResult* res, bool camp) {
     res->landed = 0; res->displaced = -1; res->movedIdx = -1; res->movedTo = 0;
     uintptr_t hero = abSelectedHero(base);
     if (!hero || want < 0) return false;
-    int n = csComSkillCount(base);
+    int n = camp ? csCampSkillCount(base) : csComSkillCount(base);
     if (want >= n) return false;
-    int cap = csComMaxSelected(base);
+    int cap = camp ? CAMP_SEL_MAX : csComMaxSelected(base);
     if (slot < 1 || slot > cap) return false;
 
     int cur[CS_COMSKILL_MAX], tgt[CS_COMSKILL_MAX];
-    int L = csComSlotList(base, cur);
+    int L = camp ? csCampSelList(base, cur) : csComSlotList(base, cur);
     if (L > cap) return false;
     for (int s = 0; s < L; s++) if (cur[s] < 0 || cur[s] >= n) return false;   // torn entry: refuse
 
@@ -609,18 +615,19 @@ static bool csComAssignSlot(uintptr_t base, int want, int slot, CsSlotResult* re
     logLine("charsheet slot: assign skill %d -> slot %d (len %d -> %d, rebuild from %d)",
             want, slot, L, T, K + 1);
     for (int s = L - 1; s >= K; s--)                       // erase the tail, back to front
-        if (!csSehToggleSkill(base, hero, cur[s]))
+        if (!csSehToggleSkill(base, hero, cur[s], camp))
             logLine("charsheet slot: ⚠ erase of skill %d refused", cur[s]);
     for (int s = K; s < T; s++)                            // push the new tail
-        if (!csSehToggleSkill(base, hero, tgt[s]))
+        if (!csSehToggleSkill(base, hero, tgt[s], camp))
             logLine("charsheet slot: ⚠ push of skill %d refused", tgt[s]);
 
     // Read the outcome back out of the vector rather than trusting the plan.
-    res->landed = csComSkillSlot(base, want);
-    if (res->movedIdx >= 0) res->movedTo = csComSkillSlot(base, res->movedIdx);
-    if (res->displaced >= 0 && csComSkillEquipped(base, res->displaced)) res->displaced = -1;
+    res->landed = camp ? csCampSkillSlot(base, want) : csComSkillSlot(base, want);
+    if (res->movedIdx >= 0) res->movedTo = camp ? csCampSkillSlot(base, res->movedIdx) : csComSkillSlot(base, res->movedIdx);
+    if (res->displaced >= 0 && (camp ? csCampSkillSelected(base, res->displaced)
+                                     : csComSkillEquipped(base, res->displaced))) res->displaced = -1;
     int after[CS_COMSKILL_MAX];
-    int A = csComSlotList(base, after);
+    int A = camp ? csCampSelList(base, after) : csComSlotList(base, after);
     bool ok = (A == T);
     for (int s = 0; ok && s < A; s++) if (after[s] != tgt[s]) ok = false;
     if (!ok) logLine("charsheet slot: ⚠ vector does not match the plan (len %d, wanted %d)", A, T);
@@ -789,44 +796,52 @@ bool csTrinketRowText(uintptr_t base, int i, char* out, int outsz) {
 
     bool town = csTownSheetPanel(base) != 0;
     if ((int32_t)amount < 1) {                     // the game's own empty test
-        char slotline[96];
-        _snprintf(slotline, sizeof slotline, axs(AXS_CS_TRK_EMPTY_FMT), i + 1, TRINKET_SLOT_COUNT);
-        slotline[sizeof slotline - 1] = 0;
-        _snprintf(out, outsz, "%s %s", slotline,
-                  axs(town ? AXS_CS_TRK_HINT_TOWN : AXS_CS_TRK_HINT_RAID));
+        _snprintf(out, outsz, axs(AXS_CS_TRK_EMPTY_FMT), i + 1, TRINKET_SLOT_COUNT);
         out[outsz - 1] = 0;
         logLine("charsheet trinket[%d] empty", i);
         return true;
     }
+    (void)town;
 
     char type[64] = { 0 }, itemId[64] = { 0 }, key[192] = { 0 }, name[256] = { 0 };
     bool resolved = invItemName(base, item, type, itemId, key, name);
 
-    char rarity[96] = { 0 }, clsreq[256] = { 0 }, charges[384] = { 0 }, trig[1536] = { 0 };
-    uintptr_t rec = bldTrinketRecord(base, item);
-    if (rec) {
-        bldTrinketRarity(base, rec, rarity, sizeof rarity, false);
-        bldTrinketClassReq(base, rec, clsreq, sizeof clsreq, false);
-        bldTrinketCharges(base, item, rec, charges, sizeof charges, false);
-        bldTrinketTriggers(base, rec, trig, sizeof trig, false);
-    }
-    char fx[768] = { 0 };
-    bldTrinketEffects(base, item, fx, sizeof fx, false);
     char slotline[96];
     _snprintf(slotline, sizeof slotline, axs(AXS_CS_TRK_SLOT_FMT), i + 1, TRINKET_SLOT_COUNT);
     slotline[sizeof slotline - 1] = 0;
-    _snprintf(out, outsz, "%s%s%s%s%s%s%s%s%s%s%s. %s %s",
-              name, rarity[0] ? ". " : "", rarity, clsreq[0] ? ". " : "", clsreq,
-              charges[0] ? ". " : "", charges,
-              fx[0] ? ". " : "", fx,
-              trig[0] ? ". " : "", trig,
-              slotline,
-              axs(town ? AXS_CS_TRK_HINT_UNEQUIP : AXS_CS_TRK_HINT_REPLACE));
+    _snprintf(out, outsz, "%s. %s", name, slotline);
     out[outsz - 1] = 0;
 
     logLine("charsheet trinket[%d] item=%p type=\"%s\" id=\"%s\" key=\"%s\" -> \"%s\" (%s)",
             i, (void*)item, type, itemId, key, out, resolved ? "resolved" : "fallback");
     return true;
+}
+
+int csTrinketTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]) {
+    for (int k = 0; k < AB_TIP_MAX_LINES; k++) lines[k][0] = 0;
+    if (!csTrinketRowText(base, i, lines[0], AB_TIP_LINE_SZ)) return 0;
+    uintptr_t hero = abSelectedHero(base);
+    uintptr_t beg = 0; int slots = 0;
+    if (!hero || !invItemVectorAt(hero + HERO_TRINKET_SYSTEM_OFF, &beg, &slots) || i >= slots) return 1;
+    uintptr_t item = beg + (uintptr_t)i * ITEM_STRIDE;
+    uint32_t amount = 0;
+    if (!safeReadU32(item + ITEM_AMOUNT_OFF, &amount) || (int32_t)amount < 1) return 1;
+    InvCard c;
+    invCardRead(base, item, &c);
+    c.desc[0] = 0;
+    return invCardLines(&c, lines, 1, AB_TIP_MAX_LINES);
+}
+
+void csTrinketAppendHint(uintptr_t base, int i, char* out, int outsz) {
+    uintptr_t hero = abSelectedHero(base);
+    uintptr_t beg = 0; int slots = 0;
+    if (!hero || i < 0 || !invItemVectorAt(hero + HERO_TRINKET_SYSTEM_OFF, &beg, &slots) || i >= slots) return;
+    uint32_t amount = 0;
+    if (!safeReadU32(beg + (uintptr_t)i * ITEM_STRIDE + ITEM_AMOUNT_OFF, &amount)) return;
+    bool town = csTownSheetPanel(base) != 0;
+    bool filled = (int32_t)amount >= 1;
+    axAppendHint(out, outsz, filled ? (town ? AXS_CS_TRK_HINT_UNEQUIP : AXS_CS_TRK_HINT_REPLACE)
+                                    : (town ? AXS_CS_TRK_HINT_TOWN    : AXS_CS_TRK_HINT_RAID));
 }
 
 // ------------------------------------------------------------
@@ -876,8 +891,8 @@ bool csItemsPanelRow(uintptr_t base, uintptr_t hero, int i, char* out, int outsz
 
     _snprintf(out, outsz, "%s: %s%s%s%s%s%s%s%s%s%s%s.",
               label, name,
-              rarity[0]  ? ". " : "", rarity,
-              clsreq[0]  ? ". " : "", clsreq,
+              rarity[0]  ? ", " : "", rarity,
+              clsreq[0]  ? ", " : "", clsreq,
               charges[0] ? ". " : "", charges,
               fx[0]      ? ". " : "", fx,
               trig[0]    ? ". " : "", trig);
@@ -949,15 +964,15 @@ static bool csTitleRowText(uintptr_t base, int i, char* out, int outsz) {
 
 static const CsSectionDef kCsSections[] = {
     { nullptr,                         csTitleCount,    csTitleRowText,    nullptr,             "hero"          },
-    { nullptr, csQuirkPosSectionCount, csQuirkPosRowText, nullptr, "positive quirks", false, AXS_CS_SECTION_POS_QUIRKS },
-    { nullptr, csQuirkNegSectionCount, csQuirkNegRowText, nullptr, "negative quirks", false, AXS_CS_SECTION_NEG_QUIRKS },
+    { nullptr, csQuirkPosSectionCount, csQuirkPosRowText, csQuirkPosTipLines, "positive quirks", false, AXS_CS_SECTION_POS_QUIRKS },
+    { nullptr, csQuirkNegSectionCount, csQuirkNegRowText, csQuirkNegTipLines, "negative quirks", false, AXS_CS_SECTION_NEG_QUIRKS },
     { "character_title_base_stats",    csStatCount,     csStatRowText,     csStatTipLines,      "base stats"    },
     { "character_title_equipment",     csEquipCount,    csEquipRowText,    nullptr,             "equipment"     },
-    { "character_title_trinkets",      csTrinketCount,  csTrinketRowText,  nullptr,             "trinkets"      },
+    { "character_title_trinkets",      csTrinketCount,  csTrinketRowText,  csTrinketTipLines,   "trinkets"      },
     { "character_title_combat_skills", csComSectionCount, csComSectionRow, csComSectionTip,  "combat skills" },
     { "character_title_camping_skills", csCampSkillCount, csCampSkillRowText, csCampSkillTipLines, "camping skills" },
     { "character_title_resistances",   csResistCount,   csResistRowText,   csResistTipLines,    "resistances"   },
-    { "str_diseases",                  csDiseaseSectionCount, csDiseaseRowText, nullptr,        "diseases"      },
+    { "str_diseases",                  csDiseaseSectionCount, csDiseaseRowText, csDiseaseTipLines, "diseases"   },
     { "str_manage_section",            csManageCount,   csManageRowText,   nullptr,             "Manage", true  },
 };
 static const int kCsSectionCount = (int)(sizeof kCsSections / sizeof kCsSections[0]);
@@ -972,6 +987,102 @@ static void csAppendPos(char* out, size_t outsz, int idx, int n) {
     out[outsz - 1] = 0;
 }
 
+static void csSectionHeading(uintptr_t base, const CsSectionDef* s, char* title, int titlesz) {
+    if (s->modTitle >= 0) {          // the mod's own heading (the two quirk columns)
+        strncpy(title, axs((AxStrId)s->modTitle), titlesz - 1);
+        title[titlesz - 1] = 0;
+    } else if (!resolveKey(base, s->titleKey, title, titlesz)) {
+        logLine("charsheet section: \"%s\" did not resolve", s->titleKey);
+        strncpy(title, s->name, titlesz - 1);   // the log name is English, but it is not silence
+        title[titlesz - 1] = 0;
+    }
+    abStripMarkup(title);
+    csTrimLabel(title);
+}
+
+static void csGridSkillTitle(uintptr_t base, bool camp, int i, char* out, int outsz) {
+    char fallback[64];
+    if (camp) {
+        uintptr_t cls = csCampSkillClass(base, i);
+        if (cls && csCampSkillName(base, cls, out, outsz)) return;
+        _snprintf(out, outsz, axs(AXS_CS_CAMPSKILL_N_FMT), i + 1);
+        out[outsz - 1] = 0;
+        return;
+    }
+    _snprintf(fallback, sizeof fallback, axs(AXS_CS_SKILL_N_FMT), i + 1);
+    fallback[sizeof fallback - 1] = 0;
+    uintptr_t skill = csComSkillAt(base, i);
+    if (skill) abSkillTitled(base, skill, fallback, out, outsz, false);
+    else       { strncpy(out, fallback, outsz - 1); out[outsz - 1] = 0; }
+}
+
+static void csRowTypeWords(uintptr_t base, const CsSectionDef* s, int item, char* out, int outsz) {
+    out[0] = 0;
+    if (axKeywordsMode() == AX_KEYWORDS_OFF) return;
+    if (!s->titleKey && s->modTitle < 0) return;
+    char title[128];
+    csSectionHeading(base, s, title, sizeof title);
+    char word[128]; word[0] = 0;
+    if (s->row == csResistRowText) {
+        if (csResistName(base, item, word, sizeof word)) {
+            csTrimLabel(word);
+            _snprintf(out, outsz, "%s %s", word, title);     // name first: the own term wins
+            out[outsz - 1] = 0;
+            return;
+        }
+    }
+    _snprintf(out, outsz, "%s", title);
+    out[outsz - 1] = 0;
+    if (s->row == csStatRowText) {
+        if (!csStatName(base, item, word, sizeof word)) word[0] = 0;
+    } else if (s->row == csEquipRowText) {
+        uintptr_t rec = csEquipRecordFor(abSelectedHero(base), item);
+        uint32_t slot = 0;
+        if (rec && safeReadU32(rec + EQUIP_SLOT_OFF, &slot) && slot <= 1)
+            axKeywordTerm(slot == 0 ? KW_TERM_WEAPON : KW_TERM_ARMOR, word, sizeof word);
+    }
+    if (word[0]) {
+        size_t n = strlen(out);
+        _snprintf(out + n, outsz - (int)n, ". %s", word);
+        out[outsz - 1] = 0;
+    }
+}
+
+static void csAppendTip(uintptr_t base, const CsSectionDef* s, int item, char* out, size_t outsz) {
+    if (!axTipWanted()) return;
+    char type[320];
+    csRowTypeWords(base, s, item, type, sizeof type);
+    axTipNoteKeywords(type);
+    if (s->tip) {
+        char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+        int n = s->tip(base, item, lines);
+        axTipGlueLines(out, (int)outsz, &lines[0][0], AB_TIP_LINE_SZ, n, 1);
+    }
+    axTipGlueKeywords(out, (int)outsz);
+}
+
+static void csAppendRowHint(uintptr_t base, const CsSectionDef* s, int item, char* out, size_t outsz) {
+    bool camp;
+    if      (s->row == csComSectionRow)   camp = false;
+    else if (s->row == csCampSkillRowText) camp = true;
+    else if (s->row == csManageRowText) { axAppendHint(out, (int)outsz, AXS_ENTER_ACTIVATE_HINT); return; }
+    else if (s->row == csTrinketRowText) { csTrinketAppendHint(base, item, out, (int)outsz); return; }
+    else return;
+    int i = item;
+    if (!camp) {
+        if (item < CS_COM_PIP_ITEMS) return;
+        i = csComColToSkill(base, item - CS_COM_PIP_ITEMS);
+    }
+    if (i < 0) return;
+    if (!(camp ? csCampSkillLearned(base, i) : csComSkillLearned(base, i))) return;
+    bool in = camp ? csCampSkillSelected(base, i) : csComSkillEquipped(base, i);
+    const char* fmt = axs(in ? AXS_CS_SKILL_DESELECT_HINT_FMT : AXS_CS_SKILL_SELECT_HINT_FMT);
+    if (!fmt[0]) return;                                 // "" while Control hints is Off
+    char hint[160];
+    _snprintf(hint, sizeof hint, fmt, camp ? CAMP_SEL_MAX : csComMaxSelected(base));
+    hint[sizeof hint - 1] = 0;
+    axAppendHintText(out, (int)outsz, hint);
+}
 static void csSpeakSection(uintptr_t base) {
     if (g_csSection < 0 || g_csSection >= kCsSectionCount) g_csSection = 0;
     const CsSectionDef* s = &kCsSections[g_csSection];
@@ -984,16 +1095,7 @@ static void csSpeakSection(uintptr_t base) {
         return;
     }
     char title[128];
-    if (s->modTitle >= 0) {          // the mod's own heading (the two quirk columns)
-        strncpy(title, axs((AxStrId)s->modTitle), sizeof title - 1);
-        title[sizeof title - 1] = 0;
-    } else if (!resolveKey(base, s->titleKey, title, sizeof title)) {
-        logLine("charsheet section: \"%s\" did not resolve", s->titleKey);
-        strncpy(title, s->name, sizeof title - 1);   // the log name is English, but it is not silence
-        title[sizeof title - 1] = 0;
-    }
-    abStripMarkup(title);
-    csTrimLabel(title);
+    csSectionHeading(base, s, title, sizeof title);
 
     char out[MAILBOX_SZ];
     _snprintf(out, sizeof out, "%s.", title);
@@ -1003,7 +1105,9 @@ static void csSpeakSection(uintptr_t base) {
     if (n > 0) {
         char item[MAILBOX_SZ];
         if (s->row(base, 0, item, sizeof item)) {
+            csAppendTip(base, s, 0, item, sizeof item);
             csAppendPos(item, sizeof item, 0, n);
+            csAppendRowHint(base, s, 0, item, sizeof item);   // the landing item's control hint
             size_t len = strlen(out);
             if (len && len < sizeof out - 1) { out[len++] = ' '; out[len] = 0; }
             _snprintf(out + len, sizeof out - len, "%s", item);
@@ -1095,7 +1199,9 @@ static void csMoveRow(uintptr_t base, int step) {
         logLine("charsheet: section %d (%s) row %d did not read", g_csSection, s->name, target);
         return;
     }
+    csAppendTip(base, s, target, out, sizeof out);
     csAppendPos(out, sizeof out, target, n);
+    csAppendRowHint(base, s, target, out, sizeof out);   // the item's control hint, after the count
 
     logLine("charsheet row %d -> %d (of %d) -> \"%s\"", g_csRow, target, n, out);
     if (target != g_csRow) g_csTrkConfirmSlot = -1;   // moving disarms the unequip confirm
@@ -1104,18 +1210,96 @@ static void csMoveRow(uintptr_t base, int step) {
     postSpeech(out);
 }
 
+// ---- THE CHARACTER SHEET'S FIND ENUMERATOR ----
+static bool csFindLocate(uintptr_t base, int idx, int* secOut, int* itemOut, int* countOut) {
+    int at = 0;
+    for (int s = 0; s < kCsSectionCount; s++) {
+        const CsSectionDef* d = &kCsSections[s];
+        int n = d->count(base);
+        if (d->hideWhenEmpty && n <= 0) continue;   // Up/Down skip it: not an element
+        int here = n > 0 ? n : 1;                   // an empty row is one element, its heading
+        if (idx < at + here) {
+            *secOut = s; *itemOut = idx - at; *countOut = n;
+            return true;
+        }
+        at += here;
+    }
+    return false;
+}
+
+int csFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_csOpen) return 0;
+    if (op == AXF_COUNT) {
+        int total = 0;
+        for (int s = 0; s < kCsSectionCount; s++) {
+            const CsSectionDef* d = &kCsSections[s];
+            int n = d->count(base);
+            if (d->hideWhenEmpty && n <= 0) continue;
+            total += n > 0 ? n : 1;
+        }
+        return total;
+    }
+    int sec = 0, item = 0, n = 0;
+    if (idx < 0 || !csFindLocate(base, idx, &sec, &item, &n)) return 0;
+    const CsSectionDef* s = &kCsSections[sec];
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        out[0] = 0;
+        if (!s->titleKey && s->modTitle < 0) {      // row 0: the title line is the whole element
+            return csTitleLine(base, out, outsz) ? 1 : 0;
+        }
+        if (n <= 0 || item == 0) {                   // the landing wording: heading, then item 1
+            char title[128];
+            csSectionHeading(base, s, title, sizeof title);
+            _snprintf(out, outsz, "%s.", title);
+            out[outsz - 1] = 0;
+            if (n <= 0) return 1;
+            char first[MAILBOX_SZ];
+            if (s->row(base, 0, first, sizeof first)) {
+                size_t len = strlen(out);
+                if (len < (size_t)outsz - 1) _snprintf(out + len, outsz - len, " %s", first);
+                out[outsz - 1] = 0;
+            }
+            return 1;
+        }
+        return s->row(base, item, out, outsz) ? 1 : 0;   // a later item: the item alone
+    }
+    if (op == AXF_GO) {
+        g_csSection = sec;
+        if (n <= 0 || item == 0) {
+            logLine("charsheet: find landed on row %d (%s), item 0", sec, s->name);
+            csSpeakSection(base);                    // places the cursor on item 1 and speaks it
+            return 1;
+        }
+        g_csRow = item;                              // csMoveRow(0) re-reads and clamps it live
+        g_csTipLine = 0;
+        g_csTrkConfirmSlot = -1;                     // a fresh landing arms no unequip confirm
+        logLine("charsheet: find landed on row %d (%s), item %d", sec, s->name, item);
+        csMoveRow(base, 0);
+        return 1;
+    }
+    return 0;
+}
+
 static void csSpeakTipLine(uintptr_t base, int tipDir) {
     const CsSectionDef* s = &kCsSections[g_csSection];
     if (g_csRow < 0) { postSpeech(axs(AXS_NO_ROW_SELECTED)); return; }
 
     char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
-    int n = s->tip(base, g_csRow, lines);
-    if (n <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return; }
+    int n = s->tip ? s->tip(base, g_csRow, lines) : (s->row(base, g_csRow, lines[0], AB_TIP_LINE_SZ) ? 1 : 0);
+    char type[320];
+    csRowTypeWords(base, s, g_csRow, type, sizeof type);
+    int total = n + ((n > 0) ? axTipKeywordCount(&lines[0][0], AB_TIP_LINE_SZ, n, 1, type) : 0);   // 1: line 0 is the row
+    if (total <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return; }
 
-    int line = (g_csTipLine + tipDir + n) % n;   // wraps, so neither direction dead-ends
+    int line = (g_csTipLine + tipDir + total) % total;   // wraps, so neither direction dead-ends
     g_csTipLine = line;
-    logLine("charsheet tipline %d/%d (%s row %d) -> \"%s\"", line, n, s->name, g_csRow, lines[line]);
-    postSpeech(lines[line]);
+    char def[AB_TIP_LINE_SZ];
+    const char* text = lines[0];
+    if (line < n) text = lines[line];
+    else if (axTipKeywordLine(&lines[0][0], AB_TIP_LINE_SZ, n, 1, type, line - n, def, sizeof def)) text = def;
+    logLine("charsheet tipline %d/%d (%s row %d) -> \"%s\"", line, total, s->name, g_csRow, text);
+    postSpeech(text);
 }
 
 bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
@@ -1155,9 +1339,14 @@ bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repea
             }
             int cap = csComMaxSelected(base);
             if (!equipped && csComSkillEquippedCount(base) >= cap) {
-                char full[160];
-                _snprintf(full, sizeof full, axs(AXS_CS_COM_CAP_FMT), cap, cap);
+                char full[256], hint[128];
+                _snprintf(full, sizeof full, axs(AXS_CS_COM_CAP_FMT), cap);
                 full[sizeof full - 1] = 0;
+                const char* hfmt = axs(AXS_CS_COM_CAP_HINT_FMT);
+                if (hfmt[0]) {
+                    _snprintf(hint, sizeof hint, hfmt, cap); hint[sizeof hint - 1] = 0;
+                    axAppendHintText(full, sizeof full, hint);
+                }
                 postSpeech(full);
                 return true;
             }
@@ -1273,6 +1462,7 @@ bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repea
                     char utter[320];
                     _snprintf(utter, sizeof utter, axs(AXS_CS_TRK_UNEQUIP_CONFIRM_FMT), name);
                     utter[sizeof utter - 1] = 0;
+                    axAppendHint(utter, sizeof utter, AXS_CS_TRK_UNEQUIP_CONFIRM_HINT);   // "" when Off
                     postSpeech(utter);
                     return true;
                 }
@@ -1314,31 +1504,33 @@ bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repea
 
     if (sym >= SDLK_1 && sym <= SDLK_4 && !ctrl) {
         if (g_csSection < 0 || g_csSection >= kCsSectionCount) return false;
-        if (kCsSections[g_csSection].row != csComSectionRow) return false;   // combat skills only
-        if (g_csRow < CS_COM_PIP_ITEMS) return false;       // a pip item (or unplaced): not ours
+        bool camp;
+        if      (kCsSections[g_csSection].row == csComSectionRow)   camp = false;
+        else if (kCsSections[g_csSection].row == csCampSkillRowText) camp = true;
+        else return false;                                   // digits stay the game's elsewhere
+        if (!camp && g_csRow < CS_COM_PIP_ITEMS) return false;   // a pip item (or unplaced): not ours
+        if (camp && g_csRow < 0) return false;                   // unplaced on the camping row
         if (repeat) return true;
         int slot = (int)(sym - SDLK_1) + 1;
         if (g_csSkillWatchUntil) { postSpeech(axs(AXS_STILL_WORKING)); return true; }
-        int i = csComColToSkill(base, g_csRow - CS_COM_PIP_ITEMS);
-        if (i < 0) return true;
+        int i = camp ? g_csRow : csComColToSkill(base, g_csRow - CS_COM_PIP_ITEMS);
+        if (i < 0 || (camp && i >= csCampSkillCount(base))) return true;
 
-        char fallback[64], titled[320];
-        _snprintf(fallback, sizeof fallback, axs(AXS_CS_SKILL_N_FMT), i + 1);
-        uintptr_t skill = csComSkillAt(base, i);
-        if (skill) abSkillTitled(base, skill, fallback, titled, sizeof titled, false);
-        else       { strncpy(titled, fallback, sizeof titled - 1); titled[sizeof titled - 1] = 0; }
+        char titled[320];
+        csGridSkillTitle(base, camp, i, titled, sizeof titled);
 
-        if (!csComSkillLearned(base, i)) {
-            postSpeech(axs(AXS_CS_SKILL_LOCKED));
+        if (!(camp ? csCampSkillLearned(base, i) : csComSkillLearned(base, i))) {
+            postSpeech(axs(camp ? AXS_CS_CAMP_LOCKED : AXS_CS_SKILL_LOCKED));
             return true;
         }
-        if (!feElemOnScreen(csComCellId(i))) {
-            logLine("charsheet slot: cell 0x%llx not on screen — refusing to assign skill %d",
-                    (unsigned long long)csComCellId(i), i);
+        int64_t cell = camp ? csCampCellId(i) : csComCellId(i);
+        if (!feElemOnScreen(cell)) {
+            logLine("charsheet slot: cell 0x%llx not on screen — refusing to assign %s skill %d",
+                    (unsigned long long)cell, camp ? "camping" : "combat", i);
             postSpeech(axs(AXS_CS_CANT_CHANGE_NOW));
             return true;
         }
-        int cap = csComMaxSelected(base);
+        int cap = camp ? CAMP_SEL_MAX : csComMaxSelected(base);
         if (slot > cap) {
             char utter[96];
             _snprintf(utter, sizeof utter, axs(AXS_CS_ONLY_N_SLOTS_FMT), cap);
@@ -1347,9 +1539,9 @@ bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repea
             return true;
         }
 
-        int was = csComSkillSlot(base, i);
+        int was = camp ? csCampSkillSlot(base, i) : csComSkillSlot(base, i);
         CsSlotResult r;
-        if (!csComAssignSlot(base, i, slot, &r)) {
+        if (!csComAssignSlot(base, i, slot, &r, camp)) {
             logLine("charsheet slot: assign of skill %d to slot %d refused", i, slot);
             postSpeech(axs(AXS_DIDNT_HAPPEN));
             return true;
@@ -1366,22 +1558,17 @@ bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repea
         } else {
             _snprintf(utter, sizeof utter, axs(AXS_CS_SKILL_IN_SLOT_FMT), titled, r.landed);
             if (r.movedIdx >= 0 && r.movedTo > 0) {
-                char other[320], ofb[64];
-                _snprintf(ofb, sizeof ofb, axs(AXS_CS_SKILL_N_FMT), r.movedIdx + 1);
-                uintptr_t os = csComSkillAt(base, r.movedIdx);
-                if (os) abSkillTitled(base, os, ofb, other, sizeof other, false);
-                else    { strncpy(other, ofb, sizeof other - 1); other[sizeof other - 1] = 0; }
+                char other[320];
+                csGridSkillTitle(base, camp, r.movedIdx, other, sizeof other);
                 char frag[400];
                 frag[0] = ' '; _snprintf(frag + 1, sizeof frag - 1, axs(AXS_CS_SKILL_IN_SLOT_FMT), other, r.movedTo);
                 strncat(utter, frag, sizeof utter - strlen(utter) - 1);
             } else if (r.displaced >= 0) {
-                char other[320], ofb[64];
-                _snprintf(ofb, sizeof ofb, axs(AXS_CS_SKILL_N_FMT), r.displaced + 1);
-                uintptr_t os = csComSkillAt(base, r.displaced);
-                if (os) abSkillTitled(base, os, ofb, other, sizeof other, false);
-                else    { strncpy(other, ofb, sizeof other - 1); other[sizeof other - 1] = 0; }
+                char other[320];
+                csGridSkillTitle(base, camp, r.displaced, other, sizeof other);
                 char frag[400];
-                frag[0] = ' '; _snprintf(frag + 1, sizeof frag - 1, axs(AXS_CS_SKILL_UNEQUIPPED_FMT), other);
+                frag[0] = ' '; _snprintf(frag + 1, sizeof frag - 1,
+                                         axs(camp ? AXS_CS_CAMP_DESELECTED_FMT : AXS_CS_SKILL_UNEQUIPPED_FMT), other);
                 strncat(utter, frag, sizeof utter - strlen(utter) - 1);
             }
             if (r.landed != slot)
@@ -1389,11 +1576,13 @@ bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repea
         }
         utter[sizeof utter - 1] = 0;
         postSpeech(utter);
-        logLine("charsheet slot: skill %d \"%s\" was slot %d, asked %d, landed %d "
+        logLine("charsheet slot: %s skill %d \"%s\" was slot %d, asked %d, landed %d "
                 "(displaced %d, swapped %d -> %d)",
-                i, titled, was, slot, r.landed, r.displaced, r.movedIdx, r.movedTo);
-        int col = csComSkillToCol(base, i);
-        if (col >= 0) g_csRow = CS_COM_PIP_ITEMS + col;
+                camp ? "camping" : "combat", i, titled, was, slot, r.landed, r.displaced, r.movedIdx, r.movedTo);
+        if (!camp) {
+            int col = csComSkillToCol(base, i);
+            if (col >= 0) g_csRow = CS_COM_PIP_ITEMS + col;
+        }
         g_csTipLine = 0;
         return true;
     }
@@ -1416,7 +1605,11 @@ bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repea
 
     if (ctrl) {
         if (g_csSection < 0 || g_csSection >= kCsSectionCount) return false;
-        if (!kCsSections[g_csSection].tip) return false;
+        if (!kCsSections[g_csSection].tip) {
+            char type[320];
+            csRowTypeWords(base, &kCsSections[g_csSection], g_csRow, type, sizeof type);
+            if (!type[0]) return false;
+        }
         if (repeat) return true;
         csSpeakTipLine(base, sym == SDLK_UP ? 1 : -1);
         return true;
@@ -1489,14 +1682,15 @@ void serviceCharSheet(uintptr_t base) {
         if (now == g_csSkillWantEquipped) {
             g_csSkillWatchUntil = 0;
             char utter[192];
-            int slot = (now && !g_csSkillWatchCamp) ? csComSkillSlot(base, g_csSkillWatchIdx) : 0;
-            if (g_csSkillWatchCamp)
+            int slot = !now ? 0 : g_csSkillWatchCamp ? csCampSkillSlot(base, g_csSkillWatchIdx)
+                                                     : csComSkillSlot(base, g_csSkillWatchIdx);
+            if (slot > 0) _snprintf(utter, sizeof utter, axs(AXS_CS_SKILL_IN_SLOT_FMT),
+                                    g_csSkillWatchName, slot);
+            else if (g_csSkillWatchCamp)
                           _snprintf(utter, sizeof utter,
                                     axs(now ? AXS_CS_CAMP_SELECTED_FMT
                                             : AXS_CS_CAMP_DESELECTED_FMT),
                                     g_csSkillWatchName);
-            else if (slot > 0) _snprintf(utter, sizeof utter, axs(AXS_CS_SKILL_IN_SLOT_FMT),
-                                    g_csSkillWatchName, slot);
             else          _snprintf(utter, sizeof utter,
                                     axs(now ? AXS_CS_SKILL_EQUIPPED_FMT
                                             : AXS_CS_SKILL_UNEQUIPPED_FMT),
@@ -1561,8 +1755,9 @@ void checkTownRename(uintptr_t base) {
         _snprintf(head, sizeof head, axs(AXS_CS_RENAME_FMT),
                   g_trOld[0] ? g_trOld : axs(AXS_CS_RENAME_SUBJECT));
         head[sizeof head - 1] = 0;
-        _snprintf(line, sizeof line, "%s %s", head, axs(AXS_NM_HELP));
+        _snprintf(line, sizeof line, "%s", head);
         line[sizeof line - 1] = 0;
+        axAppendHint(line, sizeof line, AXS_NM_HELP);   // "" while Control hints is Off
         postSpeech(line);
         logLine("townrename OPEN hero=%p seed=\"%s\"", (void*)g_trHero, g_trOld);
         return;

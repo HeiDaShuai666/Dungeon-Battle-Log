@@ -5,7 +5,7 @@
 #include "game/offsets.h"
 #include "core/axstrings.h"
 
-static const int MAILBOX_SZ = 2048;
+static const int MAILBOX_SZ = 16384;
 static const int SPEECH_QUEUE_MAX = 24;
 
 // ---- What a line IS, which decides what may destroy it ----
@@ -62,6 +62,7 @@ void logLine(const char* fmt, ...);
 void logDump(const char* fmt, ...);
 bool        axDebugLogEnabled();
 const char* axDebugLogPath();          // "" if the exe directory could not be resolved
+bool        axModEnabled();
 bool        axSetDebugLog(bool on);
 // ---- Speech settings (core/speech.cpp, same settings.ini) ----
 bool axReadSubtitles();
@@ -74,8 +75,42 @@ bool axReadTownBarks();                // mode is On or Only in town
 bool axReadDungeonBarks();             // mode is On or Only in dungeons
 bool axCheckUpdates();
 void axSetCheckUpdates(bool on);
+// ---- The update check ----
+void axUpdateCheckStart();
+void axUpdateCheckService();
 bool axPositionCounts();
 void axSetPositionCounts(bool on);
+bool axControlHints();
+void axSetControlHints(bool on);
+bool axAutoTooltips();
+void axSetAutoTooltips(bool on);
+enum { AX_KEYWORDS_SPOKEN = 0, AX_KEYWORDS_BUFFER = 1, AX_KEYWORDS_OFF = 2, AX_KEYWORDS_MODES = 3 };
+int  axKeywordsMode();
+void axSetKeywordsMode(int mode);      // out of range is refused (logged)
+
+// ---- THE TOOLTIP CHANNEL ----
+bool axTipWanted();
+void axTipGlue(char* buf, int bufsz, const char* line);
+void axTipGlueLines(char* buf, int bufsz, const char* lines, int stride, int n, int from);
+void axTipGluePanel(char* buf, int bufsz, const char* head, const char* lines, int stride,
+                    int n, int from);
+bool axTipStep(int* cursor, int dir, const char* lines, int stride, int n);
+void axTipNoteKeywords(const char* text);
+void axTipGlueKeywords(char* buf, int bufsz);
+void axTipGlueKeywordLine(char* buf, int bufsz, const char* line);
+int  axTipKeywordCount(const char* lines, int stride, int n, int from, const char* extra);
+bool axTipKeywordLine(const char* lines, int stride, int n, int from, const char* extra, int k,
+                      char* out, int outsz);
+bool axKeywordTerm(int id, char* out, int outsz);
+static const int KW_TERM_WEAPON = 54;
+static const int KW_TERM_ARMOR  = 5;
+extern bool g_fdComposingLabel;
+bool axModTutorials();
+void axSetModTutorials(bool on);
+bool axExpandAbbreviations();
+void axSetExpandAbbreviations(bool on);
+bool axTutorialSeen(const char* id);
+void axMarkTutorialSeen(const char* id);
 // ---- Speech OUTPUT settings ----
 enum { AX_SPEECH_AUTO = 0, AX_SPEECH_PRISM = 1, AX_SPEECH_SAPI = 2, AX_SPEECH_MODES = 3 };
 enum { AX_SPCFG_SAPI = 1, AX_SPCFG_BACKEND = 2 };   // request kinds; a pending heavier one wins
@@ -100,8 +135,13 @@ int  axSapiLiveRate();                               // 0..100 as SAPI reports i
 int  axSapiLiveVolume();
 void axSpeechServiceConfig();                        // SPEECH THREAD, once per tick before the drain
 void postSpeech(const char* text, bool interrupt = true, SpeechKind kind = SPK_AUTO);
+void appendToLastSpeech(const char* tail);
 void flushSpeech(const char* why);
 void stripMarkup(const char* in, char* out, int outsz);
+bool   axWordBefore(const unsigned char* s, size_t i);
+size_t axWordMatchAt(const unsigned char* s, size_t i, const unsigned char* sp, size_t n);
+bool   axWordCp(unsigned char lead);
+unsigned char axAsciiLower(unsigned char c);
 
 // ---- The game's own subtitles (core/subtitles.cpp) ----
 void serviceSubtitles(uintptr_t base);
@@ -213,6 +253,7 @@ bool optListStep(int dir);
 bool optTipStep(bool forward);
                                   //   the row, wrap); false = no row answers, chord not ours
 bool optAdjustRow(bool increase);
+int  optRowHintKind(uint32_t cc);
 bool optRowToggle();
 void serviceOptAdjust();
 bool optSavedLanguage(uintptr_t base, char* out, int outsz);  // the APPLIED game language's
@@ -340,6 +381,7 @@ void feReannounce(uintptr_t base);              // AX_TITLE / AX_PAUSE re-introd
 void serviceFrontEndLanding(uintptr_t base);    // a front-end screen appeared -> land on its first
                                                 //   item and say it, instead of waiting for an arrow
 void checkNewGameContent(uintptr_t base);       // the new-game DLC/mods content step
+bool feContentPanelActive();
 void checkSaveScrollProbe(uintptr_t base);
 void serviceSaveScrollFollow(uintptr_t base);   // the eased scroll settled -> park the cursor
 bool routeFrontEndKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
@@ -387,12 +429,18 @@ enum AxContext {
     AX_JOURNAL,
     AX_INGAME,
     AX_SETTINGS,
+    AX_FIND,
+    AX_MODTUT,
     AX_TUTORIAL,
     AX_TOWNEVENT,
     AX_RING,
                    //   ring.cpp) -- the root view of that layer, like AX_BLDG in town (OWNS it)
     AX_RINGLIST,
 };
+
+// ---- FIND: a surface's element enumerator ----
+enum AxFindOp { AXF_COUNT = 0, AXF_LABEL = 1, AXF_GO = 2 };
+typedef int (*AxFindFn)(uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
 AxContext currentAxContext();                   // the active context (defined with the table)
 bool axModalClosed(uintptr_t base, const char* who);
 bool axContextIs(AxContext c);
@@ -408,6 +456,8 @@ static const int AX_JUMP = 1 << 20;             // a delta larger than any list:
 void fourcc(uint32_t id, char* out);            // focus id -> 4-char tag, for log lines
 void resolveLabel(uintptr_t base, uintptr_t tbwVtbl, int64_t id,
                   char* text, int textsz);      // the specific-else-generic label chain
+void resolveLabelForSpeech(uintptr_t base, uintptr_t tbwVtbl, int64_t id,
+                  char* text, int textsz);
 extern int64_t g_axSpokenId;                    // shared spoken-dedup: last announced id...
 extern char    g_axLastSpoken[512];             //   ...and its text (frameCheck's pair)
 void abStripMarkup(char* s);
@@ -429,6 +479,8 @@ bool invItemName(uintptr_t base, uintptr_t item,
 static const int INV_MAX_SLOTS = 16384;
 bool qtElemOnScreen(uint32_t id);               // is this focus element registered right now?
 bool qtGoalText(uintptr_t base, uint32_t goalId, char* out, int outsz);  // a quest goal's words
+uintptr_t qtQuest(uintptr_t base);
+void embQuestName(uintptr_t base, uintptr_t quest, char* out, int outsz);
 uintptr_t abHeroClassOf(uintptr_t hero);        // hero -> its HeroClass object (0 = unreadable)
 bool abReadF32(uintptr_t addr, float* out);     // SEH-guarded float read (sanity-bounded)
 int  csResolveLevel(uintptr_t base, uintptr_t hero);   // XP -> resolve level (the sheet's rank)
@@ -490,6 +542,7 @@ int  abSlotCount(const ActionItem* items, int n);
 void abSetActive(uintptr_t base, bool on);
 void abSpeakLabel(uintptr_t base, const ActionItem* it, int slotCount,
                   const char* head = nullptr);  // the default lives HERE, not at the definition
+void abHeaderText(char* out, int outsz);
 void rvSetActive(uintptr_t base, bool on);
 int  rvPartyList(uintptr_t base, uintptr_t* out, int maxOut);   // out sized RV_MAX_MEMBERS
 void rvAnnounceEntry(uintptr_t base, bool withCounts);
@@ -574,7 +627,7 @@ void tmOpenRow(uintptr_t base, const TmRow* r);  // the ONE open body: refusal, 
 int  tmCurrentLayer(uintptr_t root);       // the current eTownLayer; -1 = unreadable
 static const uint32_t TMB_BLD_ID_BASE = 0x626c64;   // ChooseBuilding's element-id family base
 static const uint32_t TM_DDIS_ELEM_ID = 0x64646973; // 'ddis', the estate-bar Districts button
-struct TjKey { uint32_t sym; const char* id; };
+struct TjKey { uint32_t sym; const char* id; const char* fn; };
 extern const TjKey TJ_KEYS[];
 extern const int   TJ_KEY_COUNT;
 const char* tjTargetForKey(uint32_t sym);  // letter -> target id; nullptr = not a jump key
@@ -641,6 +694,8 @@ void bldActPickCancelFromRoster(uintptr_t base);   // Escape/Tab: drop the sessi
                                                    // "Cancelled." + the slot row underneath
 void bldActPickRowSuffix(uintptr_t base, uintptr_t hero, char* out, int outsz);
 bool bldActPickBusy();                             // the pick's outcome watch is in flight:
+                                                   // the roster answers "Still working."
+bool bldActPickWantsHero(uintptr_t base, uintptr_t hero);
 bool bldActivityNameFromPtr(uintptr_t base, uintptr_t activity, char* out, int outsz);
 uintptr_t bldTrinketRecord(uintptr_t base, uintptr_t item);   // item -> its trinket def-registry rec
 bool bldTrinketIdByHash(uintptr_t base, uint32_t idHash, char* out, int outsz);
@@ -698,6 +753,8 @@ void ptyReannounce(uintptr_t base);
 bool routeRosterKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
 bool axIsRoster();
 void rosReannounce(uintptr_t base);
+int  rosFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // the Ctrl+F
+                                        // enumerator: the toolbar items, then every hero row
 bool routeTrkPickKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
 bool axIsTrkPick();
 void trkReannounce(uintptr_t base);
@@ -887,6 +944,8 @@ void rvSpeakTipLine(uintptr_t base, int tipDir);                // THE shared Ct
 extern int g_rvTipLine;
 bool rvTipPanelSwitch(uintptr_t base, int dir, bool repeat);
 extern int g_rvTipCol;
+void rvAppendActorTip(uintptr_t base, uintptr_t actor, char* buf, int bufsz);
+bool rvIsTipHintLine(const char* line);
 int  rvRoomIndexOfActor(uintptr_t base, uintptr_t actor);
 void rvSpeakRank(uintptr_t base, bool enemy, int rank);
 int  spHeroTipLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool withTitle,
@@ -939,6 +998,8 @@ int  spConditionLines(uintptr_t base, uintptr_t actor, int want,
                       char lines[][AB_TIP_LINE_SZ], int n, int maxLines);
 int  spUnvoicedBuffLines(uintptr_t base, uintptr_t actor, bool monster,
                          char lines[][AB_TIP_LINE_SZ], int n, int maxLines);
+void spSetBriefTooltip(bool on);
+bool spBriefTooltip();
 int  spAppendStatusLines(uintptr_t base, uintptr_t actor,
                          char lines[][AB_TIP_LINE_SZ], int n, int maxLines);
 void spDumpStatusOnce(uintptr_t base, uintptr_t actor);
@@ -1009,6 +1070,7 @@ extern int g_abTipLine;
 int  campPhase(uintptr_t base);            // 0 = no camp; 1..9 = the step it is on
 bool campActive(uintptr_t base);
 bool campCanStartHere(uintptr_t base);
+bool campInMealPhase(uintptr_t base);
 bool campInSkillPhase(uintptr_t base);
 int  campPoints(uintptr_t base);           // time left to spend
 uint32_t campSkillUsedCount(uintptr_t base, uintptr_t hero, uintptr_t cls);
@@ -1047,9 +1109,32 @@ const char* invNavTag(uintptr_t base, int slot);
 // ---- Raid module (raid/inventory.cpp): THE PARTY BAG ----
 int  invSlotCount(uintptr_t base);
 bool invSlotText(uintptr_t base, int slot, char* out, int outsz, const char* tag = nullptr);
+bool invBagRowText(uintptr_t base, int slot, char* out, int outsz);
+void invPanelTitle(char* out, int outsz);
+enum { INV_CARD_AUTO = -1, INV_CARD_OFF = 0, INV_CARD_ON = 1 };
+inline bool invCardWanted(int card) { return card < 0 ? axTipWanted() : card != 0; }
 bool invSystemSlotText(uintptr_t base, uintptr_t system, int slot, const char* noun,
                        int posNum, int posTotal, char* out, int outsz,
-                       const char* tag = nullptr);
+                       const char* tag = nullptr, int card = INV_CARD_AUTO);
+// ---- THE ITEM CARD ----
+struct InvCard {
+    char rarity[96];
+    char clsreq[256];
+    char charges[384];
+    char fx[768];
+    char trig[1536];
+    char desc[512];
+    char value[128];
+};
+bool invItemUnitValue(uintptr_t base, uintptr_t item, bool* isGold, int32_t* value);
+void invItemValueText(uintptr_t base, uintptr_t item, char* out, int outsz);
+void invCardRead(uintptr_t base, uintptr_t item, InvCard* c);
+void invCardReadRec(uintptr_t base, uintptr_t rec, InvCard* c);
+// One tip line per non-empty piece, written at lines[at..]; returns the new count.
+int  invCardLines(const InvCard* c, char lines[][AB_TIP_LINE_SZ], int at, int max);
+void invCardNoteKeywords(const InvCard* c);
+int  invSlotTipLines(uintptr_t base, uintptr_t system, int slot, const char* noun,
+                     int posNum, int posTotal, char lines[][AB_TIP_LINE_SZ], int max);
 bool invItemIsTrinket(uintptr_t item);     // the game's own type-string discriminator
 void serviceTrinketTrigger(uintptr_t base);
 bool resolveInventory(uintptr_t base, int64_t id, char* out, int outsz);
@@ -1184,8 +1269,9 @@ bool pbRouteKey(uintptr_t base, uintptr_t panel, uint32_t sym, uint8_t repeat);
 void pbService(uintptr_t base, uintptr_t panel);                 // the "list built" edge announce
 void pbReset();                                                  // fresh visit: cursor to the current level
 void pbProbe(uintptr_t base, uintptr_t panel);                   // one-shot dump (debug log only)
+bool pbRouteTipKey(uintptr_t base, uintptr_t panel, int dir);
 bool pbRewardCard(uintptr_t base, int kind, uintptr_t entry, int idx, int total, bool enterPreview,
-                  char* out, int outsz);
+                  char* out, int outsz, int card = INV_CARD_AUTO);
 
 // ---- DLC module (dlc/butchers_circus/rankings.cpp): THE RANKING BOARD ----
 bool rbIsPanel(uintptr_t base, uintptr_t panel);                 // the vftable identity check
@@ -1226,6 +1312,7 @@ static const uint32_t  SDLK_c               = 0x63;   // 'c' — in the party ar
 static const uint32_t  SDLK_u               = 0x75;   // 'u' — in a building: the upgrade button
 static const uint32_t  SDLK_j               = 0x6a;   // 'j' — no longer claimed (the Jeweler it
 static const uint32_t  SDLK_e               = 0x65;
+static const uint32_t  SDLK_f               = 0x66;   // 'f' — Ctrl+F: the FIND overlay (core/find.cpp,
 static const uint32_t  SDLK_q               = 0x71;   // 'q' — in a raid: the game's PREVIOUS-hero select
                                                       //   (never claimed; the pad's LB in the bag sends it)
 static const uint32_t  SDLK_g               = 0x67;   // 'g' — in a raid: jump to the quest goals zone
@@ -1267,13 +1354,20 @@ bool csResistTipLineFor(uintptr_t base, uintptr_t hero, int i, char* out, int ou
 int  spHeroResistLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool enemy,
                        char lines[][AB_TIP_LINE_SZ], int maxLines);
 bool spResistPanelHead(uintptr_t base, char* out, int outsz);   // the panel's spoken heading
+void spAppendHeroPanels(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool enemy,
+                        char* buf, int bufsz);
 int  spHeroItemLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool enemy,
                      char lines[][AB_TIP_LINE_SZ], int maxLines);
 bool csItemsPanelRow(uintptr_t base, uintptr_t hero, int i, char* out, int outsz);
 bool csEquipRowFor(uintptr_t base, uintptr_t hero, int i, char* out, int outsz);
 bool spIncomingModsFrag(uintptr_t base, uintptr_t hero, const char* typeName, char* out, int outsz);
 int  csQuirkPosSectionCount(uintptr_t base);    // positive quirks
+int  csTrinketTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]);
+void csTrinketAppendHint(uintptr_t base, int i, char* out, int outsz);
 bool csQuirkPosRowText(uintptr_t base, int i, char* out, int outsz);
+int  csQuirkPosTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]);
+int  csQuirkNegTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]);
+int  csDiseaseTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]);
 int  csQuirkNegSectionCount(uintptr_t base);    // negative quirks
 bool csQuirkNegRowText(uintptr_t base, int i, char* out, int outsz);
 int  csDiseaseSectionCount(uintptr_t base);     // diseases
@@ -1283,12 +1377,17 @@ bool      csHeroIsNeverAgain(uintptr_t hero);
 void      csNeverAgainWord(uintptr_t base, char* out, int outsz);
 uintptr_t csHeroRosterLimitQuirk(uintptr_t hero);
 bool csQuirkId(uintptr_t quirk, char* out, int outsz);          // the record's inline id ("tough")
-bool csQuirkRowFrom(uintptr_t base, uintptr_t quirk, bool withKind, char* out, int outsz);
+bool csQuirkRowFrom(uintptr_t base, uintptr_t quirk, bool withKind, bool withDesc, char* out, int outsz);
+bool csQuirkDescLine(uintptr_t base, uintptr_t quirk, char* out, int outsz);
+bool csResistName(uintptr_t base, int i, char* out, int outsz);
+bool csStatName(uintptr_t base, int i, char* out, int outsz);
 int  csCampSkillCount(uintptr_t base);          // the camping-skills section
 bool csCampSkillRowText(uintptr_t base, int i, char* out, int outsz);
 int  csCampSkillTipLines(uintptr_t base, int i, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]);
 bool csCampSkillLearned(uintptr_t base, int i);    // Hero's learned map at the roster index >= 0
 bool csCampSkillSelected(uintptr_t base, int i);   // roster index i is in the hero's selected list
+int  csCampSelList(uintptr_t base, int out[CAMP_SEL_MAX]);
+int  csCampSkillSlot(uintptr_t base, int i);
 void csDumpSheet(uintptr_t base, uintptr_t panel);
 bool spTraitName(uintptr_t base, uint32_t hash, bool virtue, char* out, int outsz);  // affliction/virtue name
 uintptr_t abHeroClass(uintptr_t base);          // the selected hero's HeroClass (0 = unreadable)
@@ -1332,6 +1431,9 @@ static const uint16_t  KMOD_RALT            = 0x0200;
 
 // ---- Settings module (settings/keymap.cpp + settings/modmenu.cpp), 2026-08-14 ----
 static const uint32_t  SDLK_F10             = 0x40000043;   // scancode 67 | SDLK_SCANCODE_MASK
+static const uint32_t  SDLK_F1              = 0x4000003A;   // scancode 58 | SDLK_SCANCODE_MASK (mod tutorials)
+static const uint32_t  SDLK_F2              = 0x4000003B;
+static const uint32_t  SDLK_F3              = 0x4000003C;
 enum KmRegion { KMR_NONE = -1, KMR_TOWN = 0, KMR_DUNGEON = 1 };
 static const uint8_t KM_SHIFT = 1;
 static const uint8_t KM_CTRL  = 2;
@@ -1407,6 +1509,7 @@ void kmForwardService(uintptr_t base);
 void kmSetBypass(bool on);
 bool kmIsCurrentKey(int f, uint32_t sym, uint16_t mod);
 void kmChordName(KmChord c, char* out, int outsz);   // the spoken chord ("Control Shift T")
+void kmLabelWithKey(const char* label, const char* fnId, int slot, char* out, int outsz);
 void kmPadName(PadBind b, char* out, int outsz);
 bool kmPadEq(PadBind a, PadBind b);
 // modmenu.cpp -- the surface:
@@ -1417,3 +1520,47 @@ void smOpen(uintptr_t base);
 void smReannounce(uintptr_t base);
 bool smPadCaptureActive();
 void smPadCaptureFeed(const bool* down, const bool* pressed, const bool* released);   // PI_COUNT each
+extern bool g_fdActive;                  // the overlay is up (= the AX_FIND predicate)
+bool axIsFind();
+bool routeFindKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
+void fdOpen(uintptr_t base, AxFindFn fn, const char* who);   // the router's Ctrl+F: snapshot + announce
+void fdReannounce(uintptr_t base);
+extern bool g_mtActive;                  // a dialog is up (= the AX_MODTUT predicate)
+bool axIsModTut();
+bool routeModTutKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
+void mtService(uintptr_t base);
+void mtOpenF1(uintptr_t base);
+void mtReannounce(uintptr_t base);
+void mtNoteLanding(bool map);
+// ---- THE FIND ENUMERATORS ----
+int  feFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  glFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // frontend/sharedui.cpp: the glossary's TERM rows
+int  hpFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  cpFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  csFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  ringFind     (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  ringListFind (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  tmFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // town/map.cpp: the hamlet's Locations rows
+int  dstFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // town/districts.cpp: the district cards
+int  embFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  provFind     (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  tlFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  resFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // town/estate.cpp: the resources bar's rows
+int  exFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  riFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  trkFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // town/party.cpp: the trinket picker's candidates
+int  ptyFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // town/party.cpp: the embark lineup's slots
+int  bldFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  rvFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  mapFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  abFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // raid/actionbar.cpp: the action bar's slots
+int  tsFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // raid/actionbar.cpp: the skill's target rows
+int  invFind      (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  iuFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // raid/inventory.cpp: the item-use hero picker
+int  lootFind     (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // raid/loot.cpp: the loot window's items
+int  evFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  mealFind     (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // raid/camp.cpp: the Repast's options
+int  ctFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // raid/camp.cpp: the camping-skill hero picker
+int  clogFind     (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  qtFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  rrFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // raid/results.cpp: both pages of the raid results

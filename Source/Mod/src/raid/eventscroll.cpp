@@ -307,7 +307,7 @@ static int evBuildRows(uintptr_t base, EvRow* rows, int* skinOut,
     return n;
 }
 
-static void evRowLine(const EvRow* r, int idx, int total, char* out, int outsz) {
+static void evRowLabel(const EvRow* r, char* out, int outsz) {
     if (r->isHead) {
         if (r->desc[0]) _snprintf(out, outsz, "%s. %s.", r->name, r->desc);
         else            _snprintf(out, outsz, "%s.", r->name);
@@ -315,19 +315,57 @@ static void evRowLine(const EvRow* r, int idx, int total, char* out, int outsz) 
         return;
     }
     const char* name = r->name[0] ? r->name : axs(AXS_EV_CHOICE_FALLBACK);
+    const char* dead = r->enabled ? "" : axs(AXS_EV_UNAVAILABLE);
+    if (r->desc[0] && !r->enabled)
+        _snprintf(out, outsz, "%s. %s %s", name, r->desc, dead);
+    else if (r->desc[0])
+        _snprintf(out, outsz, "%s. %s.", name, r->desc);
+    else if (!r->enabled)
+        _snprintf(out, outsz, "%s. %s", name, dead);
+    else
+        _snprintf(out, outsz, "%s.", name);
+    out[outsz - 1] = 0;
+}
+
+static void evRowLine(const EvRow* r, int idx, int total, char* out, int outsz) {
+    if (r->isHead) { evRowLabel(r, out, outsz); return; }   // the header carries no ordinal
+    char label[MAILBOX_SZ];
+    evRowLabel(r, label, sizeof label);
     char pos[48];
     _snprintf(pos, sizeof pos, axs(AXS_POS_N_OF_M), idx, total - 1);
     pos[sizeof pos - 1] = 0;
-    const char* dead = r->enabled ? "" : axs(AXS_EV_UNAVAILABLE);
-    if (r->desc[0] && !r->enabled)
-        _snprintf(out, outsz, "%s. %s %s %s", name, r->desc, dead, pos);
-    else if (r->desc[0])
-        _snprintf(out, outsz, "%s. %s. %s", name, r->desc, pos);
-    else if (!r->enabled)
-        _snprintf(out, outsz, "%s. %s %s", name, dead, pos);
-    else
-        _snprintf(out, outsz, "%s. %s", name, pos);
+    _snprintf(out, outsz, "%s %s", label, pos);
     out[outsz - 1] = 0;
+    if (r->enabled) axAppendHint(out, outsz, AXS_EX_SELECT_HINT);
+}
+
+// ---- THE EVENT SCROLL'S FIND ENUMERATOR ----
+int evFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_evActive) return 0;
+    if (g_evPickItem) return invFind(base, op, idx, out, outsz);
+    EvRow rows[OE_MAX_ROWS];
+    char title[256], flavour[600];
+    int skin = EV_NONE;
+    int n = evBuildRows(base, rows, &skin, title, sizeof title, flavour, sizeof flavour);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        evRowLabel(&rows[idx], out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;              // the scroll was replaced under the snapshot
+        g_evRow = idx;
+        char buf[MAILBOX_SZ];
+        evRowLine(&rows[g_evRow], g_evRow, n, buf, sizeof buf);
+        logLine("eventnav: find landed on row %d (of %d)", g_evRow, n);
+        postSpeech(buf);
+        return 1;
+    }
+    return 0;
 }
 
 static bool evOpeningLine(uintptr_t base, char* out, int outsz) {
@@ -899,6 +937,7 @@ bool routeEventKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
             else
                 _snprintf(utter, sizeof utter, "%s", axs(AXS_EV_CHOOSE_ITEM));
             utter[sizeof utter - 1] = 0;
+            axAppendHint(utter, sizeof utter, AXS_EV_CHOOSE_ITEM_HINT);   // "" while Control hints is Off
             postSpeech(utter);
             return true;
         }

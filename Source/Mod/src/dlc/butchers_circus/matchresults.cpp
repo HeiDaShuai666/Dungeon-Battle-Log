@@ -327,11 +327,24 @@ static int bcrRewardNames(uintptr_t base, char* out, int outsz) {
     return named;
 }
 
-static bool bcrRewardRowText(uintptr_t base, int idx, char* out, int outsz) {
+static bool bcrRewardRowText(uintptr_t base, int idx, char* out, int outsz, int card = INV_CARD_AUTO) {
     BcrReward rw[BCR_MAX_REWARDS];
     int n = bcrCollectRewards(base, rw, BCR_MAX_REWARDS);
     if (idx < 0 || idx >= n) return false;
-    return pbRewardCard(base, rw[idx].kind, rw[idx].entry, idx, n, false, out, outsz);
+    return pbRewardCard(base, rw[idx].kind, rw[idx].entry, idx, n, false, out, outsz, card);
+}
+static int bcrRewardTipLines(uintptr_t base, int idx, char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ]) {
+    for (int k = 0; k < AB_TIP_MAX_LINES; k++) lines[k][0] = 0;
+    if (!bcrRewardRowText(base, idx, lines[0], AB_TIP_LINE_SZ, INV_CARD_OFF)) return 0;
+    BcrReward rw[BCR_MAX_REWARDS];
+    int n = bcrCollectRewards(base, rw, BCR_MAX_REWARDS);
+    uint32_t hash = 0;
+    if (idx < n && rw[idx].kind == 1 && safeReadU32(rw[idx].entry + BCR_RC_TRINK_HASH, &hash) && hash) {
+        InvCard c;
+        invCardReadRec(base, bldTrinketRecordByHash(base, hash), &c);
+        return invCardLines(&c, lines, 1, AB_TIP_MAX_LINES);
+    }
+    return 1;
 }
 
 static int bcrRewardCount(uintptr_t base) {
@@ -364,7 +377,9 @@ static void bcrContinueText(uintptr_t base, int state, char* out, int outsz) {
         if (resolveKey(base, "str_results_continue", cont, sizeof cont) && cont[0])
             abStripMarkup(cont);
         else cont[0] = 0;
-        _snprintf(out, outsz, "%s%s%s", cont, cont[0] ? " " : "", axs(AXS_BCR_HINT_CONTINUE));
+        _snprintf(out, outsz, "%s", cont);
+        out[outsz - 1] = 0;
+        axAppendHint(out, outsz, AXS_BCR_HINT_CONTINUE);   // "" while the F10 "Control hints" row is Off
     } else {
         _snprintf(out, outsz, "%s", axs(AXS_BCR_WAITING));
     }
@@ -459,12 +474,22 @@ void bcrCheck(uintptr_t base) {
 }
 
 bool bcrRouteKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
-    if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) return false;
+    if (mod & (KMOD_LALT | KMOD_RALT)) return false;
     int state = rrState(base);
     if (state < 0) return false;
     const int rows = bcrRowCount(base);
     if (g_bcrRow >= rows) g_bcrRow = rows - 1;
     if (g_bcrRow < 0) g_bcrRow = 0;
+
+    if (mod & (KMOD_LCTRL | KMOD_RCTRL)) {
+        if (sym != SDLK_UP && sym != SDLK_DOWN) return false;
+        if (repeat) return true;
+        static int s_tipLine = 0, s_tipRow = -1;
+        if (s_tipRow != g_bcrRow) { s_tipRow = g_bcrRow; s_tipLine = 0; }
+        static char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+        int ln = bcrRewardTipLines(base, g_bcrRow - BCR_ROW__FIXED, lines);
+        return axTipStep(&s_tipLine, sym == SDLK_UP ? 1 : -1, &lines[0][0], AB_TIP_LINE_SZ, ln);
+    }
 
     if (sym == SDLK_RETURN || sym == SDLK_KP_ENTER) {
         if (repeat) return true;

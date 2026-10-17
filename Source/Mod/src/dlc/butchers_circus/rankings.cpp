@@ -454,6 +454,7 @@ static void rbSpeakCursor(uintptr_t base, uintptr_t panel, const char* prefix) {
         _snprintf(body, sizeof body, "%s", axs(AXS_RB_ROW_UNREADABLE));
     }
     body[sizeof body - 1] = 0;
+    if (bld && section >= 0 && g_rbRow == RB_ROW_SECTION) axAppendHint(body, sizeof body, AXS_RB_SECTION_HINT);
     char utter[MAILBOX_SZ];
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", body);
     utter[sizeof utter - 1] = 0;

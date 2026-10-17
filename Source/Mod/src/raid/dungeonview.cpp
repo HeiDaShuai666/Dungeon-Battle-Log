@@ -64,7 +64,12 @@ int rvPartyList(uintptr_t base, uintptr_t* out, int maxOut) {
         logLine("roomview: party vector unreadable");
         return 0;
     }
-    if (beg <= 0x10000 || end < beg) { logLine("roomview: party vector empty or bad"); return 0; }
+    static bool emptyReported = false;
+    if (beg <= 0x10000 || end < beg) {
+        if (!emptyReported) { emptyReported = true; logLine("roomview: party vector empty or bad (once per streak)"); }
+        return 0;
+    }
+    emptyReported = false;
     int64_t n = (int64_t)((end - beg) / 8);
     if (n <= 0) return 0;
     if (n > RV_MAX_MEMBERS) {
@@ -527,6 +532,41 @@ static bool spHeroTitleLine(uintptr_t base, uintptr_t hero, int slot, int slotEn
     return out[0] != 0;
 }
 
+static int rvTipHintLine(char lines[][AB_TIP_LINE_SZ], int n, int maxLines, AxStrId hint) {
+    const char* h = axs(hint);
+    if (!h[0] || n >= maxLines) return n;
+    _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", h);
+    lines[n][AB_TIP_LINE_SZ - 1] = 0;
+    return n + 1;
+}
+
+// ---- THE WHOLE-TOOLTIP READ ----
+static const AxStrId kRvTipHintIds[] = {
+    AXS_RV_RESIST_HINT, AXS_RV_ITEMS_HINT, AXS_RV_SKILLS_HINT, AXS_RV_LOADOUT_HINT,
+    AXS_RV_ITEMS_BACK_HINT,
+};
+bool rvIsTipHintLine(const char* line) {
+    if (!line || !line[0]) return false;
+    for (int i = 0; i < (int)(sizeof kRvTipHintIds / sizeof kRvTipHintIds[0]); i++) {
+        const char* h = axs(kRvTipHintIds[i]);
+        if (h[0] && strcmp(h, line) == 0) return true;
+    }
+    return false;
+}
+// lines[from..n) minus the instruction lines, through the channel's glue.
+static void rvGlueTipLines(char* buf, int bufsz, char lines[][AB_TIP_LINE_SZ], int n, int from) {
+    for (int i = from; i < n; i++)
+        if (!rvIsTipHintLine(lines[i])) axTipGlue(buf, bufsz, lines[i]);
+}
+static void rvGlueTipPanel(char* buf, int bufsz, const char* head,
+                           char lines[][AB_TIP_LINE_SZ], int n, int from) {
+    bool any = false;
+    for (int i = from; i < n && !any; i++) any = lines[i][0] && !rvIsTipHintLine(lines[i]);
+    if (!any) return;
+    if (head && head[0]) axTipGlue(buf, bufsz, head);
+    rvGlueTipLines(buf, bufsz, lines, n, from);
+}
+
 int spHeroTipLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool withTitle,
                           bool enemy, char lines[][AB_TIP_LINE_SZ], int n, int maxLines) {
     if (!hero) return n;
@@ -558,7 +598,8 @@ int spHeroTipLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool w
         else logLine("herotip: health unreadable for hero=%p", (void*)hero);
         spAddBucket(base, hero, SP_COND_HEALTH, buf, sizeof buf);
         spEndSentence(buf, sizeof buf);
-        if (spIncomingModsFrag(base, hero, "hp_heal_received_percent", frag, sizeof frag))
+        if (!spBriefTooltip() &&                 // the landing's brief form: no modifier clauses
+            spIncomingModsFrag(base, hero, "hp_heal_received_percent", frag, sizeof frag))
             abAppendFrag(buf, sizeof buf, frag);
         const char* line = buf;
         while (*line == ' ') line++;
@@ -582,10 +623,12 @@ int spHeroTipLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool w
         }
         spAddBucket(base, hero, SP_COND_STRESS, buf, sizeof buf);
         spEndSentence(buf, sizeof buf);
-        if (spIncomingModsFrag(base, hero, "stress_dmg_received_percent", frag, sizeof frag))
-            abAppendFrag(buf, sizeof buf, frag);
-        if (spIncomingModsFrag(base, hero, "stress_heal_received_percent", frag, sizeof frag))
-            abAppendFrag(buf, sizeof buf, frag);
+        if (!spBriefTooltip()) {                 // the landing's brief form: no modifier clauses
+            if (spIncomingModsFrag(base, hero, "stress_dmg_received_percent", frag, sizeof frag))
+                abAppendFrag(buf, sizeof buf, frag);
+            if (spIncomingModsFrag(base, hero, "stress_heal_received_percent", frag, sizeof frag))
+                abAppendFrag(buf, sizeof buf, frag);
+        }
         const char* line = buf;
         while (*line == ' ') line++;
         if (*line) { _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", line);
@@ -596,7 +639,7 @@ int spHeroTipLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool w
                          lines, n, maxLines);
     n = spConditionLines(base, hero, SP_COND_NEG | SP_COND_POS, lines, n, maxLines);
 
-    n = spUnvoicedBuffLines(base, hero, false, lines, n, maxLines);
+    if (!spBriefTooltip()) n = spUnvoicedBuffLines(base, hero, false, lines, n, maxLines);
 
     int stats = csStatCount(base);
     for (int i = 0; i < stats && n < maxLines; i++) {
@@ -608,14 +651,8 @@ int spHeroTipLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool w
         lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
     }
 
-    if (n < maxLines) {
-        _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", axs(AXS_RV_RESIST_HINT));
-        lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
-    }
-    if (n < maxLines) {
-        _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", axs(AXS_RV_ITEMS_HINT));
-        lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
-    }
+    n = rvTipHintLine(lines, n, maxLines, AXS_RV_RESIST_HINT);
+    n = rvTipHintLine(lines, n, maxLines, AXS_RV_ITEMS_HINT);
     return n;
 }
 
@@ -660,10 +697,7 @@ int spHeroItemLines(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool 
         n++; body++;
     }
     if (body <= 0) return 0;
-    if (n < maxLines) {
-        _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", axs(AXS_RV_ITEMS_BACK_HINT));
-        lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
-    }
+    n = rvTipHintLine(lines, n, maxLines, AXS_RV_ITEMS_BACK_HINT);
     return n;
 }
 
@@ -676,6 +710,21 @@ bool spResistPanelHead(uintptr_t base, char* out, int outsz) {
     abStripMarkup(out);
     csTrimLabel(out);
     return out[0] != 0;
+}
+
+void spAppendHeroPanels(uintptr_t base, uintptr_t hero, int slot, int slotEnd, bool enemy,
+                        char* buf, int bufsz) {
+    if (!hero) return;
+    char rl[RV_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+    char head[128];
+    int nr = spHeroResistLines(base, hero, slot, slotEnd, enemy, rl, RV_TIP_MAX_LINES);
+    if (nr > 1) {
+        spResistPanelHead(base, head, sizeof head);
+        abStripMarkup(head);
+        rvGlueTipPanel(buf, bufsz, head, rl, nr, 1);
+    }
+    int ni = spHeroItemLines(base, hero, slot, slotEnd, enemy, rl, RV_TIP_MAX_LINES);
+    if (ni > 1) rvGlueTipPanel(buf, bufsz, axs(AXS_RV_ITEMS_PANEL), rl, ni, 1);
 }
 
 // ---- The room as ONE flat list ----
@@ -1370,7 +1419,7 @@ static bool rvDoorRowText(uintptr_t base, uint32_t destId, int slot, int total, 
             akind == 1 && sehPartyTile(base, root, &partyTile)) {
             long tiles = mapAreaTiles(curArea);
             if (partyTile == 0 || (tiles > 0 && partyTile == (int)tiles - 1))
-                _snprintf(out + o, outsz - o, " %s", axs(AXS_DOOR_PRESS_W));
+                axAppendHint(out, outsz, AXS_DOOR_PRESS_W);   // "" while Control hints is Off
         }
     }
     out[outsz - 1] = 0;
@@ -1380,8 +1429,9 @@ static bool rvDoorRowText(uintptr_t base, uint32_t destId, int slot, int total, 
 static bool rvHiddenDoorRowText(uintptr_t base, uint32_t destId, char* out, int outsz) {
     char door[128];
     mapContentLabel(base, AREA_CONTENT_HIDDEN_DOOR, door, sizeof door);
-    _snprintf(out, outsz, "%s. %s", door, axs(AXS_DOOR_PRESS_W));
+    _snprintf(out, outsz, "%s.", door);
     out[outsz - 1] = 0;
+    axAppendHint(out, outsz, AXS_DOOR_PRESS_W);   // "" while the F10 "Control hints" row is Off
     (void)destId;
     return true;
 }
@@ -1583,8 +1633,9 @@ void serviceAdvanceOffer(uintptr_t base) {
     char label[256];
     if (!comAdvanceLabel(base, label, sizeof label) || !label[0]) return;
     char utter[MAILBOX_SZ];
-    _snprintf(utter, sizeof utter, axs(AXS_RV_LAST_ROW_FMT), label);
+    _snprintf(utter, sizeof utter, "%s", label);
     utter[sizeof utter - 1] = 0;
+    axAppendHint(utter, sizeof utter, AXS_RV_LAST_ROW_HINT);
     logLine("wayon: offered -> \"%s\"", utter);
     postSpeech(utter, false, SPK_EVENT);
 }
@@ -1686,8 +1737,9 @@ static const char* rvGenericLabel(const RvEntry& e) {
 static bool rvAdvanceRowText(uintptr_t base, char* out, int outsz) {
     char label[256];
     if (!comAdvanceLabel(base, label, sizeof label) || !label[0]) return false;
-    _snprintf(out, outsz, axs(AXS_RV_PRESS_ENTER_FMT), label);
+    _snprintf(out, outsz, "%s", label);
     out[outsz - 1] = 0;
+    axAppendHint(out, outsz, AXS_RV_PRESS_ENTER);   // "Press Enter." -- "" while Control hints is Off
     return true;
 }
 
@@ -2121,7 +2173,8 @@ static int rvMonsterTipLines(uintptr_t base, const RvEntry& e,
         if (rvMonsterHpFrag(base, mon, frag, sizeof frag)) rvAppendComma(buf, sizeof buf, frag);
         spAddBucket(base, mon, SP_COND_HEALTH, buf, sizeof buf);
         spEndSentence(buf, sizeof buf);
-        if (spIncomingModsFrag(base, mon, "hp_heal_received_percent", frag, sizeof frag))
+        if (!spBriefTooltip() &&                 // the landing's brief form: no modifier clauses
+            spIncomingModsFrag(base, mon, "hp_heal_received_percent", frag, sizeof frag))
             abAppendFrag(buf, sizeof buf, frag);
         const char* line = buf;
         while (*line == ' ') line++;
@@ -2132,7 +2185,7 @@ static int rvMonsterTipLines(uintptr_t base, const RvEntry& e,
     n = spConditionLines(base, mon, SP_COND_BLEED | SP_COND_BLIGHT | SP_COND_HORROR,
                          lines, n, maxLines);
     n = spConditionLines(base, mon, SP_COND_NEG | SP_COND_POS, lines, n, maxLines);
-    n = spUnvoicedBuffLines(base, mon, true, lines, n, maxLines);
+    if (!spBriefTooltip()) n = spUnvoicedBuffLines(base, mon, true, lines, n, maxLines);   // not on a landing
 
     static const struct { uintptr_t off; const char* key; float scale; } kRows[] = {
         { CS_STAT_PROT_OFF, MT_PROT_KEY,  CS_PERCENT_SCALE },
@@ -2149,15 +2202,9 @@ static int rvMonsterTipLines(uintptr_t base, const RvEntry& e,
         lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
     }
 
-    if (n < maxLines) {
-        _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", axs(AXS_RV_RESIST_HINT));
-        lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
-    }
-    if (n < maxLines) {
-        _snprintf(lines[n], AB_TIP_LINE_SZ, "%s",
-                  axs(rvArenaContestant(base, mon) ? AXS_RV_LOADOUT_HINT : AXS_RV_SKILLS_HINT));
-        lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
-    }
+    n = rvTipHintLine(lines, n, maxLines, AXS_RV_RESIST_HINT);
+    n = rvTipHintLine(lines, n, maxLines,
+                      rvArenaContestant(base, mon) ? AXS_RV_LOADOUT_HINT : AXS_RV_SKILLS_HINT);
     return n;
 }
 
@@ -2276,10 +2323,7 @@ static int rvArenaLoadoutLines(uintptr_t base, const RvEntry& e,
     }
 
     if (body <= 0) return 0;
-    if (n < maxLines) {
-        _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", axs(AXS_RV_ITEMS_BACK_HINT));
-        lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
-    }
+    n = rvTipHintLine(lines, n, maxLines, AXS_RV_ITEMS_BACK_HINT);
     return n;
 }
 
@@ -2322,11 +2366,43 @@ static int rvMonsterSkillPanelLines(uintptr_t base, const RvEntry& e,
         n++;
     }
 
-    if (n < maxLines) {
-        _snprintf(lines[n], AB_TIP_LINE_SZ, "%s", axs(AXS_RV_ITEMS_BACK_HINT));
-        lines[n][AB_TIP_LINE_SZ - 1] = 0; n++;
-    }
+    n = rvTipHintLine(lines, n, maxLines, AXS_RV_ITEMS_BACK_HINT);
     return n;
+}
+
+// ---- ONE CREATURE'S SIDE PANEL, by column ----
+static int rvPanelLines(uintptr_t base, const RvEntry& e, int col,
+                        char lines[][AB_TIP_LINE_SZ], int maxLines) {
+    if (e.kind != RV_ACTOR || !e.actor || col == 0) return 0;
+    if (rvWantsMonsterRow(base, e))
+        return (col == 1) ? rvMonsterResistPanelLines(base, e, lines, maxLines)
+                          : rvMonsterSkillPanelLines(base, e, lines, maxLines);
+    return (col == 1) ? spHeroResistLines(base, e.actor, e.slot, e.slotEnd, e.enemy, lines, maxLines)
+                      : spHeroItemLines(base, e.actor, e.slot, e.slotEnd, e.enemy, lines, maxLines);
+}
+static void rvPanelHead(uintptr_t base, const RvEntry& e, int col, char* head, int headsz) {
+    head[0] = 0;
+    bool monster = rvWantsMonsterRow(base, e);
+    if (col == 1) {
+        if (monster) {
+            if (!resolveKey(base, MT_RESIST_KEY, head, headsz) || !head[0]) {
+                logLine("roomview tip: \"%s\" did not resolve -- AXS fallback", MT_RESIST_KEY);
+                _snprintf(head, headsz, "%s", axs(AXS_RV_RESIST_PANEL));
+            }
+        } else spResistPanelHead(base, head, headsz);
+    } else {
+        if (monster && e.actor && rvArenaContestant(base, e.actor)) {
+            _snprintf(head, headsz, "%s", axs(AXS_RV_LOADOUT_PANEL));
+        } else if (monster) {
+            if (!resolveKey(base, MT_SKILLS_KEY, head, headsz) || !head[0]) {
+                logLine("roomview tip: \"%s\" did not resolve -- AXS fallback", MT_SKILLS_KEY);
+                _snprintf(head, headsz, "%s", axs(AXS_RV_SKILLS_PANEL));
+            }
+        } else _snprintf(head, headsz, "%s", axs(AXS_RV_ITEMS_PANEL));
+    }
+    head[headsz - 1] = 0;
+    abStripMarkup(head);
+    csTrimLabel(head);
 }
 
 static int rvBuildLines(uintptr_t base, const RvEntry& e,
@@ -2638,28 +2714,96 @@ static void rvDumpProps(uintptr_t base) {
     }
 }
 
+// ---- THE ROW'S WHOLE TOOLTIP ON A LANDING ----
+static void rvAppendCreatureTip(uintptr_t base, const RvEntry& e, char* buf, int bufsz) {
+    spSetBriefTooltip(true);
+    char lines[RV_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+    int nl = rvBuildLines(base, e, lines);
+    rvGlueTipLines(buf, bufsz, lines, nl, 1);
+    if (e.kind != RV_ACTOR || !e.actor) { spSetBriefTooltip(false); axTipGlueKeywords(buf, bufsz); return; }
+    char head[128];
+    static const int kCols[2] = { 1, -1 };          // resistances first, then items / skills
+    for (int c = 0; c < 2; c++) {
+        int np = rvPanelLines(base, e, kCols[c], lines, RV_TIP_MAX_LINES);
+        if (np <= 1) continue;                      // an identity line alone is a refused panel
+        rvPanelHead(base, e, kCols[c], head, sizeof head);
+        if (kCols[c] == -1 && rvWantsMonsterRow(base, e) && !rvArenaContestant(base, e.actor)) head[0] = 0;
+        rvGlueTipPanel(buf, bufsz, head, lines, np, 1);
+    }
+    spSetBriefTooltip(false);
+    axTipGlueKeywords(buf, bufsz);
+}
+void rvAppendActorTip(uintptr_t base, uintptr_t actor, char* buf, int bufsz) {
+    if (!actor || !axTipWanted()) return;
+    RvEntry rows[RV_MAX_ROWS];
+    int n = rvBuildRoom(base, rows, RV_MAX_ROWS);
+    for (int i = 0; i < n; i++)
+        if (rows[i].actor && rows[i].actor == actor) { rvAppendCreatureTip(base, rows[i], buf, bufsz); return; }
+    logLine("roomview tip: actor=%p is not in the room list -- no tooltip on the landing", (void*)actor);
+}
+
+static void rvRowLabel(uintptr_t base, const RvEntry& e, char* out, int outsz, bool withTip) {
+    if (rvRowText(base, e, out, outsz)) {
+        if (withTip && axTipWanted()) rvAppendCreatureTip(base, e, out, outsz);
+        if (e.kind == RV_ACTOR && !e.enemy && e.actor && !pitInMatch(base)) {
+            axAppendHint(out, outsz, AXS_RV_PARTY_ROW_HINT);
+        } else if (e.kind == RV_PROP && e.obj) {
+            int dir = 0;
+            bool here = rvPropUsableHere(base, e.obj, &dir);
+            if (propIsTrap(e.obj)) { if (here) axAppendHint(out, outsz, AXS_RV_TRAP_DISARM_HINT); }
+            else if (here)          axAppendHint(out, outsz, AXS_RV_PROP_USE_HINT);
+            else if (dir != 0)      axAppendHint(out, outsz, AXS_RV_PROP_WALK_HINT);
+        }
+        return;
+    }
+    char pos[64];
+    rvPosForEntry(e, pos, sizeof pos);
+    _snprintf(out, outsz, "%s. %s.", rvGenericLabel(e), pos);
+    out[outsz - 1] = 0;
+}
+
 static void rvSpeakRow(uintptr_t base, const RvEntry* rows, int n, int cur, const char* head = nullptr) {
     if (cur < 0 || cur >= n) return;
     g_rvTipCol = 0;
-    char out[512];
-    if (!rvRowText(base, rows[cur], out, sizeof out)) {
-        char pos[64];
-        rvPosForEntry(rows[cur], pos, sizeof pos);
-        _snprintf(out, sizeof out, "%s. %s.", rvGenericLabel(rows[cur]), pos);
-        out[sizeof out - 1] = 0;
-    }
+    char out[MAILBOX_SZ];
+    rvRowLabel(base, rows[cur], out, sizeof out, true);
     static const char* const kKindWord[] = { "actor", "prop", "door", "?" };  // 4th = out-of-range guard
-    logLine("roomview row %d/%d (%s %s idx=%d slot=%d) -> \"%s\"",
+    logLine("roomview row %d/%d (%s %s idx=%d slot=%d) len=%d -> \"%.160s\"",
             cur, n, kKindWord[rows[cur].kind & 3], rows[cur].enemy ? "enemy" : "party",
-            rows[cur].idx, rows[cur].slot, out);
+            rows[cur].idx, rows[cur].slot, (int)strlen(out), out);
     if (head && head[0]) {
-        char full[768];
+        char full[MAILBOX_SZ];
         _snprintf(full, sizeof full, "%s %s", head, out);
         full[sizeof full - 1] = 0;
         postSpeech(full);
         return;
     }
     postSpeech(out);
+}
+
+// ---- THE ROOM'S FIND ENUMERATOR ----
+int rvFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_rvActive) return 0;
+    RvEntry rows[RV_MAX_ROWS];
+    int n = rvBuildRoom(base, rows, RV_MAX_ROWS);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        rvRowLabel(base, rows[idx], out, outsz, false);   // the bare label: no tooltip in a search
+        return 1;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;
+        g_rvCursor  = idx;
+        g_rvTipLine = 0;                        // a new row rewinds its buffer, as the arrows do
+        logLine("roomview: find landed on row %d of %d", idx, n);
+        rvSpeakRow(base, rows, n, g_rvCursor);
+        return 1;
+    }
+    return 0;
 }
 
 void rvSetActive(uintptr_t base, bool on) {
@@ -2689,25 +2833,18 @@ void rvSpeakTipLine(uintptr_t base, int tipDir) {
     if (g_rvTipCol != 0) {
         const RvEntry& e = rows[g_rvCursor];
         char rl[RV_TIP_MAX_LINES][AB_TIP_LINE_SZ];
-        int nr = 0;
-        if (e.kind == RV_ACTOR && e.actor) {
-            if (rvWantsMonsterRow(base, e))
-                nr = (g_rvTipCol == 1)
-                         ? rvMonsterResistPanelLines(base, e, rl, RV_TIP_MAX_LINES)
-                         : rvMonsterSkillPanelLines(base, e, rl, RV_TIP_MAX_LINES);
-            else
-                nr = (g_rvTipCol == 1)
-                         ? spHeroResistLines(base, e.actor, e.slot, e.slotEnd, e.enemy,
-                                             rl, RV_TIP_MAX_LINES)
-                         : spHeroItemLines(base, e.actor, e.slot, e.slotEnd, e.enemy,
-                                           rl, RV_TIP_MAX_LINES);
-        }
+        int nr = rvPanelLines(base, e, g_rvTipCol, rl, RV_TIP_MAX_LINES);
         if (nr > 0) {
-            int line = (g_rvTipLine + tipDir + nr) % nr;   // wraps, like the main buffer
+            int total = nr + axTipKeywordCount(&rl[0][0], AB_TIP_LINE_SZ, nr, 1, nullptr);   // 1: the identity line
+            int line = (g_rvTipLine + tipDir + total) % total;   // wraps, like the main buffer
             g_rvTipLine = line;
+            char def[AB_TIP_LINE_SZ];
+            const char* text = rl[0];
+            if (line < nr) text = rl[line];
+            else if (axTipKeywordLine(&rl[0][0], AB_TIP_LINE_SZ, nr, 1, nullptr, line - nr, def, sizeof def)) text = def;
             logLine("roomview %s tipline %d/%d (row %d) -> \"%s\"",
-                    g_rvTipCol == 1 ? "resist" : "left-panel", line, nr, g_rvCursor, rl[line]);
-            postSpeech(rl[line]);
+                    g_rvTipCol == 1 ? "resist" : "left-panel", line, total, g_rvCursor, text);
+            postSpeech(text);
             return;
         }
         g_rvTipCol = 0;
@@ -2715,12 +2852,17 @@ void rvSpeakTipLine(uintptr_t base, int tipDir) {
 
     char lines[RV_TIP_MAX_LINES][AB_TIP_LINE_SZ];
     int nl = rvBuildLines(base, rows[g_rvCursor], lines);
-    if (nl <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return; }
+    int total = nl + ((nl > 0) ? axTipKeywordCount(&lines[0][0], AB_TIP_LINE_SZ, nl, 1, nullptr) : 0);   // 1: line 0 is the row
+    if (total <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return; }
 
-    int line = (g_rvTipLine + tipDir + nl) % nl;   // wraps, so neither direction dead-ends
+    int line = (g_rvTipLine + tipDir + total) % total;   // wraps, so neither direction dead-ends
     g_rvTipLine = line;
-    logLine("roomview tipline %d/%d (row %d) -> \"%s\"", line, nl, g_rvCursor, lines[line]);
-    postSpeech(lines[line]);
+    char def[AB_TIP_LINE_SZ];
+    const char* text = lines[0];
+    if (line < nl) text = lines[line];
+    else if (axTipKeywordLine(&lines[0][0], AB_TIP_LINE_SZ, nl, 1, nullptr, line - nl, def, sizeof def)) text = def;
+    logLine("roomview tipline %d/%d (row %d) -> \"%s\"", line, total, g_rvCursor, text);
+    postSpeech(text);
 }
 
 // ---- READ ONE RANK ON DEMAND ----
@@ -2770,42 +2912,14 @@ bool rvTipPanelSwitch(uintptr_t base, int dir, bool repeat) {
     g_rvTipLine = 0;
     if (want != 0) {
         char rl[RV_TIP_MAX_LINES][AB_TIP_LINE_SZ];
-        int nr = 0;
-        if (monster)
-            nr = (want == 1) ? rvMonsterResistPanelLines(base, e, rl, RV_TIP_MAX_LINES)
-                             : rvMonsterSkillPanelLines(base, e, rl, RV_TIP_MAX_LINES);
-        else
-            nr = (want == 1) ? spHeroResistLines(base, e.actor, e.slot, e.slotEnd, e.enemy,
-                                                 rl, RV_TIP_MAX_LINES)
-                             : spHeroItemLines(base, e.actor, e.slot, e.slotEnd, e.enemy,
-                                               rl, RV_TIP_MAX_LINES);
+        int nr = rvPanelLines(base, e, want, rl, RV_TIP_MAX_LINES);
         if (nr <= 0) {
             g_rvTipCol = 0;
             postSpeech(axs(AXS_NO_MORE_INFO));
             return true;
         }
         char head[128];
-        head[0] = 0;
-        if (want == 1) {
-            if (monster) {
-                if (!resolveKey(base, MT_RESIST_KEY, head, sizeof head) || !head[0]) {
-                    logLine("roomview tip: \"%s\" did not resolve — AXS fallback", MT_RESIST_KEY);
-                    _snprintf(head, sizeof head, "%s", axs(AXS_RV_RESIST_PANEL));
-                }
-            } else spResistPanelHead(base, head, sizeof head);
-        } else {
-            if (monster && arena) {
-                _snprintf(head, sizeof head, "%s", axs(AXS_RV_LOADOUT_PANEL));
-            } else if (monster) {
-                if (!resolveKey(base, MT_SKILLS_KEY, head, sizeof head) || !head[0]) {
-                    logLine("roomview tip: \"%s\" did not resolve — AXS fallback", MT_SKILLS_KEY);
-                    _snprintf(head, sizeof head, "%s", axs(AXS_RV_SKILLS_PANEL));
-                }
-            } else _snprintf(head, sizeof head, "%s", axs(AXS_RV_ITEMS_PANEL));
-        }
-        head[sizeof head - 1] = 0;
-        abStripMarkup(head);
-        csTrimLabel(head);
+        rvPanelHead(base, e, want, head, sizeof head);
         char full[AB_TIP_LINE_SZ + 140];
         _snprintf(full, sizeof full, "%s. %s", head, rl[0]);
         full[sizeof full - 1] = 0;
@@ -2834,6 +2948,7 @@ void rvAnnounceEntry(uintptr_t base, bool withCounts) {
         else
             _snprintf(head, sizeof head, axs(AXS_RV_HEAD_CAMP_BARE_FMT), np);
         head[sizeof head - 1] = 0;
+        axAppendHint(head, sizeof head, AXS_RV_HEAD_HINT);
         logLine("roomview enter: camp phase %d, party=%d, points=%d",
                 campPhase(base), np, campPoints(base));
         RvEntry crows[RV_MAX_ROWS];
@@ -2901,6 +3016,7 @@ void rvAnnounceEntry(uintptr_t base, bool withCounts) {
         _snprintf(head, sizeof head, "%s", axs(AXS_RV_HEAD));
     }
     head[sizeof head - 1] = 0;
+    if (withCounts) axAppendHint(head, sizeof head, AXS_RV_HEAD_HINT);   // "" while hints are Off
 
     RvEntry rows[RV_MAX_ROWS];
     int n = rvBuildRoom(base, rows, RV_MAX_ROWS);
@@ -2939,7 +3055,9 @@ bool abEnterFromRoom(uintptr_t base, const char* head) {
     rvSetActive(base, false);
     abSetActive(base, true);
     logLine("stitch: dungeon view -> action bar (items=%d, return row=%d)", n, g_abRoomReturn);
-    abSpeakLabel(base, &items[0], abSlotCount(items, n), head ? head : axs(AXS_AB_HEADER_ACTIONS));
+    char bar[192];
+    abHeaderText(bar, sizeof bar);
+    abSpeakLabel(base, &items[0], abSlotCount(items, n), head ? head : bar);
     return true;
 }
 

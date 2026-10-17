@@ -314,6 +314,7 @@ static bool bdPieceText(uintptr_t base, uintptr_t section, uintptr_t piece, int 
     _snprintf(pos, sizeof pos, axs(AXS_BD_PIECE_N_OF_M), i + 1, n); pos[sizeof pos - 1] = 0;
     bdAppend(out, outsz, pos, " ");
     bdAppend(out, outsz, axs(unlocked ? AXS_BD_ENTER_SELECT : AXS_PB_ENTER_PREVIEW), " ");
+    axAppendHint(out, outsz, AXS_BD_PREVIEW_KEY_HINT);
     return true;
 }
 
@@ -337,7 +338,11 @@ static bool bdTabText(uintptr_t base, uintptr_t panel, uintptr_t bld, int row, c
         bdAppend(out, outsz, line, " ");
         return true;
     }
-    if (row == ns) { _snprintf(out, outsz, "%s", axs(AXS_BD_ROW_RANDOM)); out[outsz - 1] = 0; return true; }
+    if (row == ns) {
+        _snprintf(out, outsz, "%s", axs(AXS_BD_ROW_RANDOM)); out[outsz - 1] = 0;
+        axAppendHint(out, outsz, AXS_BD_ROW_RANDOM_HINT);   // "" while Control hints is Off
+        return true;
+    }
     if (row == ns + 1) {
         char label[128] = { 0 };
         if (!resolveKey(base, "str_banner_customization_save", label, sizeof label) || !label[0]) {
@@ -347,7 +352,8 @@ static bool bdTabText(uintptr_t base, uintptr_t panel, uintptr_t bld, int row, c
         label[sizeof label - 1] = 0;
         abStripMarkup(label);
         char line[256];
-        _snprintf(line, sizeof line, axs(AXS_BD_ROW_APPLY_FMT), label); line[sizeof line - 1] = 0;
+        _snprintf(line, sizeof line, "%s", label); line[sizeof line - 1] = 0;
+        axAppendHint(line, sizeof line, AXS_BD_ROW_APPLY_HINT);   // the game's label, then the mod's hint
         bdAppend(out, outsz, line, " ");
         bool changed = false, lockedPrev = false;
         bdChangeState(bld, &changed, &lockedPrev);

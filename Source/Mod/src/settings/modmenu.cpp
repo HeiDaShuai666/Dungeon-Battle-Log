@@ -1,6 +1,7 @@
 // settings/modmenu.cpp -- the F10 MOD SETTINGS MENU.
 
 #include <windows.h>
+#include <shellapi.h>
 #include <cstdio>
 #include <cstring>
 #include "internal.h"
@@ -43,7 +44,13 @@ static const int SM_CAT_SPEECH   = 1;
 static const int SM_CAT_CONTROLS = 2;
 static const int SM_CAT_UPDATES  = 3;
 static const int SM_CAT_DEBUG    = 4;   // inline toggle row at level 0
-static const int SM_CATS = 5;
+static const int SM_CAT_README   = 5;
+static const int SM_CAT_DISCORD  = 6;
+static const int SM_CATS = 7;
+static const wchar_t* const kSmReadmeUrl   = L"https://github.com/Vicorin/Blindest-Dungeon";
+static const char*    const kSmReadmeUrlA  =  "https://github.com/Vicorin/Blindest-Dungeon";
+static const wchar_t* const kSmDiscordUrl  = L"https://discord.gg/JU7jv6tsc";
+static const char*    const kSmDiscordUrlA =  "https://discord.gg/JU7jv6tsc";
 // Level 1: the four groups in the dev's order, then the reset row.
 static const int SM_GROUP_ROWS = 5;
 static const int SM_GROUP_RESET = 4;
@@ -75,6 +82,14 @@ static int  smSubsGet()      { return axReadSubtitles() ? 0 : 1; }
 static void smSubsSet(int v) { axSetReadSubtitles(v == 0); }
 static int  smPosGet()       { return axPositionCounts() ? 0 : 1; }
 static void smPosSet(int v)  { axSetPositionCounts(v == 0); }
+static int  smHintsGet()     { return axControlHints() ? 0 : 1; }
+static void smHintsSet(int v){ axSetControlHints(v == 0); }
+static int  smTipsGet()      { return axAutoTooltips() ? 0 : 1; }
+static void smTipsSet(int v) { axSetAutoTooltips(v == 0); }
+static int  smTutGet()       { return axModTutorials() ? 0 : 1; }
+static void smTutSet(int v)  { axSetModTutorials(v == 0); }
+static int  smAbbrGet()      { return axExpandAbbreviations() ? 0 : 1; }
+static void smAbbrSet(int v) { axSetExpandAbbreviations(v == 0); }
 static const SmValRow kSmAnn[] = {
     { AXS_SM_ANN_SUBTITLES, 2, nullptr, smSubsGet, smSubsSet, 0,
       { AXS_VALUE_ON, AXS_VALUE_OFF }, nullptr,
@@ -85,6 +100,21 @@ static const SmValRow kSmAnn[] = {
     { AXS_SM_ANN_POSITIONS, 2, nullptr, smPosGet, smPosSet, 0,
       { AXS_VALUE_ON, AXS_VALUE_OFF }, nullptr,
       { AXS_SM_ANN_POS_ON, AXS_SM_ANN_POS_OFF }, nullptr },
+    { AXS_SM_ANN_HINTS, 2, nullptr, smHintsGet, smHintsSet, 0,
+      { AXS_VALUE_ON, AXS_VALUE_OFF }, nullptr,
+      { AXS_SM_ANN_HINTS_ON, AXS_SM_ANN_HINTS_OFF }, nullptr },
+    { AXS_SM_ANN_TOOLTIPS, 2, nullptr, smTipsGet, smTipsSet, 0,
+      { AXS_VALUE_ON, AXS_VALUE_OFF }, nullptr,
+      { AXS_SM_ANN_TIPS_ON, AXS_SM_ANN_TIPS_OFF }, nullptr },
+    { AXS_SM_ANN_TUTORIALS, 2, nullptr, smTutGet, smTutSet, 0,
+      { AXS_VALUE_ON, AXS_VALUE_OFF }, nullptr,
+      { AXS_SM_ANN_TUT_ON, AXS_SM_ANN_TUT_OFF }, nullptr },
+    { AXS_SM_ANN_ABBREV, 2, nullptr, smAbbrGet, smAbbrSet, 0,
+      { AXS_VALUE_ON, AXS_VALUE_OFF }, nullptr,
+      { AXS_SM_ANN_ABBREV_ON, AXS_SM_ANN_ABBREV_OFF }, nullptr },
+    { AXS_SM_ANN_KEYWORDS, AX_KEYWORDS_MODES, nullptr, axKeywordsMode, axSetKeywordsMode, 0,
+      { AXS_SM_ANN_KW_V_SPOKEN, AXS_SM_ANN_KW_V_BUFFER, AXS_VALUE_OFF }, nullptr,
+      { AXS_SM_ANN_KW_SPOKEN, AXS_SM_ANN_KW_BUFFER, AXS_SM_ANN_KW_OFF }, nullptr },
 };
 static const int SM_ANN_N = (int)(sizeof kSmAnn / sizeof kSmAnn[0]);
 
@@ -195,7 +225,9 @@ static AxStrId smCatName(int i) {
          : i == SM_CAT_SPEECH   ? AXS_SM_CAT_SPEECH
          : i == SM_CAT_CONTROLS ? AXS_SM_CAT_CONTROLS
          : i == SM_CAT_UPDATES  ? AXS_SM_CAT_UPDATES
-         : i == SM_CAT_DEBUG    ? AXS_SM_CAT_DEBUGLOG : AXS_SM_CAT_VERBOSITY;
+         : i == SM_CAT_DEBUG    ? AXS_SM_CAT_DEBUGLOG
+         : i == SM_CAT_README   ? AXS_SM_CAT_README
+         : i == SM_CAT_DISCORD  ? AXS_SM_CAT_DISCORD : AXS_SM_CAT_VERBOSITY;
 }
 static AxStrId smGroupName(KmGroup g) {
     switch (g) {
@@ -427,6 +459,10 @@ static void smAnnounceLevel(bool withTitle) {
     else if (smIsList(g_smLevel)) smListRowLine(row, sizeof row);
     else if (smIsFuncs(g_smLevel)) smFuncLine(row, sizeof row);
     else                     smBindLine(row, sizeof row);
+    if (g_smLevel == 0 && (g_smCat == SM_CAT_DEBUG || g_smCat == SM_CAT_UPDATES))
+        axAppendHint(row, sizeof row, AXS_ENTER_ACTIVATE_HINT);
+    else if (smIsList(g_smLevel) && smList().rows[*smList().cursor].set)
+        axAppendHint(row, sizeof row, AXS_SM_CHOICE_HINT);
     if (withTitle) {
         char buf[1200];
         _snprintf(buf, sizeof buf, "%s %s", axs(AXS_SM_TITLE), row);
@@ -456,6 +492,7 @@ static void smAnnounceCapture() {
     smFuncSlotName(g_smFn, smBindSlot(g_smBind), what, sizeof what);
     _snprintf(buf, sizeof buf, axs(g_smMode == 4 ? AXS_SM_CAPTURE_PAD_FMT : AXS_SM_CAPTURE_FMT), what);
     buf[sizeof buf - 1] = 0;
+    axAppendHint(buf, sizeof buf, g_smMode == 4 ? AXS_SM_CAPTURE_PAD_HINT : AXS_SM_CAPTURE_HINT);
     postSpeech(buf);
 }
 
@@ -495,6 +532,23 @@ static void smToggleUpdates() {
     postSpeech(buf);
 }
 
+// ---- The link rows (Enter on "Open the readme" / "Join the Discord") ----
+static void smOpenLink(const wchar_t* url, const char* urlA, AxStrId opened) {
+    HINSTANCE r = ShellExecuteW(nullptr, L"open", url, nullptr, nullptr, SW_SHOWNORMAL);
+    bool ok = (intptr_t)r > 32;
+    logLine("settings: link row %s -> ShellExecute %s (%d)", urlA, ok ? "ok" : "REFUSED", (int)(intptr_t)r);
+    char outcome[640];
+    if (ok) _snprintf(outcome, sizeof outcome, "%s", axs(opened));
+    else    _snprintf(outcome, sizeof outcome, axs(AXS_SM_LINK_FAILED_FMT), urlA);
+    outcome[sizeof outcome - 1] = 0;
+    char cat[160], row[640], buf[1400];
+    smCatLabel(g_smCat, cat, sizeof cat);
+    smRowLine(row, sizeof row, cat, g_smCat, SM_CATS);
+    _snprintf(buf, sizeof buf, "%s %s", outcome, row);
+    buf[sizeof buf - 1] = 0;
+    postSpeech(buf);
+}
+
 static void smOpenList(int level) {
     g_smLevel = level;
     const SmValList& L = smList();
@@ -530,6 +584,7 @@ static void smOpenBinds(int f, int bind) {
     char head[320], row[640], buf[1024];
     _snprintf(head, sizeof head, axs(AXS_SM_BIND_HEADER_FMT), axs(kmAt(f)->name), smBindCount());
     head[sizeof head - 1] = 0;
+    axAppendHint(head, sizeof head, AXS_SM_BIND_HINT);   // "Enter changes one, ..." -- "" while Off
     smBindLine(row, sizeof row);
     _snprintf(buf, sizeof buf, "%s %s", head, row);
     buf[sizeof buf - 1] = 0;
@@ -827,6 +882,10 @@ bool routeSettingsKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat
             smToggleDebugLog();
         } else if (g_smLevel == 0 && g_smCat == SM_CAT_UPDATES) {
             smToggleUpdates();
+        } else if (g_smLevel == 0 && g_smCat == SM_CAT_README) {
+            smOpenLink(kSmReadmeUrl, kSmReadmeUrlA, AXS_SM_LINK_README_OPENED);
+        } else if (g_smLevel == 0 && g_smCat == SM_CAT_DISCORD) {
+            smOpenLink(kSmDiscordUrl, kSmDiscordUrlA, AXS_SM_LINK_DISCORD_OPENED);
         } else if (g_smLevel == 0 && g_smCat == SM_CAT_ANNOUNCE) {
             smOpenList(SM_LEVEL_ANN);                 // Announcements
         } else if (g_smLevel == 0 && g_smCat == SM_CAT_SPEECH) {

@@ -12,7 +12,7 @@ VALUE_CHECKED=coché
 VALUE_UNCHECKED=décoché
 ACTION_FAILED=Cela n'a pas fonctionné.
 NOT_AVAILABLE=Indisponible.
-DIDNT_HAPPEN=Échec
+DIDNT_HAPPEN=Échec.
 SAY_AGAIN_NOTHING=Aucun message à l'écran.
 NO_ROW_SELECTED=Aucune sélection.
 VALUE_EMPTY=vide
@@ -46,11 +46,11 @@ DLG_PRESENT_FALLBACK=Écran de confirmation actif.
 DLG_NO_KEYBOARD=Cette confirmation ne peut pas être effectuée au clavier.
 
 # ---- frontend/loading.cpp ----
-LS_LOADING=Chargement
+LS_LOADING=Chargement.
 LS_CONTINUE_FALLBACK=Appuyez sur espace ou click gauche pour continuer.
 
 # ---- dlc/color_of_madness/wave.cpp ----
-WAVE_ADVANCE_FALLBACK=Avancer jusqu'à la zone suivante.
+WAVE_ADVANCE_FALLBACK=Avancer jusqu'à la zone suivante
 
 # ---- frontend/options.cpp ----
 OPT_FALLBACK_CATEGORY_N=Categorie %d
@@ -77,16 +77,18 @@ SLOT_EMPTY_NO_DELETE=Cet emplacement est vide.
 SLOT_HINT_LOAD=Appuyez sur Enter pour charger la campagne.
 SLOT_HINT_DLC=Shift plus Enter pour consulter ou activer les DLC.
 SLOT_HINT_DELETE=Appuyez sur Delete pour supprimer la sauvegarde.
-NGC_INTRO_N=Nouveau contenu de jeu. %d Options téléchargeables. Flèches haut et bas pour vous déplacer, Enter pour basculer, puis OK pour finaliser.
+SLOT_HINT_MODS=Espace pour consulter ou activer les mods.
+NGC_INTRO_N=Nouveau contenu de jeu. %d Options téléchargeables.
 NGC_ITEM_STATE=%s, %s.
-NGC_OK_ROW=OK. Appuyez sur Enter pour démarrer la campagne.
+NGC_OK_ROW=OK.
 NGC_NO_OK=Impossible de poursuivre.
 DLC_BTN_NONE=Aucune option de dlc sur cet emplacement.
 DLC_BTN_FALLBACK=Activer ou consulter les DLC.
 UGC_BTN_FALLBACK=Activer ou consulter les mods.
-UGC_WINDOW_UNREAD=La fenêtre des mods ne peut pas encore être lue. Appuyez sur Échap pour la fermer.
-UGC_INTRO_N=Mods : %d. Flèches haut et bas pour vous déplacer, Enter pour basculer, échappe pour fermer et enregistrer.
-DLCVIEW_INTRO_N=Contenu téléchargeable pour cette sauvegarde. %d options. Flèches haut et bas pour vous déplacer, Enter pour basculer, échappe pour fermer.
+UGC_BTN_NONE=Aucune option de mod sur cet emplacement.
+UGC_WINDOW_UNREAD=La fenêtre des mods ne peut pas encore être lue.
+UGC_INTRO_N=Mods : %d.
+DLCVIEW_INTRO_N=Contenu téléchargeable pour cette sauvegarde. %d options.
 
 # ---- dlc/butchers_circus/dueling.cpp: the Dueling Grounds ----
 DG_MODE_FRIENDS=Liste d'amis
@@ -147,8 +149,7 @@ RB_UNREADABLE=Le tableau de classement ne peut pas être lu.
 BD_TAB_SECTION_FMT=Tab %d sur %d.
 BD_TAB_CURRENT=Sélectionné.
 BD_TAB_CHANGED=Pas encore appliqué.
-BD_ROW_RANDOM=Banière aléatoire. Appuyez sur Enter pour effectuer un choix aléatoire pour toutes les sections.
-BD_ROW_APPLY_FMT=%s. Appuyez sur Enter pour appliquer.
+BD_ROW_RANDOM=Bannière aléatoire.
 BD_APPLY_FALLBACK=Appliquer tout
 BD_NO_CHANGES=Aucune modification à appliquer.
 BD_UNSAVED=Modifications non-sauvegardées.
@@ -218,14 +219,14 @@ RNG_LEAGUE_TIERS_FMT=%s: %u niveaux.
 RNG_LEAGUES_EMPTY_FMT=%s. La ligue est vide.
 RNG_LEAGUES_CLOSED=Ligue fermée.
 RNG_LEAGUES_DIDNT_OPEN=Échec d'ouverture de la fenêtre de ligues.
-RNG_LEAGUES_STILL_OPEN=La fenêtre de ligues est toujours ouverte. Apuyez sur échappe.
-RNG_LEAGUES_OPEN_HINT=La fenêtre de ligues est ouverte. Appuyez sur échappe ou sur l pour la fermer.
+RNG_LEAGUES_STILL_OPEN=La fenêtre de ligues est toujours ouverte.
+RNG_LEAGUES_OPEN=La fenêtre de ligues est ouverte.
 RNG_PRACTICE_DIDNT_OPEN=Échec d'ouverture de la boîte de dialogue d'entraînement.
 RNG_TB_MISSING=Indisponible ici.
 RNG_TB_BUSY=En cours.
 
 # ---- dlc/butchers_circus/pit.cpp: choosing which hero acts ----
-PIT_PICK_OPEN_FALLBACK=Choisissez un héros. Appuyez sur Enter.
+PIT_PICK_OPEN_FALLBACK=Choisissez un héros.
 PIT_ACTING_HEAD_FMT=%s agit. Actions.
 PIT_ACTING_FMT=%s agit encore.
 PIT_CANT_ACT_FMT=%s ne peut pas agir ce tour.
@@ -356,8 +357,6 @@ EMB_REQUIRES_FMT=Requiert: %s.
 EMB_REQUIRES_N_FMT=Requiert: %s, %u.
 EMB_ROW_POS_FMT=Quête %d sur %d.
 EMB_ROW_SELECTED=Sélectionné.
-EMB_REWARD_FMT=Récompenses: %s.
-EMB_REWARD_N_FMT=Récompense: %s, %u.
 EMB_ALREADY_SELECTED_FMT=%s est déjà sélectionné.
 EMB_STILL_SELECTING=Sélection en cours.
 EMB_CANT_SELECT_FMT=%s ne peut pas être sélectionné pour l'instant.
@@ -399,7 +398,7 @@ PROV_REMOVED_FMT=%s retiré.
 # ---- Secret rooms: the in-raid map + dungeon view (2026-08-05) ----
 MAP_SECRET_ROOM=Salle secrète
 SECRET_DOOR_LABEL=Porte secrète
-SECRET_ENTER_FROM_HALL=La salle secrète est accessible depuis son couloir : déplacez-vous jusqu'à la porte secrète et appuyez sur la touche d'interaction.
+SECRET_ENTER_FROM_HALL=La salle secrète est accessible depuis son couloir.
 
 # ---- "W to open", the game's own interact key, on the two doors it works on (2026-08-23) ----
 DOOR_PRESS_W=Appuyez sur W pour ouvrir.
@@ -470,7 +469,7 @@ SHOP_BOUGHT_FREE_FMT=%s acheté. %d encore en vente.
 RCT_NONE=Aucune recrue disponible.
 RCT_POS_FMT=Recrue %d sur %d.
 RCT_ROSTER_FULL_FMT=Effectif plein. %d sur %d héros. Améliorez la diligence pour faire de la place.
-RCT_ADD_FMT=Ajouter %s à l'effectif. Bouton. Appuyez sur Enter pour recruter, échappe pour annuler.
+RCT_ADD_FMT=Ajouter %s à l'effectif. Bouton.
 RCT_THIS_HERO=Ce héros
 RCT_STILL_RECRUITING=Recrutement en cours.
 RCT_CANT_NOW=Le recrutement ne peut pas être effectué pour l'instant.
@@ -493,8 +492,8 @@ ACT_WING_POS_FMT=%s. Activité %d sur %d.
 ACT_SLOT_POS_FMT=Emplacement %d sur %d.
 ACT_CARETAKER_HERE=Le gardien est ici cette semaine.
 ACT_CARETAKER_HERE_SLOT=Le gardien est ici cette semaine. Rien ne peut être fait sur cet emplacement.
-ACT_STAYING_FMT=%s, ici cette semaine. Appuyez sur Enter pour l'en sortir.
-ACT_NOT_CONFIRMED_COST_FMT=%s, en attente de confirmation.%s Appuyez sur Enter pour confirmer, Backspace pour l'en sortir.
+ACT_STAYING_FMT=%s, ici cette semaine.
+ACT_NOT_CONFIRMED_COST_FMT=%s, en attente de confirmation.%s
 ACT_CONTAGION_FMT=%s %s
 ACT_CONTAGION_UP_FMT=Contagion accrue à %s.
 ACT_CONTAGION_DOWN_FMT=Contagion diminuée à %s.
@@ -502,21 +501,21 @@ INF_UP_FMT=Infestation accrue à %s.
 INF_DOWN_FMT=Infestation diminuée à %s.
 ACT_SLOT_LOCKED=Verrouillé. Améliorez le bâtiment pour ouvrir cet emplacement.
 ACT_CLOSED_WEEK=Fermé cette semaine.
-ACT_EMPTY_CHOOSE=Vide. Appuyez sur Enter pour choisir un héros.
-ACT_EMPTY_FREE_CHOOSE=Vide. Gratuit cette semaine. Appuyez sur Enter pour choisir un héros.
+ACT_EMPTY_CHOOSE=Vide.
+ACT_EMPTY_FREE_CHOOSE=Vide. Gratuit cette semaine.
 ACT_FREE_WEEK=Gratuit cette semaine.
-ACT_NOT_ELIGIBLE=Non-éligible. Enter pour connaître la raison.
+ACT_NOT_ELIGIBLE=Non-éligible.
 ACT_A_HERO=Un héros
 ACT_CHOOSE_HERO_FMT=Choisissez un héros pour %s. %d disponible.
-ACT_PICK_BUSY_FMT=%s ne peut pas : %s
+ACT_PICK_BUSY=Ce héros est occupé.
 ACT_NOT_PLACED=Échec du placement.
-ACT_PLACED_FMT=%s placé dans %s. En attente de confirmation. Appuyez sur Enter pour confirmer, Backspace pour l'en sortir.
+ACT_PLACED_FMT=%s placé dans %s. En attente de confirmation.
 ACT_COMMITTED_PAID_FMT=%s assigné à %s. %d %s payé.
 ACT_COMMITTED_FMT=%s assigné à %s.
 ACT_TAKEN_OUT_REFUND_FMT=%s retiré de %s. %d %s remboursé.
 ACT_TAKEN_OUT_OF_FMT=%s retiré de %s.
 ACT_TAKEN_OUT_FMT=%s retiré.
-ACT_ALREADY_STAYING=Se trouve déjà ici. Appuyez sur Enter pour le retirer.
+ACT_ALREADY_STAYING=Se trouve déjà ici.
 ACT_NOTHING_TAKE_OUT=Rien à retirer ici.
 QT_WORD_LOCK=Renforcer
 QT_WORD_REMOVE=Supprimer
@@ -540,8 +539,8 @@ QT_DISPLACED_CLEARED_FMT=%s n'est plus assigné à %s.
 QT_DISPLACED_NOW_FMT=%s est maintenant %s.
 QT_TOTAL_COST_FMT=%d %s en tout.
 QT_NOTHING_CHOSEN_THERE=Rien n'a été choisi ici.
-QT_NOTHING_CHOSEN_FMT=%s, aucun traitement choisi. Ci-dessous se trouvent les options renforcer et supprimer: appuyez sur Enter sur l'un des deux pour ouvrir la liste correspondante. Puis appuyez sur Enter ici pour confirmer. Backspace retire le héros.
-QT_PENDING_FMT=%s, %s.%s Appuyez sur Enter pour confirmer, Backspace pour le retirer.
+QT_NOTHING_CHOSEN_FMT=%s, aucun traitement choisi.
+QT_PENDING_FMT=%s, %s.%s
 QT_CHOOSE_TREAT_FIRST=Choisissez d'abord ce que vous voulez traiter. Les lignes ci-dessous sont les attributs de ce héros.
 QT_CLOSED=Fermé.
 HA_NO_HERO=Aucun héros sur lequel travailler.
@@ -836,13 +835,13 @@ EX_NOTHING_FMT=%s: rien pour l'offre actuelle.
 EX_NOT_AVAILABLE=Échange indisponible ici.
 EX_OFFERING_FMT=Offrir %u %s.
 EX_OFFERING_SET_FMT=Offrir %u %s. Indiquez le nombre.
-EX_OFFERING_HINT_FMT=Offrir %u %s. Flèches haut et bas ajuste le nombre, enter pour confirmer.
+EX_OFFERING_HINT=Flèches haut et bas ajustent le nombre, Entrée pour confirmer.
 EX_CANT_OFFER=Cela ne peut être offert.
 EX_OFFER_MAX=L'offre ne peut pas monter plus haut.
 EX_OFFER_MIN=L'offre ne peut pas descendre plus bas.
 EX_OFFER_UNCHANGED=Offre inchangée.
 EX_TRADE_IN_PROGRESS=Échange en cours.
-EX_NOTHING_TO_RECEIVE=Rien à obtenir pour l'offre actuelle. Appuyez sur plus pour monter l'offre.
+EX_NOTHING_TO_RECEIVE=Rien à obtenir pour l'offre actuelle.
 EX_TRADE_UNAVAILABLE=Cet échange est indisponible.
 EX_HELP_PICKING=Flèches haut et bas pour ajuster le nombre, enter pour confirmer.
 EX_HELP_IDLE=Appuyez sur Enter pour offrir un leg et ajuster le nombre.
@@ -856,8 +855,8 @@ TE_TITLE=Évènement urbain.
 TE_A_HERO=Un héros
 TE_THIS_HERO=ce héros
 TE_PRESS_ENTER_TO_FMT=Appuyez sur Enter pour %s.
-TE_OFFERED_FMT=Héros offert: %d. %s. Flèches haut et bas pour parcourir, c pour inspecter, enter pour recruter.
-TE_ADD_PROMPT_FMT=Ajouter %s à l'effectif. Bouton. Appuyez sur Enter pour recruter, échappe pour annuler.
+TE_OFFERED_FMT=Héros offerts : %d. %s.
+TE_ADD_PROMPT_FMT=Ajouter %s à l'effectif. Bouton.
 TE_ROSTER_FULL_FMT=L'effectif est plein. %d sur %d héros. Améliorez la diligence pour faire de la place.
 TE_HERO_UNREADABLE=Ce héros est illisible.
 TE_CANT_DO_NOW=Cela ne peut pas être fait pour l'instant.
@@ -951,10 +950,10 @@ QZ_BTN_ABANDON=Abandonner la quête
 QZ_GOAL_N_FMT=Objectif %d sur %d.
 QZ_NOT_READABLE=Illisible.
 QZ_GOAL_UNREADABLE=Objectif illisibnle.
-QZ_HEAD_GOALS_FMT=Quête. Objectifs: %d.
-QZ_HEAD_QUEST=Quête.
+QZ_HEAD_GOALS_FMT=%s. Objectifs: %d.
+QZ_HEAD_NAME=Quête
 QZ_NOTHING_HERE=Rien ici.
-QZ_NO_QUEST_INFO=Aucune information de quête..
+QZ_NO_QUEST_INFO=Aucune information de quête.
 QZ_CLOSED=Quête fermée.
 QC_COMPLETE_HEAD=Quête complétée.
 QC_OR_FMT=Ou: %s
@@ -979,7 +978,7 @@ RR_DEAD_NO_XP=Mort. Pas d'expérience.
 RR_XP_UNKNOWN=Expérience inconnue.
 RR_NEW_QUIRK_N_FMT=Nouvel attribut %d sur %d.
 RR_NEW_QUIRK=Nouvel attribut.
-RR_QUIRK_HIDDEN=Caché. Apuyez sur Enter pour révéler.
+RR_QUIRK_HIDDEN=Caché.
 RR_QUIRKS_REVEALED=Attributs révélé.
 RR_HEAD_RESULTS=Résultats de l'expédition.
 RR_HEAD_HEROES=Page des Héros.
@@ -1077,9 +1076,9 @@ MAP_MOVING_TO_FMT=Déplacement vers %s.
 MAP_STOPPED=Arrêté.
 MAP_NO_PARTY_POS=Impossible de situer le groupe.
 MAP_PROP_IN_REACH_FMT=%s. À portée.
-MAP_DOOR_AT_END_FMT=Porte vers %s. Appuyez sur W pour ouvrir.
-MAP_TRAP_AHEAD=Attention: piège. Appuyez sur W pour désarmer.
-MAP_FARMSTEAD_NO_MOVE=La carte ne peut pas déplacer le groupe dans la ferme. Appuyez sur R pour basculer vers la vue de donjon, puis allez vers la dernière ligne pour avancer.
+MAP_DOOR_AT_END_FMT=Porte vers %s.
+MAP_TRAP_AHEAD=Attention : piège.
+MAP_FARMSTEAD_NO_MOVE=La carte ne peut pas déplacer le groupe dans la ferme.
 
 # ---- raid/dungeonview.cpp: the ROOM'S ROW LIST (string round, 2026-08-09) ----
 RV_POSITION_FMT=Position %d
@@ -1102,8 +1101,6 @@ RV_LABEL_ENEMY=Ennemi
 RV_LABEL_PARTY_MEMBER=Alié
 RV_EXIT_TO_FMT=Sortie vers %s. %d sur %d.
 RV_OBJECT_N_OF_M_FMT=%s. objet %d sur %d.
-RV_PRESS_ENTER_FMT=%s. Appuyez sur Enter.
-RV_LAST_ROW_FMT=%s. Ceci est la dernière ligne du donjon.
 RV_TRAP_UNREACHABLE=Le piège ne peut pas être atteint.
 RV_DISARMING_WHO_FMT=%s désarme le %s.
 RV_DISARMING_FMT=Désarmement du %s.
@@ -1209,7 +1206,7 @@ CAMP_RESTING=Repos.
 LOOT_HEAD_FMT=Butin. Objets: %d. %s
 LOOT_HEAD_BARE_FMT=Butin. Objets: %d.
 LOOT_CANT_TAKE=Impossible de prendre cet objet.
-LOOT_TAKEN=Pris
+LOOT_TAKEN=Pris.
 LOOT_ITEM_FALLBACK=Objet
 LOOT_NOUN_ITEM=Objet
 LOOT_TOOK_FMT=%s pris. %s
@@ -1238,8 +1235,8 @@ EV_TRK_PURGE_NEG=Guérit attribut
 EV_TRK_PURGE_POS=Perd attribut
 EV_TRK_SUMMON=Invocation
 EV_TRK_TORCH_UP=Torche plus
-EV_CHOOSE_ITEM_FMT=Choisissez un objet. %s. Enter pour l'utiliser, échappe pour retourner.
-EV_CHOOSE_ITEM=Choisisez un objet. Enter pour l'utiliser, échappe pour retourner.
+EV_CHOOSE_ITEM_FMT=Choisissez un objet. %s.
+EV_CHOOSE_ITEM=Choisissez un objet.
 EV_BAG_EMPTY=L'inventaire est vide.
 EV_THE_ITEM=L'objet
 EV_ITEM_USED_FMT=%s utilisé.
@@ -1249,7 +1246,7 @@ EV_NO_EFFECT_FALLBACK=Cet objet n'a eu aucun effet.
 EV_CHOICE_FAILED=Ce choix n'a pas pu être effectué.
 
 # ---- raid/inventory.cpp: THE PARTY BAG (string round, 2026-08-09) ----
-INV_TITLE=Inventaire.
+INV_NAME=Inventaire
 INV_NOUN_SLOT=Emplacement
 INV_EMPTY_FMT=Vide. %s %d of %d.
 INV_NAME_COUNT_FMT=%s, %d
@@ -1266,7 +1263,7 @@ INV_EQUIP_CHOOSE_FMT=Équiper %s sur. Choisissez la cible. %d disponible.
 INV_ALREADY_USED_ITEM=Ce héros a déjà utilisé un objet ce tour.
 INV_NO_ONE_CAN_USE=Personne ne peut utiliser d'objet pour l'instant.
 INV_NO_TARGET_SELECTED=Aucune cible sélectionnée.
-INV_MAKE_CAMP_PROMPT=Établir le campement? Enter pour confirmer, échappe pour annuler.
+INV_MAKE_CAMP_PROMPT=Établir le campement ?
 INV_MAKING_CAMP=Établissement du campement.
 INV_CANT_CAMP_HERE=Impossible de camper ici.
 INV_NO_CAMP_HERE=Vous ne pouvez pas camper ici. Le bois a été conservé.
@@ -1320,8 +1317,8 @@ SM_DEBUGLOG_ON_FMT=Journal activé. Fichier du journal: %s
 SM_DEBUGLOG_OFF=Journal désactivé.
 SM_DEBUGLOG_FAIL_FMT=Impossible de créer le fichier du journal %s. Journal toujours désactivé.
 SM_CAT_UPDATES=Vérifier les mises à jour au lancement
-SM_UPDATES_ON=Vérifications activées. Le lanceur recherche une version plus récente à chaque fois que le jeu se lance.
-SM_UPDATES_OFF=Vérification désactivée. Le lanceur ne cherchera pas une version plus récente.
+SM_UPDATES_ON=Vérification activée. Le mod recherche une version plus récente à chaque fois que le jeu se lance.
+SM_UPDATES_OFF=Vérification désactivée. Le mod ne cherchera pas une version plus récente.
 SM_ANN_HEADER=Annonce. %d réglages.
 SM_ANN_SUBTITLES=Sous-titres
 SM_ANN_SUBS_ON=Lecture des sous-titre activée.
@@ -1357,7 +1354,7 @@ SM_SP_PCT_FMT=%d%%
 SM_SP_SAPI_NOTE=SAPI ne parle pas pour l'instant. Les options seront sauvegardées lorsque la parole commencera.
 SM_LIST_HEADER_FMT=%s. %d commandes.
 SM_UNASSIGNED=Non-assigné
-SM_CAPTURE_FMT=Appuyez sur la nouvelle touche pour %s échappe pour annuler.
+SM_CAPTURE_FMT=Appuyez sur la nouvelle touche pour : %s
 SM_MENUKEY_REFUSED=%s ouvre ce menu et ne peut pas être assignée.
 SM_ASSIGNED_FMT=%s assigné.
 SM_STOLEN_FMT=Cette touche était déjà liée à une autre commande, qui est maintenant non-assignée: %s
@@ -1418,7 +1415,7 @@ SM_GRP_BLDG_SUB=Raccourcis des bâtiments
 SM_GRP_SKILLS_SUB=Raccourcis des compétences
 SM_SUBMENU=Sous-menu
 SM_GROUPS_HEADER_FMT=Contrôles. %d éléments.
-SM_BIND_HEADER_FMT=%s. %d assignations. Entrée en modifie une, Suppr l'efface, Retour arrière rétablit sa valeur par défaut.
+SM_BIND_HEADER_FMT=%s. %d assignations.
 SM_ROW_FMT=%s. Clavier : %s. Manette : %s
 SM_DEV_KEYBOARD=Clavier
 SM_DEV_CONTROLLER=Manette
@@ -1442,7 +1439,7 @@ SM_SLOT_TO_JEWELER=Vers le joaillier
 SM_SLOT_FROM_JEWELER=Retour au marchand de la roulotte
 SM_SLOT_TO_SHARDS=Vers les mercenaires des éclats
 SM_SLOT_FROM_SHARDS=Retour aux recrues de la diligence
-SM_CAPTURE_PAD_FMT=Appuyez sur la commande de la manette pour : %s Maintenez-la pour assigner un appui long. Échap annule.
+SM_CAPTURE_PAD_FMT=Appuyez sur la commande de la manette pour : %s
 SM_MENUKEY_KEEP=La touche du menu ne peut pas être effacée.
 SM_CLEARED=Non-assigné.
 SM_RESTORED_FMT=Valeur par défaut rétablie : %s.
@@ -1549,9 +1546,9 @@ COM_NONE_SECURED=Aucune acquise pour l'instant.
 FE_UNLABELED_BUTTON=bouton sans libellé
 EX_NO_HEIRLOOMS=Aucun legs.
 EX_NOTHING_TO_TRADE_FOR=Rien à obtenir en échange.
-CS_TRK_UNEQUIP_CONFIRM_FMT=Déséquiper %s ? Appuyez de nouveau sur Entrée pour confirmer.
+CS_TRK_UNEQUIP_CONFIRM_FMT=Déséquiper %s ?
 CS_TRK_FALLBACK=la breloque
-CS_COM_CAP_FMT=Vous avez déjà %d compétences équipées. Déséquipez-en une d'abord, ou appuyez sur 1 à %d pour placer celle-ci dans un emplacement.
+CS_COM_CAP_FMT=Vous avez déjà %d compétences équipées. Déséquipez-en une d'abord.
 MAP_AC_BATTLE=Combat
 MAP_AC_AMBUSH=Embuscade
 MAP_AC_TRAP=Piège
@@ -1566,11 +1563,12 @@ MAP_AC_AMBUSH_CURIO=Curio avec embuscade
 MAP_AC_AMBUSH_TREASURE=Trésor avec embuscade
 MAP_AC_SECRET_DOOR=Porte secrète
 MAP_AC_PRISONER=Prisonnier
-MAP_OPEN_FMT=Carte. %s. %s. Les flèches passent d'une salle à l'autre, Ctrl et les flèches parcourent les couloirs.
+MAP_NAME=Carte
+MAP_OPEN_FMT=%s. %s. %s.
 MAP_NOT_WHILE_FIGHTING=Pas pendant un combat.
 MAP_KEY_NOT_TAKEN=Le jeu n'a pas pris en compte la touche de déplacement.
 MAP_PARTY_DIDNT_MOVE=Le groupe n'a pas bougé.
-AB_HEADER_ACTIONS=Actions.
+AB_HEADER_NAME=Actions
 CAMP_ALREADY_USED=Déjà utilisée
 CAMP_NOT_ENOUGH_TIME=Pas assez de temps
 CAMP_NO_FOOD=Pas de nourriture
@@ -1597,3 +1595,300 @@ CLOG_CLEARED=Journal de combat vidé.
 
 # ---- Added 2026-10-09: a move that cannot leave its rank (the Musketeer's back-2 / forward-0 from rank 4): the Enter refusal; %s is the game's own Back / Forward tooltip lines ----
 TS_CANT_MOVE_FROM_FMT=Déplacement impossible depuis la position %d. Déplacement : %s.
+
+# ---- Added 2026-10-09: the Ctrl+F FIND overlay (core/find.cpp) -- the query typed so far, the match count, the opener, the refusals, and the keymap row name ----
+FD_OPEN_FMT=Rechercher. Éléments : %d.
+FD_TYPED_FMT=%s. Résultats : %d.
+FD_TYPED_NONE_FMT=%s. Aucun résultat.
+FD_CLEARED_FMT=Recherche effacée. Éléments : %d.
+FD_NO_RESULTS=Aucun résultat.
+FD_NOTHING_HERE=Rien à rechercher sur cet écran.
+FD_EMPTY=Rien à rechercher : la liste est vide.
+FN_FIND=Rechercher sur cet écran
+
+# ---- Added 2026-10-09: the two link rows at the bottom of the F10 menu (Open the readme / Join the Discord): the row names, the two opened lines and the refusal; %s is the web address ----
+SM_CAT_README=Ouvrir le readme
+SM_CAT_DISCORD=Rejoindre le Discord
+SM_LINK_README_OPENED=Ouverture du readme dans votre navigateur.
+SM_LINK_DISCORD_OPENED=Ouverture de l'invitation Discord dans votre navigateur.
+SM_LINK_FAILED_FMT=Impossible d'ouvrir le navigateur. L'adresse est %s.
+
+# ---- Added 2026-10-09: the F10 "Control hints" row (Announcements) and the hint halves split off the sentences above -- every line that names a key on a mod-built surface is its own entry now (the fact lines kept their key and were shortened in place); %d in CS_COM_CAP_HINT_FMT is the slot count ----
+SM_ANN_HINTS=Indications de commandes
+SM_ANN_HINTS_ON=Indications de commandes activées. Le mod indique quelle touche fait quoi, par exemple Entrée pour confirmer.
+SM_ANN_HINTS_OFF=Indications de commandes désactivées. Le mod n'indique plus quelle touche fait quoi.
+NGC_INTRO_HINT=Flèches haut et bas pour vous déplacer, Entrée pour basculer, puis OK pour finaliser.
+NGC_OK_HINT=Appuyez sur Entrée pour démarrer la campagne.
+UGC_WINDOW_UNREAD_HINT=Appuyez sur Échap pour la fermer.
+UGC_INTRO_HINT=Flèches haut et bas pour vous déplacer, Entrée pour basculer, Échap pour fermer et enregistrer.
+DLCVIEW_INTRO_HINT=Flèches haut et bas pour vous déplacer, Entrée pour basculer, Échap pour fermer.
+BD_ROW_RANDOM_HINT=Appuyez sur Entrée pour effectuer un choix aléatoire pour toutes les sections.
+BD_ROW_APPLY_HINT=Appuyez sur Entrée pour appliquer.
+RNG_LEAGUES_CLOSE_HINT=Appuyez sur L ou Échap pour la fermer.
+RV_PRESS_ENTER=Appuyez sur Entrée.
+SECRET_ENTER_HINT=Déplacez-vous jusqu'à la porte secrète et appuyez sur la touche d'interaction.
+RCT_ADD_HINT=Appuyez sur Entrée pour recruter, Échap pour annuler.
+ACT_TAKE_OUT_HINT=Appuyez sur Entrée pour l'en sortir.
+ACT_CONFIRM_HINT=Appuyez sur Entrée pour confirmer, Retour arrière pour l'en sortir.
+ACT_CHOOSE_HINT=Appuyez sur Entrée pour choisir un héros.
+ACT_NOT_ELIGIBLE_HINT=Entrée pour connaître la raison.
+QT_NOTHING_CHOSEN_HINT=Ci-dessous se trouvent les options renforcer et supprimer : appuyez sur Entrée sur l'une des deux pour ouvrir la liste correspondante. Puis appuyez sur Entrée ici pour confirmer. Retour arrière retire le héros.
+EX_INCREASE_HINT=Appuyez sur plus pour monter l'offre.
+TE_OFFERED_HINT=Flèches haut et bas pour parcourir, C pour inspecter, Entrée pour recruter.
+CS_TRK_UNEQUIP_CONFIRM_HINT=Appuyez de nouveau sur Entrée pour confirmer.
+CS_COM_CAP_HINT_FMT=Ou appuyez sur 1 à %d pour placer celle-ci dans un emplacement.
+RR_REVEAL_HINT=Appuyez sur Entrée pour révéler.
+MAP_OPEN_HINT=Flèches : parcourir les salles, Ctrl et flèches : explorer les couloirs, Début : revenir au groupe.
+MAP_TRAP_DISARM_HINT=Appuyez sur W pour désarmer.
+MAP_FARMSTEAD_HINT=Appuyez sur R pour basculer vers la vue de donjon, puis allez vers la dernière ligne pour avancer.
+RV_LAST_ROW_HINT=Ceci est la dernière ligne de la vue de donjon.
+EV_CHOOSE_ITEM_HINT=Entrée pour l'utiliser, Échap pour retourner.
+INV_MAKE_CAMP_HINT=Entrée pour confirmer, Échap pour annuler.
+SM_BIND_HINT=Entrée en modifie une, Suppr l'efface, Retour arrière rétablit sa valeur par défaut.
+SM_CAPTURE_HINT=Échap annule.
+SM_CAPTURE_PAD_HINT=Maintenez-la pour assigner un appui long. Échap annule.
+FD_OPEN_HINT=Tapez pour chercher, Échap pour annuler.
+# ---- Added 2026-10-10: the MOD TUTORIAL dialogs (core/modtutorial.cpp) -- the F10 "Mod tutorials" row, the title screen's five paragraphs, the checkbox and OK rows, the opt-out hint, the no-topic refusal and the keymap row name; %s in MT_OPTOUT_FMT is checked / unchecked ----
+SM_ANN_TUTORIALS=Tutoriels du mod
+SM_ANN_TUT_ON=Tutoriels du mod activés. Un message d'aide apparaît la première fois que vous atteignez un nouvel écran.
+SM_ANN_TUT_OFF=Tutoriels du mod désactivés. Les messages d'aide n'apparaissent plus d'eux-mêmes.
+MT_TITLE_P1=Bienvenue dans Darkest Dungeon ! Des tutoriels du mod comme celui-ci apparaîtront automatiquement dans de nombreuses zones du jeu pour vous aider à apprendre à jouer. Vous pouvez aussi les consulter à tout moment en appuyant sur F1 pour une aide contextuelle.
+MT_TITLE_P2=Commandes générales : utilisez les flèches, la croix directionnelle ou le stick gauche pour naviguer dans l'interface. Entrée, ou A sur la manette, pour activer. Échap, ou B sur la manette, vous ramène à l'écran précédent, annule une action ou ouvre le menu de pause.
+MT_TITLE_P3=Lire les fenêtres : appuyer sur la virgule relit la fenêtre ou la boîte de dialogue active.
+MT_TITLE_P4=Lire les infobulles : les infobulles contiennent des informations détaillées sur les héros, les ennemis, les objets, les compétences et plus encore. Par défaut, elles sont lues automatiquement ; cela se règle dans les paramètres du mod ou en appuyant sur F3. Vous pouvez les lire ligne par ligne avec Ctrl+flèches haut et bas. Certaines infobulles ont plusieurs sections, entre lesquelles vous passez avec Ctrl+flèches gauche et droite. Sur manette, maintenez la gâchette gauche et naviguez avec la croix directionnelle ou le stick gauche.
+MT_TITLE_P5=Rechercher : vous pouvez effectuer une recherche dans la plupart des zones du jeu en appuyant sur Ctrl+F.
+MT_TITLE_P6=Paramètres : vous pouvez accéder aux paramètres du mod en appuyant sur F10 n'importe où dans le jeu. Les options du jeu se trouvent dans le menu de pause. Certaines options, comme le volume du jeu et de la musique, sont des curseurs que vous réglez avec les flèches gauche et droite.
+MT_TITLE_P7=Assistance : le readme sur GitHub contient des guides pour bien démarrer dans chaque zone de Darkest Dungeon. Si vous rencontrez des bugs, avez des remarques ou besoin d'aide, vous pouvez me joindre sur Discord. Les liens vers le readme et vers mon serveur Discord se trouvent dans les paramètres du mod.
+MT_TITLE_P8=Si vous ne souhaitez plus voir de messages comme celui-ci, cochez la case ci-dessous pour désactiver les tutoriels du mod.
+MT_OPTOUT_FMT=Ne plus afficher les tutoriels du mod, case à cocher, %s.
+MT_OK=OK, bouton.
+MT_OPTOUT_HINT=Vous pouvez toujours en ouvrir un avec F1, ou les réactiver dans les paramètres du mod.
+MT_NONE_HERE=Aucun tutoriel du mod pour cet écran.
+MT_CLOSED=Fermé.
+FN_MOD_TUTORIAL=Tutoriel du mod pour cet écran
+# ---- Added 2026-10-10 (evening): the CAMPAIGN (save-slot) screen's mod tutorial (core/modtutorial.cpp, six paragraphs: the screen, a new game, naming the estate, deleting, DLC, mods); the mods button's Space hint and its refusal sit in their own blocks above ----
+MT_CAMP_P1=Écran de campagne : Il y a neuf emplacements de sauvegarde de campagne, chacun avec trois boutons à sa droite (supprimer, DLC et mods). En haut de l'écran se trouve un bouton pour le Butcher's Circus, un mode multijoueur compétitif téléchargeable gratuitement.
+MT_CAMP_P2=Commencer une nouvelle partie : Activez un emplacement vide pour commencer une nouvelle partie. Si vous possédez des DLC, vous choisirez ensuite le contenu à ajouter à cette campagne. Vous choisirez après cela une difficulté, puis terminerez en nommant votre domaine. Activez la sauvegarde que vous venez de créer pour commencer.
+MT_CAMP_P3=Nommer votre domaine : Le champ de saisie contient déjà le mot Darkest et accepte au maximum 10 caractères. Vous entendrez le texte mis à jour au fur et à mesure que vous tapez ou effacez. Appuyez sur Entrée pour terminer et créer votre nouvelle sauvegarde.
+MT_CAMP_P4=Supprimer une sauvegarde : Un bouton Supprimer se trouve à droite de chaque emplacement, ou vous pouvez appuyer sur la touche Suppr du clavier. Une confirmation vous sera demandée avant la suppression.
+MT_CAMP_P5=Contenu DLC : Appuyez sur Maj+Entrée ou utilisez le bouton à droite d'une sauvegarde existante pour voir les DLC activés pour cette campagne ou en activer d'autres à tout moment. Attention toutefois : une fois un DLC activé, il ne peut plus être désactivé pour le reste de cette campagne.
+MT_CAMP_P6=Activer des mods : Appuyez sur la barre d'espace ou utilisez le bouton à droite d'une sauvegarde existante pour ouvrir le gestionnaire de mods de cette campagne, où vous pouvez activer ou désactiver des mods. Notez qu'il est déconseillé de désactiver un mod en cours de campagne, car cela pourrait corrompre votre sauvegarde.
+# ---- Added 2026-10-10 (night): the DUNGEON VIEW's mod tutorial (core/modtutorial.cpp, twelve paragraphs: the view, heroes, interaction, light, the log, map/inventory, movement, navigation assist, party order, quests, review mode, skills) ----
+MT_DUNG_P1=Vue du donjon : La majeure partie du jeu se déroule dans des donjons à défilement horizontal. Vos personnages sont alignés sur le côté gauche de l'écran, tournés vers la droite, là où apparaissent les objets, les ennemis et les portes. Votre groupe est donc numéroté de droite à gauche, tandis que les ennemis, tournés vers la gauche, sont numérotés de gauche à droite.
+MT_DUNG_P2=Héros : Votre groupe peut compter jusqu'à quatre héros. Q/E (LB/RB sur la manette) change le héros actif. Le héros actif est celui qui interagit avec les curios, les trésors et les pièges et qui en subit les effets. Vous pouvez ouvrir la fiche de personnage du héros actif à tout moment avec C (X sur la manette). Un résumé de l'état actuel de chaque membre du groupe se trouve dans son infobulle.
+MT_DUNG_P3=Interaction : Appuyez sur W pour interagir avec les curios, les obstacles et les trésors, franchir les portes et désamorcer les pièges (LT+A sur la manette). Vous pouvez aussi activer ce qui a le focus.
+MT_DUNG_P4=Lumière : Appuyez sur L pour lire le niveau de lumière actuel et ses effets. La lumière baisse avec le temps et doit être entretenue avec des torches. T ravive la torche, Maj+T la diminue d'un niveau, et Ctrl+Maj+T l'éteint complètement. Sur la manette, maintenez LT et appuyez sur Y pour raviver la torche, sur B pour la diminuer, et maintenez LT+B pour l'éteindre.
+MT_DUNG_P5=Journal : Au fil de votre progression dans le donjon, il arrive toutes sortes de choses à vos héros. Appuyez sur la touche point (LT+RB sur la manette) pour ouvrir le journal de combat, qui montre tout ce qui s'est passé. Page précédente et Page suivante parcourent les entrées dix par dix, et la touche Suppr vous permet d'effacer entièrement le journal.
+MT_DUNG_P6=Carte/Inventaire : La carte du donjon et l'inventaire de votre groupe partagent le même panneau à l'écran. Tab amène le focus sur ce panneau et bascule de l'un à l'autre. Vous pouvez aussi appuyer sur M ou I pour ouvrir directement la carte ou l'inventaire (LT/RT sur la manette).
+MT_DUNG_P7=Déplacement : Les donjons sont faits d'une suite de salles reliées par des couloirs. Vous choisissez sur la carte la prochaine salle à rejoindre, puis vous faites marcher votre groupe dans les couloirs, avec D pour avancer et A pour reculer (stick droit sur la manette). Avancer, c'est toujours aller vers la droite, vers la destination choisie.
+MT_DUNG_P8=Aide à la navigation : Maj+A/D vous déplace d'une tuile à la fois vers l'avant ou l'arrière, pour que les annonces ne soient pas coupées et que vous ne dépassiez rien. Dans une salle, cela vous amène à portée de tout curio ou trésor qui s'y trouve avec vous. Cela vous évite aussi de tomber dans les pièges que votre groupe a repérés au sol.
+MT_DUNG_P9=Ordre du groupe : Votre groupe peut se retrouver mélangé au combat. Pour déplacer un héros, appuyez sur Entrée (A sur la manette) sur le héros à déplacer, puis choisissez sa nouvelle position. Pour revenir rapidement à l'ordre de groupe par défaut après un combat, appuyez sur Maj+Entrée (A maintenu sur la manette) sur n'importe quel héros.
+MT_DUNG_P10=Quêtes : Au-dessus de la vue du donjon se trouve le panneau de quête, avec votre objectif actuel et un bouton pour vous replier du combat, abandonner la quête, ou terminer la quête et rentrer en ville. Vous pouvez aussi appuyer sur G pour atteindre directement vos objectifs, ou sur Maj+Échap comme raccourci pour vous replier, abandonner la quête ou rentrer au Hameau (selon le contexte).
+MT_DUNG_P11=Mode révision : Alt+1 à Alt+4 vous disent rapidement qui occupe chaque position de votre groupe. En combat, Alt+5 à Alt+8 indiquent qui se tient où du côté ennemi.
+MT_DUNG_P12=Compétences : Les compétences du héros actif se trouvent sur la barre d'action, sous la vue du donjon. La touche tilde (à gauche du chiffre 1) vous y amène aussi directement, d'où que vous soyez. En combat, les touches 1 à 5 sélectionnent rapidement une compétence selon sa position sur la barre d'action. 5 est toujours l'action de déplacement.
+# ---- Added 2026-10-10 (night, second round): the in-raid MAP's mod tutorial (core/modtutorial.cpp, four paragraphs: the map and scouting, room to room + Enter, Ctrl+arrows along hallways, Home) ----
+MT_MAP_P1=La carte : La carte vous montre la disposition du donjon et vous permet de choisir votre prochaine destination. Ce que vous pouvez en voir dépend de la reconnaissance effectuée par votre groupe.
+MT_MAP_P2=Utilisez les flèches pour déplacer le curseur de salle en salle. Entrée sur une salle adjacente à la position actuelle de votre groupe le fait entrer dans le couloir qui les relie.
+MT_MAP_P3=Maintenez Ctrl et utilisez les flèches pour déplacer le curseur tuile par tuile le long des couloirs (LT+croix directionnelle ou stick gauche sur la manette).
+MT_MAP_P4=La touche Début ramène le curseur sur la position actuelle de votre groupe (clic du stick gauche sur la manette).
+# ---- Added 2026-10-10 (night, third round): the in-raid INVENTORY's mod tutorial (core/modtutorial.cpp, five paragraphs: the grid, using an item, equipping a trinket, rearranging, discarding) ----
+MT_BAG_P1=L'inventaire : L'inventaire comprend 16 emplacements, disposés en deux rangées de huit.
+MT_BAG_P2=Activer un objet vous permet de l'utiliser sur l'un de vos héros. En combat, chaque héros ne peut utiliser qu'un seul objet sur lui-même par tour.
+MT_BAG_P3=Activer une breloque vous permet de l'équiper sur l'un de vos héros, à condition qu'il ait un emplacement de breloque libre.
+MT_BAG_P4=Vous pouvez réorganiser les objets de votre inventaire avec la barre d'espace (clic du stick gauche sur la manette).
+MT_BAG_P5=Vous pouvez retirer un objet de votre inventaire avec la touche Suppr (Y maintenu sur la manette).
+# ---- Added 2026-10-11: the CHARACTER SHEET's mod tutorial (core/modtutorial.cpp, eleven paragraphs: the sheet, the walk, quirks, base stats, equipment, trinkets, combat skills, camping skills, reassigning skills, diseases, manage) ----
+MT_CS_P1=Fiche de personnage : C'est ici que vous consultez toutes les informations sur vos héros, équipez des breloques et échangez leurs compétences de combat et de campement.
+MT_CS_P2=Haut/Bas pour passer d'une section à l'autre. Gauche/Droite parcourt les informations de chaque ligne.
+MT_CS_P3=Attributs : Des traits qui affectent ce personnage. Vous pouvez avoir jusqu'à 5 attributs positifs et 5 négatifs. Quand vous gagnez un nouvel attribut qui dépasserait la limite, il remplace un autre attribut au hasard.
+MT_CS_P4=Statistiques de base : Les points de vie maximum, la précision, la protection et ainsi de suite de votre héros. Les modificateurs spéciaux sont indiqués dans une infobulle.
+MT_CS_P5=Équipement : Une arme et une armure propres à chaque classe, qui influent sur les statistiques de base du héros et peuvent être améliorées en ville.
+MT_CS_P6=Breloques : Des objets spéciaux que vous équipez sur votre personnage. Chaque personnage peut porter jusqu'à deux breloques, équipées en appuyant sur Entrée sur un emplacement ou depuis l'inventaire.
+MT_CS_P7=Compétences de combat : Les actions que votre héros peut effectuer en combat. L'infobulle de chacune montre ses effets, depuis quelles positions elle peut être utilisée et quelles positions elle peut cibler. Toutes utilisent vos statistiques de base pour les dégâts, la précision et les chances de critique, mais une compétence donnée peut les modifier. Par exemple, une compétence indiquant 30 pour cent de dégâts inflige 30 pour cent de vos dégâts de base. La section des compétences de combat inclut aussi un résumé du nombre de compétences actuellement équipées utilisables depuis chaque position et des positions qu'elles peuvent cibler.
+MT_CS_P8=Compétences de campement : Les actions que le héros peut effectuer au campement. L'infobulle de chaque compétence décrit ses effets, qui elle peut cibler et le temps qu'elle demande.
+MT_CS_P9=Vous pouvez réassigner les compétences en appuyant sur Entrée pour les sélectionner et les désélectionner dans l'ordre où vous voulez qu'elles apparaissent sur la barre d'action. Vous pouvez aussi appuyer sur les chiffres 1 à 4 pour assigner directement une compétence à un emplacement donné.
+MT_CS_P10=Maladies : Des traits négatifs qui peuvent être contractés de diverses façons en expédition et qui doivent être soignés en ville.
+MT_CS_P11=Gérer : Les options pour renommer un héros ou le renvoyer de votre effectif.
+# ---- Added 2026-10-11: the HAMLET's mod tutorial (core/modtutorial.cpp, nine paragraphs: the hamlet, the Tab walk, locations, roster, resources, the trinket inventory, the activity log, town events, embarking -- a buildings paragraph was P9 here for part of the day and moved to the building topic at the end of the file) ----
+MT_HAM_P1=Le hameau : C'est ici que vous gérez vos héros, vos objets et vos autres ressources entre deux expéditions.
+MT_HAM_P2=Appuyez sur Tab et Maj+Tab pour passer d'une section de l'interface du hameau à l'autre (RT et LT sur la manette).
+MT_HAM_P3=Carte du hameau : La carte est présentée sous forme de liste. Chaque bâtiment a une fonction précise et la plupart peuvent être améliorés. Des touches de lettre ouvrent directement chaque bâtiment (la liste complète se trouve dans le readme ou dans les paramètres des commandes du mod).
+MT_HAM_P4=Effectif : C'est ici que vous voyez tous vos héros, dans une liste verticale. En haut se trouve une barre horizontale avec la limite de votre effectif et des options pour le trier. Vous pouvez aussi réorganiser les héros à la main : appuyez sur la barre d'espace pour en prendre un, déplacez-vous jusqu'à l'emplacement voulu, puis appuyez de nouveau sur la barre d'espace pour le déposer (clic du stick gauche sur la manette).
+MT_HAM_P5=Ressources : Indique combien d'or, de legs et d'autres ressources vous possédez. Le bouton Échange de legs permet d'échanger un type de legs contre un autre.
+MT_HAM_P6=Inventaire de breloques : Appuyez sur la touche I pour ouvrir l'inventaire des breloques qui ne sont équipées sur aucun personnage. Au-dessus de la grille se trouvent des options pour retirer les breloques de tous vos héros ou pour trier les objets de la grille. Appuyez sur Entrée sur une breloque pour l'équiper sur un héros. Vous pouvez vendre les breloques dont vous ne voulez plus contre de l'or avec Maj+Entrée.
+MT_HAM_P7=Journal d'activité : Appuyez sur point pour ouvrir le compte rendu de ce qui s'est passé à chaque semaine écoulée.
+MT_HAM_P8=Évènements urbains : La plupart des semaines où vous revenez d'expédition, un évènement urbain se produit, avec des effets positifs ou négatifs variés. Tant que la fenêtre est ouverte, vous pouvez la relire avec virgule et la fermer avec Échap ; vous pouvez la rouvrir à tout moment avec Maj+point.
+MT_HAM_P9=Embarquer : Appuyez sur E pour partir pour votre prochaine quête.
+
+# ---- Added 2026-10-11: the EMBARK screen's mod tutorial (core/modtutorial.cpp, five paragraphs: quest planning, the Tab walk, the quest map, the party lineup, provisions) ----
+MT_EMB_P1=Planification de la quête : Sur cet écran, vous choisissez la quête à entreprendre et composez votre groupe de héros.
+MT_EMB_P2=Appuyez sur Tab et Maj+Tab pour passer d'une section à l'autre.
+MT_EMB_P3=Carte des quêtes : Déplacez-vous avec Gauche/Droite pour parcourir les lieux de la carte. Déplacez-vous avec Haut/Bas pour voir les quêtes de ce lieu. Des informations supplémentaires sur chaque quête se trouvent dans son infobulle. Appuyez sur Entrée pour sélectionner une quête.
+MT_EMB_P4=Formation du groupe : Les rangs sont numérotés de droite à gauche, comme ils apparaîtront dans le donjon. Appuyez sur Entrée sur un emplacement pour ouvrir l'effectif, où vous choisissez qui affecter à ce rang. Choisir le héros qui occupe déjà ce rang le retire du groupe. Utilisez la barre d'espace (clic du stick gauche sur la manette) pour réorganiser les héros de votre groupe sans les retirer.
+MT_EMB_P5=Provisions : Appuyez sur E (clic du stick droit sur la manette) pour passer chez le fournisseur, où vous pouvez acheter des vivres pour votre expédition.
+
+# ---- Added 2026-10-11: the PROVISIONING screen's mod tutorial (core/modtutorial.cpp, six paragraphs: provisioning, the Tab walk, the provisioner's two grids, quest info, the party lineup, embarking) ----
+MT_PROV_P1=Approvisionnement : Sur cet écran, vous achetez des vivres pour votre aventure.
+MT_PROV_P2=Utilisez Tab et Maj+Tab pour passer d'une section à l'autre.
+MT_PROV_P3=Fournisseur : La zone principale est divisée en deux colonnes. L'inventaire de la boutique est à gauche et le vôtre à droite. Vous achetez ou revendez un seul article avec la touche Entrée, ou une pile entière avec Maj+Entrée.
+MT_PROV_P4=Infos de quête : Le panneau d'informations de quête vous indique les détails de la quête choisie et la chance de reconnaissance de votre groupe.
+MT_PROV_P5=Formation du groupe : Vous pouvez aussi consulter et gérer les héros de votre groupe sur cet écran.
+MT_PROV_P6=Embarquer : Appuyez sur E (clic du stick droit) pour terminer vos préparatifs et commencer la quête.
+
+# ---- Added 2026-10-11: a BUILDING interior's mod tutorial (core/modtutorial.cpp, one paragraph, moved out of the hamlet topic the same day: rows and columns, U = LT opens the upgrades, Page Up / Page Down swap buildings) ----
+MT_BLDG_P1=Bâtiments : L'interface de chaque bâtiment est généralement organisée en lignes et en colonnes. À l'intérieur d'un bâtiment, appuyez sur la touche U (LT sur la manette) pour ouvrir le menu des améliorations. Utilisez Page précédente et Page suivante pour passer rapidement d'un bâtiment à l'autre.
+
+# ---- Added 2026-10-11: a CAMP's mod tutorial (core/modtutorial.cpp, three paragraphs: the two phases, respite points and the rest button, Q/E and the camping skills on the action bar) ----
+MT_CAMPING_P1=Le campement se déroule en deux phases. D'abord, vous choisissez la quantité de nourriture à manger, dans une simple liste d'options. La seconde phase, la phase des compétences, est celle où vos héros peuvent utiliser leurs compétences de campement pour se soigner, réduire leur stress et se renforcer pour ce qui les attend.
+MT_CAMPING_P2=Pendant la phase des compétences, vous entendrez combien de points de temps il vous reste dans la lecture de la vue du donjon. Chaque compétence de campement coûte un certain nombre de ces points. Une fois qu'il vous en reste 6 ou moins, un bouton Repos apparaît sur la barre d'action : il met fin au campement et vous ramène au donjon normal.
+MT_CAMPING_P3=Utilisez Q/E (LB/RB sur la manette) pour changer le héros sélectionné et trouvez ses compétences de campement sur la barre d'action, sous la vue du donjon. Consultez leurs infobulles pour en savoir plus sur l'effet de chaque compétence.
+
+# ---- Added 2026-10-11: THE BUTCHER'S CIRCUS mod tutorials (core/modtutorial.cpp, one topic per Circus screen: the Banner Designer (five paragraphs), the Dueling Grounds (two), the Prize Box (one), the Ranking Board (two), The Ring (six)) ----
+MT_BANNER_P1=Atelier de bannières : Votre bannière est en quelque sorte votre emblème de joueur, que les autres joueurs voient pendant un match. Elle se compose de six pièces, que vous débloquez en récompense des matchs terminés.
+MT_BANNER_P2=Cet écran est organisé assez simplement. Le focus arrive dans une liste verticale d'onglets, un pour chaque pièce de votre bannière. Sous ces onglets se trouvent un bouton qui tire vos choix au hasard et un bouton qui applique toutes les modifications. À droite des onglets se trouve une grille montrant les différentes pièces de l'onglet sélectionné.
+MT_BANNER_P3=Appuyez sur Ctrl+Entrée pour enregistrer vos modifications.
+MT_BANNER_P4=Appuyez sur R pour une bannière aléatoire.
+MT_BANNER_P5=Appuyez sur la touche B pour entendre un résumé complet de votre bannière actuelle.
+MT_DUEL_P1=Terrain de duel : C'est ici que vous pouvez défier d'autres joueurs dans un match privé. Il comporte deux colonnes : votre liste d'amis à gauche, où vous pouvez appuyer sur Entrée sur n'importe lequel de vos amis en ligne pour lui envoyer une invitation, et une section à droite où vous pouvez inviter un joueur en saisissant son identifiant Steam. Vous pouvez aussi créer un identifiant de salon, qui vous connectera si vous saisissez tous les deux la même chose.
+MT_DUEL_P2=Une fois connecté, vous choisissez un groupe et appuyez sur E pour vous déclarer prêt. Quand les joueurs sont prêts, le match commence.
+MT_PRIZE_P1=Boîte à prix : C'est ici que vous voyez combien de prestige vous avez accumulé, les récompenses que vous avez débloquées et ce que vous débloquerez aux niveaux suivants. C'est une grille simple. Haut/Bas pour parcourir les niveaux de prestige, Gauche/Droite pour parcourir le détail des récompenses de ce niveau. Appuyer sur Entrée sur une pièce de bannière vous emmène la prévisualiser dans l'atelier de bannières.
+MT_RANK_P1=Tableau des classements : C'est ici que vous voyez votre rang multijoueur et votre historique de matchs. En haut figurent votre rang actuel, le rang suivant et votre progression vers celui-ci. Si vous gagnez un match, vous obtenez des crânes qui vous font progresser vers le rang suivant. Perdre un match peut vous faire perdre des crânes et même descendre d'un rang.
+MT_RANK_P2=Sous vos informations de rang se trouve une liste, avec deux onglets en haut : Historique de matchmaking pour les matchs publics, et Historique des défis pour vos résultats sur le terrain de duel. Utilisez les flèches Gauche/Droite pour changer d'onglet, Haut/Bas pour parcourir la liste. Sur chaque ligne, vous entendez l'issue du combat, les héros des deux groupes et qui a été tué pendant le combat.
+MT_RING_P1=L'arène : C'est la zone principale du Cirque de la Bouchère, où vous formez un groupe, l'équipez de breloques et l'envoyez combattre. Tout ce qui est dit ici vaut aussi pour les matchs privés via le terrain de duel.
+MT_RING_P2=La formation du groupe et ses commandes sont identiques à la campagne solo. Entrée pour sélectionner, C pour voir les fiches de personnage, barre d'espace pour réorganiser.
+MT_RING_P3=L'équipement des breloques fonctionne lui aussi exactement comme dans la campagne. Appuyez sur Entrée sur les emplacements de breloque de la fiche d'un héros, ou appuyez sur I pour ouvrir l'inventaire de breloques, appuyez sur Entrée sur une breloque, puis choisissez à qui l'équiper.
+MT_RING_P4=Appuyez sur E quand vous êtes prêt à lancer un match contre un autre joueur (clic du stick droit sur la manette). Votre premier match sera un tutoriel contre un adversaire contrôlé par l'IA.
+MT_RING_P5=Vous pouvez appuyer sur P pour lancer un combat d'entraînement ou rejouer le tutoriel (LB sur la manette).
+MT_RING_P6=Appuyer sur L ouvre un aperçu des différents rangs de ligue (RB sur la manette).
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's batch (main menu, pause menu + options sliders, hamlet arrival + jump letters, buildings + upgrades + recruits, trinket inventory, resources bar, heirloom exchange). All thirteen are AXH entries: blank while the F10 "Control hints" row is Off ----
+ENTER_ACTIVATE_HINT=Appuyez sur Entrée pour activer.
+FE_TITLE_HINT=Échap : options du jeu, F10 : réglages du mod, F1 : aide du mod.
+OPT_ADJUST_HINT=Flèches gauche et droite pour ajuster.
+TM_ARRIVAL_HINT=Tab et Maj+Tab : section suivante et précédente, point : journal d'activité, Maj+point : événement du hameau, R : ressources, I : inventaire, E : embarquer.
+TM_ROW_KEY_FMT=%s (%s)
+BLD_ARRIVAL_HINT=Appuyez sur U pour les améliorations, Page précédente et Page suivante : bâtiment précédent et suivant.
+BLD_UPGRADE_HINT=Appuyez sur Entrée pour améliorer.
+RCT_ROW_HINT=Entrée pour recruter, C pour consulter la fiche de personnage.
+RI_TRINKET_HINT=Entrée pour équiper un héros, Maj plus Entrée pour vendre.
+RI_TRINKET_CIRCUS_HINT=Entrée pour équiper un héros.
+EX_SELECT_HINT=Appuyez sur Entrée pour sélectionner.
+EX_ADJUST_HINT=Appuyez sur Entrée pour ajuster l'offre.
+EX_TRADE_HINT=Appuyez sur Entrée pour échanger.
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's second batch (roster rows + sort buttons, the sheet's two skill grids + Manage, the embark quest list, the party lineup, the provisioner's two grids). All AXH: blank while the F10 "Control hints" row is Off ----
+ROS_HERO_HINT=Entrée ou C pour la fiche de personnage, Espace pour réorganiser.
+ROS_PICK_SELECT_HINT=Appuyez sur Entrée pour sélectionner, C pour la fiche de personnage.
+ROS_PICK_REMOVE_HINT=Appuyez sur Entrée pour retirer, C pour la fiche de personnage.
+CS_SKILL_SELECT_HINT_FMT=Appuyez sur Entrée pour sélectionner, chiffres 1 à %d : assignation rapide.
+CS_SKILL_DESELECT_HINT_FMT=Appuyez sur Entrée pour désélectionner, chiffres 1 à %d : assignation rapide.
+PTY_EMPTY_HINT=Appuyez sur Entrée pour choisir un héros.
+PTY_FILLED_HINT=Appuyez sur Entrée pour changer, Espace pour réorganiser le groupe.
+PROV_BUY_HINT=Entrée pour acheter, Maj plus Entrée pour acheter toute la pile.
+PROV_SELL_HINT=Entrée pour vendre, Maj plus Entrée pour vendre toute la pile.
+
+# ---- Added 2026-10-12: THE UPDATE CHECK moved from the retired launcher into the mod (core/updatecheck.cpp): the one "update available" line, spoken once at startup in the session language. %s 1 = the newer version, %s 2 = the installed one, digits only ----
+UPDATE_AVAILABLE_FMT=Une mise à jour du mod d'accessibilité est disponible : version %s. Vous avez la version %s. Lancez l'installateur Blindest Dungeon pour mettre à jour.
+
+# ---- Added 2026-10-12: CONTROL HINTS, the dev's DUNGEON batch (the quest bar's key and button row, the action bar's key / portrait / skill, skip and reorder buttons with their greyed state, the dungeon view's arrival keys and its party and object rows, the targeting layer's commit line, the map's and the bag's panel lines with the Tab switch, each bag item, the combat log's header, the light meter's torch keys). All AXH: blank while the F10 "Control hints" row is Off ----
+AB_PORTRAIT_HINT=C : fiche de personnage.
+AB_PORTRAIT_HINT_SWAP=C : fiche de personnage, Q et E : changer le héros sélectionné.
+AB_SKIP_HINT=Appuyez sur Entrée pour passer le tour de ce héros.
+AB_REORDER_HINT=Appuyez sur Entrée pour rétablir l'ordre du groupe.
+RV_HEAD_HINT=R : résumé de la salle, L : lire la lumière actuelle, point : ouvrir le journal de combat.
+RV_PARTY_ROW_HINT=Appuyez sur Entrée pour déplacer, Maj plus Entrée : ordre par défaut du groupe.
+RV_PROP_USE_HINT=Appuyez sur Entrée ou W pour interagir.
+RV_TRAP_DISARM_HINT=Appuyez sur Entrée ou W pour désarmer.
+RV_PROP_WALK_HINT=Appuyez sur Entrée pour vous y rendre.
+TS_USE_ON_HINT_FMT=Appuyez sur Entrée pour utiliser %s sur %s.
+TS_USE_HINT_FMT=Appuyez sur Entrée pour utiliser %s.
+TS_MOVE_TO_HINT_FMT=Appuyez sur Entrée pour aller en position %d.
+INV_EQUIP_ON_HINT_FMT=Appuyez sur Entrée pour équiper %s sur %s.
+MAP_TAB_HINT=Appuyez sur Tab pour l'inventaire.
+INV_TAB_HINT=Appuyez sur Tab pour la carte.
+INV_ROW_HINT=Entrée : utiliser l'objet, Suppr : jeter, Espace : réorganiser.
+INV_ROW_TRINKET_HINT=Entrée : équiper un héros, Suppr : jeter, Espace : réorganiser.
+INV_ROW_NO_USE_HINT=Suppr : jeter, Espace : réorganiser.
+CLOG_OPEN_HINT=Échap : fermer, Page précédente et Page suivante : dix lignes, Suppr : effacer le journal de combat.
+LIGHT_KEYS_HINT=T : raviver la torche, Maj plus T : diminuer la torche, Ctrl Maj T : éteindre la torche.
+
+# ---- Added 2026-10-13: CONTROL HINTS, the dev's SWEEP batch (the loot window, the camp's Rest button, the raid map's rooms, the hamlet locations, the districts, the building shops and the shard mercenaries, the glossary and help's close key, the F10 menu's value rows, the banner designer's preview key, the ranking board's sections). All AXH: blank while the F10 "Control hints" row is Off ----
+LOOT_ROW_HINT=Appuyez sur Entrée pour prendre, Espace : tout prendre.
+AB_REST_HINT=Appuyez sur Entrée pour terminer le campement.
+MAP_TRAVEL_HINT=Appuyez sur Entrée pour vous y rendre.
+TM_ROW_OPEN_HINT=Appuyez sur Entrée pour ouvrir.
+DST_BUILD_HINT=Appuyez sur Entrée pour construire.
+SHOP_BUY_HINT=Appuyez sur Entrée pour acheter.
+RCT_SHARD_ROW_HINT=Entrée pour engager, C pour la fiche de personnage.
+GL_CLOSE_HINT=Échap pour fermer.
+SM_CHOICE_HINT=Appuyez sur Entrée pour activer, flèches gauche et droite : changer le réglage.
+BD_PREVIEW_KEY_HINT=B : aperçu de la bannière.
+RB_SECTION_HINT=Flèches gauche et droite : changer de section.
+
+# ---- Added 2026-10-14: the Medical Ward's pick filter (its roster list shows only the heroes with a disease; this is the line the slot row speaks when there is none) ----
+ACT_NO_DISEASED_HERO=Aucun héros de la liste n'a de maladie à soigner.
+
+# ---- Added 2026-10-16: the tooltip channel (F10 -> Announcements -> "Automatically speak tooltips": the row and its On / Off outcome lines) ----
+SM_ANN_TOOLTIPS=Lire automatiquement les infobulles
+SM_ANN_TIPS_ON=Infobulles automatiques activées. L'infobulle d'une ligne est lue juste après la ligne.
+SM_ANN_TIPS_OFF=Infobulles automatiques désactivées. L'infobulle d'une ligne n'est lue que sur demande.
+
+# ---- Added 2026-10-16: raid results, heroes page -- the hero the Farmstead's Endless Harvest took instead of killing (Color of Madness "in time and space"); the game swaps the portrait, this is the picture in words ----
+RR_LOST_TIME_SPACE=Perdu dans l'espace-temps.
+
+# ---- Added 2026-10-16: raid results, the heirloom totals row (the game's per-kind counter strip under the heirloom grid; %s of the first = the list, each item = the second with the count and the game's own kind name) ----
+RR_HEIRLOOM_TOTAL_FMT=Total des legs : %s.
+RR_HEIRLOOM_TOTAL_ITEM_FMT=%d %s
+
+# ---- Added 2026-10-16: raid results, the Color of Madness WAVE skin (Endless Harvest): the shard row = the game's title + the number; the two fallbacks for the DLC's own "Collected Comet Shards" / "KILLS: %d" when the key is missing ----
+RR_WAVE_SHARDS_FMT=%s : %d.
+RR_SECT_SHARDS=Éclats de comète collectés
+RR_WAVE_KILLS_FMT=Victimes : %d.
+
+# ---- Added 2026-10-16: the F10 Announcements row "Expand abbreviations" and its table. The ABBR_* half is NOT a translation of the English letters: it is what the game's own text in this language writes (comma-separated when it uses more than one), matched as whole words; the _FULL half is what to say instead. Sweep of the shipped string tables: the French tables write PRÉ, CRIT, DGT (three entries keep DMG), DDT, PV, PV MAX, PROT, VIT. ----
+SM_ANN_ABBREV=Développer les abréviations
+SM_ANN_ABBREV_ON=Développer les abréviations activé. Les statistiques abrégées sont lues en mots entiers.
+SM_ANN_ABBREV_OFF=Développer les abréviations désactivé. Les statistiques abrégées sont lues telles que le jeu les écrit.
+ABBR_ACC=PRÉ
+ABBR_ACC_FULL=précision
+ABBR_CRIT=CRIT
+ABBR_CRIT_FULL=chance de coup critique
+ABBR_DMG=DGT, DMG
+ABBR_DMG_FULL=dégâts
+ABBR_DOT=DDT
+ABBR_DOT_FULL=dégâts dans le temps
+ABBR_HP=PV
+ABBR_HP_FULL=points de vie
+ABBR_MAX_HP=PV MAX
+ABBR_MAX_HP_FULL=points de vie maximum
+ABBR_PROT=PROT
+ABBR_PROT_FULL=protection
+ABBR_SPD=VIT
+ABBR_SPD_FULL=vitesse
+
+# ---- Added 2026-10-16: the F10 Announcements row "Glossary definitions" (its three values and three outcome lines) and KW_DEF_FMT, the one line "<term>: <definition>" -- both halves are the game's own glossary text in this language, so only the punctuation is the translator's ----
+SM_ANN_KEYWORDS=Définitions du glossaire
+SM_ANN_KW_V_SPOKEN=Lues avec les infobulles
+SM_ANN_KW_V_BUFFER=Dans le tampon des infobulles uniquement
+SM_ANN_KW_SPOKEN=Définitions du glossaire lues avec les infobulles. Une infobulle se termine par la définition de chaque terme du glossaire qu'elle mentionne.
+SM_ANN_KW_BUFFER=Définitions du glossaire dans le tampon des infobulles uniquement. Elles suivent les lignes de l'infobulle quand elle est lue sur demande.
+SM_ANN_KW_OFF=Définitions du glossaire désactivées.
+KW_DEF_FMT=%s : %s
+
+# ---- Added 2026-10-16: the quest tooltip's rewards heading (the fallback for the game's own town_quest_rewards; the two per-line "Reward: %s" formats it replaced were removed above) ----
+EMB_REWARDS_HEAD=Récompenses
+
+# ---- Added 2026-10-17: the item card's value line in the raid bag and the loot window (the game's hover "[Value: N Gold Each]"; %d the unit value, %s the game's currency name, the second %d a stack's sum) -- the 2026-10-16 results-screen wording, moved to the grids that show it ----
+INV_VALUE_FMT=Valeur : %d %s.
+INV_VALUE_EACH_FMT=Valeur : %d %s, total : %d.
+
+# ---- Added 2026-10-17: the welcome tutorial's Control hints paragraph and the two F10 toggles' key names (F2 control hints, F3 automatic tooltips); MT_TITLE_P4 above gained its second sentence in place ----
+MT_TITLE_HINTS=Indications de commandes : le mod indique pour chaque écran et chaque contrôle les commandes disponibles. Vous pouvez les désactiver dans les paramètres du mod ou en appuyant sur F2.
+FN_CONTROL_HINTS=Indications de commandes activées ou désactivées
+FN_AUTO_TOOLTIPS=Infobulles automatiques activées ou désactivées
+
+# ---- Added 2026-10-17: the Expand abbreviations table's round / rounds pair (the game's DOT, mark and stealth durations: 'pts/rd for 3 rds'). Same rule as the ABBR_* block: the spelling half is what the game writes in this language, the _FULL half the word to say. Sweep: the French tables write tr / trs (pts/tr sur 3 trs) ----
+ABBR_RD=tr
+ABBR_RD_FULL=tour
+ABBR_RDS=trs
+ABBR_RDS_FULL=tours

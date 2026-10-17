@@ -244,7 +244,7 @@ static bool pbRewardText(uintptr_t base, const PbLevel* lv, int idx, char* out, 
 }
 
 bool pbRewardCard(uintptr_t base, int kind, uintptr_t e, int idx, int total, bool enterPreview,
-                  char* out, int outsz) {
+                  char* out, int outsz, int card) {
     if (kind != 1 && kind != 2) return false;
     char pos[96];
     _snprintf(pos, sizeof pos, axs(AXS_PB_REWARD_N_OF_M), idx + 1, total);
@@ -255,17 +255,15 @@ bool pbRewardCard(uintptr_t base, int kind, uintptr_t e, int idx, int total, boo
         if (!safeReadU32(e + BCR_RC_TRINK_HASH, &hash) || !hash) return false;
         char name[192] = { 0 };
         if (!bcrTrinketName(base, hash, name, sizeof name)) return false;
-        char rarity[96] = { 0 }, clsreq[256] = { 0 }, fx[768] = { 0 }, trig[1024] = { 0 };
+        InvCard c;
+        memset(&c, 0, sizeof c);
         uintptr_t rec = bldTrinketRecordByHash(base, hash);
-        if (rec) {
-            bldTrinketRarity(base, rec, rarity, sizeof rarity, false);
-            bldTrinketClassReq(base, rec, clsreq, sizeof clsreq, false);
-            bldTrinketEffectsRec(base, rec, fx, sizeof fx, false);
-            bldTrinketTriggers(base, rec, trig, sizeof trig, false);
-        } else {
+        if (rec && invCardWanted(card)) invCardReadRec(base, rec, &c);
+        else if (!rec)
             logLine("prizebox: no trinket record for hash 0x%x (\"%s\") -- name and condition only",
                     hash, name);
-        }
+        const char* rarity = c.rarity;  const char* clsreq = c.clsreq;
+        const char* fx     = c.fx;      const char* trig   = c.trig;
         char head[256];
         _snprintf(head, sizeof head, axs(AXS_PB_REWARD_FMT), name, axs(AXS_PB_KIND_TRINKET));
         head[sizeof head - 1] = 0;
@@ -279,6 +277,7 @@ bool pbRewardCard(uintptr_t base, int kind, uintptr_t e, int idx, int total, boo
             _snprintf(out + len, outsz - (int)len, " %s", trig);
             out[outsz - 1] = 0;
         }
+        if (card == INV_CARD_AUTO && invCardWanted(card)) { invCardNoteKeywords(&c); axTipGlueKeywords(out, outsz); }
         return true;
     }
     char name[192] = { 0 };
@@ -419,6 +418,34 @@ static void pbSpeakCursor(uintptr_t base, const char* prefix) {
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", body);
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
+}
+
+bool pbRouteTipKey(uintptr_t base, uintptr_t panel, int dir) {
+    if (!pbIsPanel(base, panel) || !pbBuilt(panel)) { postSpeech(axs(AXS_PB_LOADING)); return true; }
+    PbLevel rows[PB_MAX_LEVELS];
+    int n = pbLevels(base, rows, PB_MAX_LEVELS);
+    if (n <= 0) { postSpeech(axs(n < 0 ? AXS_PB_UNREADABLE : AXS_PB_NO_LEVELS)); return true; }
+    pbPlaceCursor(base, rows, n);
+    static int s_tipLine = 0, s_tipRow = -1, s_tipReward = -2;
+    if (s_tipRow != g_pbRow || s_tipReward != g_pbReward) { s_tipRow = g_pbRow; s_tipReward = g_pbReward; s_tipLine = 0; }
+    static char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+    int ln = 0;
+    if (g_pbRow != PB_PRESTIGE_ROW && g_pbReward >= 0) {
+        const PbLevel* lv = &rows[g_pbRow - 1];
+        uintptr_t e = 0;
+        int kind = pbRewardAt(lv, g_pbReward, &e);
+        if (kind && pbRewardCard(base, kind, e, g_pbReward, lv->nTrink + lv->nBanner, true,
+                                 lines[0], AB_TIP_LINE_SZ, INV_CARD_OFF)) {
+            ln = 1;
+            uint32_t hash = 0;
+            if (kind == 1 && safeReadU32(e + BCR_RC_TRINK_HASH, &hash) && hash) {
+                InvCard c;
+                invCardReadRec(base, bldTrinketRecordByHash(base, hash), &c);
+                ln = invCardLines(&c, lines, 1, AB_TIP_MAX_LINES);
+            }
+        }
+    }
+    return axTipStep(&s_tipLine, dir, &lines[0][0], AB_TIP_LINE_SZ, ln);
 }
 
 bool pbSpeakArrival(uintptr_t base, uintptr_t panel, const char* prefix) {

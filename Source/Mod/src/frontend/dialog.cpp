@@ -274,13 +274,17 @@ static bool cdComposeLine(uintptr_t base, char* out, int outsz) {
     }
     bool ctrl = g_inputIsController;
     bool altGlyphs = ctrl && altControllerGlyphs(base);   // PlayStation-style prompts
+    bool keyed = axControlHints();
     const char* accept = axs(!ctrl ? AXS_KEY_ENTER  : (altGlyphs ? AXS_BTN_CROSS  : AXS_BTN_A));
     const char* cancel = axs(!ctrl ? AXS_KEY_ESCAPE : (altGlyphs ? AXS_BTN_CIRCLE : AXS_BTN_B));
     for (int i = 0; i < got; i++) {
         char seg[224];
-        if (got == 2) {
+        if (got == 2 && keyed) {
             const char* g = (i == 0) ? accept : cancel;
             _snprintf(seg, sizeof seg, "%s%s, %s.", i ? " " : "", g, labels[i]);
+        } else if (got == 2) {
+            if (i == 0) _snprintf(seg, sizeof seg, "%s", labels[i]);
+            else        _snprintf(seg, sizeof seg, " %s %s.", axs(AXS_WORD_OR), labels[i]);
         } else if (i == 0) {
             _snprintf(seg, sizeof seg, "%s", labels[i]);
         } else if (i == got - 1) {

@@ -53,7 +53,7 @@ bool qtElemOnScreen(uint32_t id) {
 }
 
 // The live Quest, or 0 outside a raid.
-static uintptr_t qtQuest(uintptr_t base) {
+uintptr_t qtQuest(uintptr_t base) {
     uintptr_t root = mapRoot(base);
     if (!root) return 0;
     uintptr_t q = 0;
@@ -367,13 +367,15 @@ static bool qtHasButton(uintptr_t base) { return qtCurrentButton(base) != QTB_NO
 
 static void qtSentence(const char* in, char* out, int outsz) {
     if (!out || outsz <= 0) return;
-    _snprintf(out, outsz, "%s", in ? in : "");
+    char bare[256];
+    _snprintf(bare, sizeof bare, "%s", in ? in : "");
+    bare[sizeof bare - 1] = 0;
+    size_t n = strlen(bare);
+    if (n > 0 && bare[n - 1] == '.') bare[n - 1] = 0;
+    char keyed[320];
+    kmLabelWithKey(bare, "dungeon.quest_button", 0, keyed, sizeof keyed);
+    _snprintf(out, outsz, axs(AXS_CS_BUTTON_FMT), keyed);
     out[outsz - 1] = 0;
-    size_t n = strlen(out);
-    if (n == 0) return;
-    char last = out[n - 1];
-    if (last == '.' || last == '!' || last == '?' || last == ':') return;
-    if ((int)n + 1 < outsz) { out[n] = '.'; out[n + 1] = 0; }
 }
 
 static void qtButtonText(uintptr_t base, char* out, int outsz) {
@@ -474,6 +476,29 @@ static void qtSpeakRow(uintptr_t base, int row, const char* head = nullptr) {
     postSpeech(out);
 }
 
+// ---- THE QUEST ZONE'S FIND ENUMERATOR ----
+int qtFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_qtActive) return 0;
+    int ng = 0;
+    int n = qtRowCount(base, &ng);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        return qtRowText(base, idx, out, outsz) ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;              // the button came or went under the snapshot
+        g_qtCursor = idx;
+        logLine("quest: find landed on row %d of %d", idx, n);
+        qtSpeakRow(base, g_qtCursor);
+        return 1;
+    }
+    return 0;
+}
+
 void qtSetActive(uintptr_t base, bool on) {
     (void)base;
     g_qtActive = on;
@@ -493,9 +518,10 @@ bool qtEnterFromRoom(uintptr_t base) {
     g_qtRoomReturn = g_rvCursor;         // remember the row, before rvSetActive re-seeds it
     rvSetActive(base, false);
     qtSetActive(base, true);
-    char msg[256];
-    if (ng > 1) _snprintf(msg, sizeof msg, axs(AXS_QZ_HEAD_GOALS_FMT), ng);
-    else        _snprintf(msg, sizeof msg, "%s", axs(AXS_QZ_HEAD_QUEST));
+    char name[160], msg[256];
+    kmLabelWithKey(axs(AXS_QZ_HEAD_NAME), "dungeon.quest_goals", 0, name, sizeof name);
+    if (ng > 1) _snprintf(msg, sizeof msg, axs(AXS_QZ_HEAD_GOALS_FMT), name, ng);
+    else        _snprintf(msg, sizeof msg, "%s.", name);
     msg[sizeof msg - 1] = 0;
     logLine("quest enter: goals=%d rows=%d", ng, n);
     qtSpeakRow(base, 0, msg);

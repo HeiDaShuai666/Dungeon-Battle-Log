@@ -447,6 +447,7 @@ static void speakLight(uintptr_t base, bool withEffects) {
         }
     }
     if (withEffects) lightQuestModifier(base, root, out, sizeof out);
+    if (withEffects) axAppendHint(out, sizeof out, AXS_LIGHT_KEYS_HINT);
     logLine("light: %.2f level=%d -> \"%s\"", (double)t, idx, out);
     postSpeech(out);
 }

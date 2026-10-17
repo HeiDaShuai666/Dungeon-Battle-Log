@@ -65,7 +65,7 @@ int campPhase(uintptr_t base) {
     return (int)v;
 }
 bool campActive(uintptr_t base)      { return campPhase(base) != 0; }
-static bool campInMealPhase(uintptr_t base) { return campPhase(base) == CAMP_PHASE_MEAL; }
+bool campInMealPhase(uintptr_t base) { return campPhase(base) == CAMP_PHASE_MEAL; }
 bool campInSkillPhase(uintptr_t base){ return campPhase(base) == CAMP_PHASE_RESPITE; }
 
 int campPoints(uintptr_t base) {
@@ -319,32 +319,75 @@ static int ctTargetList(uintptr_t base, uintptr_t* heroes, int* vecIdx, int maxO
     return got;
 }
 
+static void ctRowLabel(uintptr_t base, uintptr_t hero, int idx, char* out, int outsz) {
+    out[0] = 0;
+    char frag[160];
+    if (abHeroLabelOf(base, hero, frag, sizeof frag))
+        _snprintf(out, outsz, "%s", frag);
+    else
+        _snprintf(out, outsz, axs(AXS_CAMP_HERO_N_FMT), idx + 1);
+    out[outsz - 1] = 0;
+    size_t len;
+    if (abHeroHealth(base, hero, frag, sizeof frag)) {
+        len = strlen(out);
+        _snprintf(out + len, (size_t)outsz - len, ". %s", frag);
+    }
+    if (abHeroStress(base, hero, frag, sizeof frag)) {
+        len = strlen(out);
+        _snprintf(out + len, (size_t)outsz - len, ". %s", frag);
+    }
+    out[outsz - 1] = 0;
+}
+
 static void ctSpeakRow(uintptr_t base, uintptr_t* heroes, int n, int idx, const char* head) {
     g_rvCursor  = rvRoomIndexOfActor(base, heroes[idx]);
     g_rvTipLine = 0;
     g_rvTipCol  = 0;
     char out[MAILBOX_SZ]; out[0] = 0;
-    char frag[160];
     if (head && head[0]) _snprintf(out, sizeof out, "%s ", head);
     size_t len = strlen(out);
-    if (abHeroLabelOf(base, heroes[idx], frag, sizeof frag))
-        _snprintf(out + len, sizeof out - len, "%s", frag);
-    else
-        _snprintf(out + len, sizeof out - len, axs(AXS_CAMP_HERO_N_FMT), idx + 1);
-    out[sizeof out - 1] = 0;
-    if (abHeroHealth(base, heroes[idx], frag, sizeof frag)) {
-        len = strlen(out);
-        _snprintf(out + len, sizeof out - len, ". %s", frag);
-    }
-    if (abHeroStress(base, heroes[idx], frag, sizeof frag)) {
-        len = strlen(out);
-        _snprintf(out + len, sizeof out - len, ". %s", frag);
-    }
+    ctRowLabel(base, heroes[idx], idx, out + len, (int)(sizeof out - len));
     len = strlen(out);
     { _snprintf(out + len, sizeof out - len, ". "); len = strlen(out);
       _snprintf(out + len, sizeof out - len, axs(AXS_CAMP_TARGET_N_OF_M_FMT), idx + 1, n); }
     out[sizeof out - 1] = 0;
+    rvAppendActorTip(base, heroes[idx], out, sizeof out);
+    {
+        const char* fmt = axs(AXS_TS_USE_ON_HINT_FMT);
+        char who[160];
+        if (fmt[0] && abHeroLabelOf(base, heroes[idx], who, sizeof who) && who[0]) {
+            char hint[480];
+            _snprintf(hint, sizeof hint, fmt, g_ctName, who);
+            hint[sizeof hint - 1] = 0;
+            axAppendHintText(out, sizeof out, hint);
+        }
+    }
     postSpeech(out);
+}
+
+// ---- THE CAMP TARGET PICK'S FIND ENUMERATOR ----
+int ctFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_ctActive) return 0;
+    uintptr_t heroes[RV_MAX_MEMBERS];
+    int vidx[RV_MAX_MEMBERS];
+    int n = ctTargetList(base, heroes, vidx, RV_MAX_MEMBERS);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        ctRowLabel(base, heroes[idx], idx, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;
+        g_ctCursor = idx;
+        logLine("camp target: find landed on hero %d of %d", idx, n);
+        ctSpeakRow(base, heroes, n, g_ctCursor, nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 static bool ctClickCommit(uintptr_t base, uintptr_t perf, uintptr_t target, const char* who) {
@@ -663,7 +706,7 @@ static int mealFoodNeeded(uintptr_t base, uintptr_t node) {
     return (int)need;
 }
 
-static bool mealRowText(uintptr_t base, int i, char* out, int outsz) {
+static bool mealRowText(uintptr_t base, int i, char* out, int outsz, bool withPos = true) {
     int n = mealCount(base);
     uintptr_t node = mealNode(base, i);
     if (!node) return false;
@@ -713,7 +756,7 @@ static bool mealRowText(uintptr_t base, int i, char* out, int outsz) {
             abAppend(out, outsz, frag);
     }
 
-    if (n > 0) {
+    if (withPos && n > 0) {
         _snprintf(frag, sizeof frag, axs(AXS_CAMP_OPTION_N_OF_M_FMT), i + 1, n);
         abAppend(out, outsz, frag);
     }
@@ -729,6 +772,7 @@ static void mealSpeakRow(uintptr_t base, int i, const char* head = nullptr) {
         postSpeech(head && head[0] ? head : axs(AXS_CAMP_MEAL_UNREADABLE));
         return;
     }
+    axAppendHint(row, sizeof row, AXS_EX_SELECT_HINT);
     logLine("camp meal: row %d -> \"%s\"", i, row);
     if (head && head[0]) {
         char full[MAILBOX_SZ];
@@ -738,6 +782,28 @@ static void mealSpeakRow(uintptr_t base, int i, const char* head = nullptr) {
         return;
     }
     postSpeech(row);
+}
+
+// ---- THE MEAL SCREEN'S FIND ENUMERATOR ----
+int mealFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_mealActive) return 0;
+    int n = mealCount(base);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        return mealRowText(base, idx, out, outsz, false) ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;
+        g_mealCursor = idx;
+        logLine("camp meal: find landed on option %d of %d", idx, n);
+        mealSpeakRow(base, g_mealCursor);
+        return 1;
+    }
+    return 0;
 }
 
 static void mealSetActive(uintptr_t base, bool on) {

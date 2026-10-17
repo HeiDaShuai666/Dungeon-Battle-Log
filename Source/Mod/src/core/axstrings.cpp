@@ -2,18 +2,30 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 #include "internal.h"
 
 // ---- The two tables ----
 static const char* kAxEnglish[AXS__COUNT] = {
 #define AXS(id, en) en,
+#define AXH(id, en) en,
 #include "core/axstrings.inc"
 #undef AXS
+#undef AXH
 };
 static const char* kAxKeyName[AXS__COUNT] = {
 #define AXS(id, en) #id,
+#define AXH(id, en) #id,
 #include "core/axstrings.inc"
 #undef AXS
+#undef AXH
+};
+static const bool kAxIsHint[AXS__COUNT] = {
+#define AXS(id, en) false,
+#define AXH(id, en) true,
+#include "core/axstrings.inc"
+#undef AXS
+#undef AXH
 };
 struct AxEmbeddedLang { const char* name; const unsigned char* data; int size; };
 #include "core/axlang_embedded.inc"
@@ -34,10 +46,33 @@ static bool axIsPosId(AxStrId id) {
     return false;
 }
 
+// ---- CONTROL HINTS ----
+
 const char* axs(AxStrId id) {
     if (id < 0 || id >= AXS__COUNT) return "";      // impossible via the enum; belt-and-braces
     if (!axPositionCounts() && axIsPosId(id)) return "";
+    if (!axControlHints() && kAxIsHint[id]) return "";
     return g_axTr[id] ? g_axTr[id] : kAxEnglish[id];
+}
+
+void axAppendHintText(char* buf, int bufsz, const char* hint) {
+    if (!hint || !hint[0]) return;
+    size_t n = strlen(buf);
+    while (n > 0 && (buf[n - 1] == ' ' || buf[n - 1] == '\t')) buf[--n] = 0;
+    if ((int)n >= bufsz - 2) return;
+    bool ended = n == 0 || buf[n - 1] == '.' || buf[n - 1] == '?' || buf[n - 1] == '!';
+    if (!ended && n >= 3) {
+        const unsigned char* t = reinterpret_cast<const unsigned char*>(buf + n - 3);
+        ended = (t[0] == 0xE3 && t[1] == 0x80 && t[2] == 0x82) ||                       // 。
+                (t[0] == 0xEF && t[1] == 0xBC && (t[2] == 0x8E || t[2] == 0x9F || t[2] == 0x81));
+    }
+    _snprintf(buf + n, (size_t)bufsz - n, "%s%s%s", ended ? "" : ".", n ? " " : "", hint);
+    buf[bufsz - 1] = 0;
+}
+void axAppendHint(char* buf, int bufsz, AxStrId hint) { axAppendHintText(buf, bufsz, axs(hint)); }
+void axAppendHintToLast(AxStrId hint) {
+    const char* h = axs(hint);
+    if (h && h[0]) appendToLastSpeech(h);
 }
 
 const char* axsKeyName(AxStrId id) {
@@ -141,16 +176,18 @@ static void axLoadLanguage(const char* name) {
 }
 
 // ---- The applied-language read: ONCE PER SESSION, then latched ----
+static bool g_axLangLatched = false;
+bool axLangLatched() { return g_axLangLatched; }
+
 void axLangService(uintptr_t base) {
-    static bool latched = false;
     static DWORD nextAt = 0;
-    if (latched) return;
+    if (g_axLangLatched) return;
     DWORD now = GetTickCount();
     if ((long)(now - nextAt) < 0) return;
     nextAt = now + 1000;
     char lang[64];
     if (!optSavedLanguage(base, lang, sizeof lang)) return;
-    latched = true;
+    g_axLangLatched = true;
     logLine("axlang: session language \"%s\" (latched -- a mid-session change applies at "
             "next launch, like the game's own text)", lang);
     strncpy(g_axLang, lang, sizeof g_axLang - 1);

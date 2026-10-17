@@ -49,8 +49,9 @@ void beginNaming(uintptr_t display) {
     g_lastName[sizeof g_lastName - 1] = 0;
 
     char line[256];
-    _snprintf(line, sizeof line, "%s %s. %s", axs(AXS_NM_ESTATE_HEAD), kDefaultEstate, axs(AXS_NM_HELP));
+    _snprintf(line, sizeof line, "%s %s.", axs(AXS_NM_ESTATE_HEAD), kDefaultEstate);
     line[sizeof line - 1] = 0;
+    axAppendHint(line, sizeof line, AXS_NM_HELP);
     postSpeech(line);
     logLine("naming OPEN sub=%d seed=\"%s\"", feNamingSub(display), kDefaultEstate);
 }

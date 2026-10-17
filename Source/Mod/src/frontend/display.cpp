@@ -174,6 +174,7 @@ static void slotButtonLabel(uintptr_t display, int arrayIdx, int col, char* out,
         }
         _snprintf(out, outsz, axs(AXS_DELETE_BTN_SLOT_N), tip, arrayIdx + 1);
         out[outsz - 1] = 0;
+        axAppendHint(out, outsz, AXS_SLOT_HINT_DELETE);
         return;
     }
     const bool mods = (col == SLOT_COL_MODS);
@@ -184,17 +185,19 @@ static void slotButtonLabel(uintptr_t display, int arrayIdx, int col, char* out,
         out[outsz - 1] = 0;
     }
     uintptr_t slotBase = 0;
-    if (!safeReadPtr(display + FE_SLOTARR_OFF, &slotBase) || slotBase <= 0x10000) return;
-    uintptr_t slot = slotBase + (uintptr_t)arrayIdx * SLOT_STRIDE;
-    char state[96];
-    if (mods ? slotModsStateText(slot, state, sizeof state)
-             : slotDlcStateText(slot, state, sizeof state)) {
-        size_t len = strlen(out);
-        if ((int)len < outsz - 1) {
-            _snprintf(out + len, outsz - (int)len, ", %s", state);
-            out[outsz - 1] = 0;
+    if (safeReadPtr(display + FE_SLOTARR_OFF, &slotBase) && slotBase > 0x10000) {
+        uintptr_t slot = slotBase + (uintptr_t)arrayIdx * SLOT_STRIDE;
+        char state[96];
+        if (mods ? slotModsStateText(slot, state, sizeof state)
+                 : slotDlcStateText(slot, state, sizeof state)) {
+            size_t len = strlen(out);
+            if ((int)len < outsz - 1) {
+                _snprintf(out + len, outsz - (int)len, ", %s", state);
+                out[outsz - 1] = 0;
+            }
         }
     }
+    axAppendHint(out, outsz, mods ? AXS_SLOT_HINT_MODS : AXS_SLOT_HINT_DLC);
 }
 
 static void appendField(char* out, int outsz, const char* piece) {
@@ -301,12 +304,8 @@ bool resolveSaveSlot(uintptr_t display, int64_t id, char* out, int outsz) {
         if (slotModsStateText(slot, modsState, sizeof modsState))
             appendField(out, outsz, modsState);
     }
-    if (occ != 0) {
+    if (occ != 0)
         appendSentence(out, outsz, axs(location[0] ? AXS_SLOT_HINT_LOAD : AXS_NM_SEAL_HELP));
-        if (contentRegistryHasEntries(g_base))
-            appendSentence(out, outsz, axs(AXS_SLOT_HINT_DLC));
-        appendSentence(out, outsz, axs(AXS_SLOT_HINT_DELETE));
-    }
     return true;
 }
 
@@ -376,14 +375,30 @@ struct FePick {
     bool      optList;
 };
 
+struct FeConfine { bool pauseModal, dialogModal, slotList, optList; };
+static bool feElemConfined(int64_t eid, const FeConfine& c) {
+    if (isFrontEndSkipId(eid)) return true;             // confirmed off-screen / cancel affordance
+    if (c.pauseModal && lookupPause((uint32_t)(uint64_t)eid) == nullptr &&
+        !isOptionId((uint32_t)(uint64_t)eid))
+        return true;                                    // modal: the menu and its options screens
+    if (c.dialogModal &&
+        (uint32_t)((uint32_t)(uint64_t)eid - CONFIRM_ANSWER_BASE) >= (uint32_t)CONFIRM_ANSWER_MAX)
+        return true;                                    // modal: the dialog's own answers only
+    if (c.slotList && !isSaveSlotId(eid)) return true;  // save screen: slots only, never the buttons
+    if (c.optList && !optIsAnchorId((uint32_t)(uint64_t)eid)) return true; // options: one stop per row
+    return false;
+}
+
 static FePick feFindCandidate(int dir, bool forceSeed) {
     FePick p = { 0, 0, -1, false, false };
     uintptr_t begin = 0, end = 0;
+    static bool emptyReported = false;
     if (!safeReadPtr(g_base + VEC_BEGIN_RVA, &begin) ||
         !safeReadPtr(g_base + VEC_END_RVA, &end) || begin == 0 || end <= begin) {
-        logLine("fe-move dir=%d: focus vector empty", dir);
+        if (!emptyReported) { emptyReported = true; logLine("fe-move dir=%d: focus vector empty (once per streak)", dir); }
         return p;
     }
+    emptyReported = false;
     uintptr_t count = (end - begin) / ELEM_STRIDE;
     if (count > 4096) count = 4096;
 
@@ -428,6 +443,7 @@ static FePick feFindCandidate(int dir, bool forceSeed) {
     }
 
     p.optList = optList;
+    const FeConfine confine = { pauseModal, dialogModal, slotList, optList };
 
     bool haveCur = false; float cx = 0.0f, cy = 0.0f;
     if (!isNoFocus(curId)) {
@@ -450,15 +466,7 @@ static FePick feFindCandidate(int dir, bool forceSeed) {
         if (!f || s) continue;
         int64_t eid = 0; safeReadI64(e + ELEM_ID_OFF, &eid);
         if (haveCur && eid == curId) continue;          // don't pick ourselves
-        if (isFrontEndSkipId(eid)) continue;            // confirmed off-screen / cancel affordance
-        if (pauseModal && lookupPause((uint32_t)(uint64_t)eid) == nullptr &&
-            !isOptionId((uint32_t)(uint64_t)eid))
-            continue;                                   // modal: the menu and its options screens
-        if (dialogModal &&
-            (uint32_t)((uint32_t)(uint64_t)eid - CONFIRM_ANSWER_BASE) >= (uint32_t)CONFIRM_ANSWER_MAX)
-            continue;                                   // modal: the dialog's own answers only
-        if (slotList && !isSaveSlotId(eid)) continue;   // save screen: slots only, never the buttons
-        if (optList && !optIsAnchorId((uint32_t)(uint64_t)eid)) continue; // options: one stop per row
+        if (feElemConfined(eid, confine)) continue;     // the skip list + the four modal whitelists
 
         float ex, ey; if (!elemPos(e, &ex, &ey)) continue;
 
@@ -506,14 +514,16 @@ static bool feCommitTo(int dir, const FePick& p, bool withSurface) {
             dir, (unsigned long long)p.curId, (unsigned long long)bestId, tx, ty,
             p.haveCur ? "" : " [seed]", scrolling ? " [scrolling, cursor follows]" : "");
     char text[512];
-    resolveLabel(g_base, g_tbwVtbl, bestId, text, sizeof text);
+    resolveLabelForSpeech(g_base, g_tbwVtbl, bestId, text, sizeof text);   // the label + its control hint
     if (text[0]) {                                       // a move is explicit -> always speak
         const char* prefix = feHeaderFor(withSurface);
-        char line[640];
+        char line[768];
         if (prefix && prefix[0]) {
             size_t n = strlen(prefix);
             _snprintf(line, sizeof line, prefix[n - 1] == '.' ? "%s %s" : "%s. %s", prefix, text);
             line[sizeof line - 1] = 0;
+            if (prefix == kTitleScreenName)
+                axAppendHint(line, sizeof line, AXS_FE_TITLE_HINT);   // "" while Control hints is Off
         } else {
             strncpy(line, text, sizeof line - 1); line[sizeof line - 1] = 0;
         }
@@ -697,6 +707,9 @@ static SlotActionResult slotButtonAction(uintptr_t base, int wantCol) {
     return SLOT_ACTION_DONE;
 }
 static SlotActionResult slotDlcAction(uintptr_t base) { return slotButtonAction(base, SLOT_COL_DLC); }
+static SlotActionResult slotModsAction(uintptr_t base) { return slotButtonAction(base, SLOT_COL_MODS); }
+
+bool feContentPanelActive() { return g_ngcActive; }
 
 static void saveSlotDeleteGateCheck(uintptr_t base) {
     static bool done = false;
@@ -1408,23 +1421,29 @@ static bool ngcPanelDrawn(uintptr_t disp) {
         if (feGetElementById((int64_t)(NGC_AGC_BASE + i))) return true;
     return false;
 }
-static void ngcSpeakItem(uintptr_t base, uintptr_t disp, int cursor) {
-    char utter[256];
+static void ngcItemLine(uintptr_t base, uintptr_t disp, int cursor, char* utter, int uttersz) {
     if (cursor >= ngcCount(disp)) {
-        _snprintf(utter, sizeof utter, "%s", axs(AXS_NGC_OK_ROW));
+        _snprintf(utter, uttersz, "%s", axs(AXS_NGC_OK_ROW));
+        axAppendHint(utter, uttersz, AXS_NGC_OK_HINT);   // "" while Control hints is Off
     } else {
         char name[176]; ngcName(base, disp, cursor, name, sizeof name);
-        _snprintf(utter, sizeof utter, axs(AXS_NGC_ITEM_STATE), name,
+        _snprintf(utter, uttersz, axs(AXS_NGC_ITEM_STATE), name,
                   axs(ngcChecked(disp, cursor) ? AXS_VALUE_CHECKED : AXS_VALUE_UNCHECKED));
-        utter[sizeof utter - 1] = 0;
+        utter[uttersz - 1] = 0;
         char src[200];
         if (g_ngcMods && ngcModSource(base, ngcEntry(disp, cursor), src, sizeof src)) {
             size_t len = strlen(utter);
-            if (len < sizeof utter - 1)
-                _snprintf(utter + len, sizeof utter - len, " %s", src);
+            if (len < (size_t)uttersz - 1)
+                _snprintf(utter + len, uttersz - len, " %s", src);
         }
     }
-    utter[sizeof utter - 1] = 0;
+    utter[uttersz - 1] = 0;
+}
+
+// Speak the list item at `cursor`.
+static void ngcSpeakItem(uintptr_t base, uintptr_t disp, int cursor) {
+    char utter[256];
+    ngcItemLine(base, disp, cursor, utter, sizeof utter);
     postSpeech(utter);
 }
 static void ngcHoverItem(uintptr_t disp, int cursor) {
@@ -1455,6 +1474,20 @@ static void ngcHoverItem(uintptr_t disp, int cursor) {
     float cy = y + h * 0.5f;
     moveCursorTo(cx, cy);
     logLine("ngc hover: cursor %d id=0x%llx -> (%.0f,%.0f)", cursor, (unsigned long long)id, cx, cy);
+}
+
+static void ngcLandOn(uintptr_t base, uintptr_t disp, int nc) {
+    int n = ngcCount(disp);
+    g_ngcCursor = nc;
+    float ry = 0;
+    if (nc < n && ngcRowY(disp, nc, &ry) &&
+        (ry > NGC_CLICK_MAX_Y || ry < (g_ngcMods ? UGC_BAND_TOP_Y : NGC_ROW_VIS_TOP))) {
+        ngcWheelStart(nc, ry);
+    } else {
+        g_ngcWhlActive = false;                // an in-band stop cancels any servo
+        ngcHoverItem(disp, g_ngcCursor);       // move the game's hover onto it
+    }
+    ngcSpeakItem(base, disp, g_ngcCursor);
 }
 
 static void ngcDump(uintptr_t base, uintptr_t disp) {
@@ -1602,6 +1635,7 @@ void checkNewGameContent(uintptr_t base) {
             if (g_ngcMods) {
                 char title[160], how[288], src[200];
                 _snprintf(how, sizeof how, axs(AXS_UGC_INTRO_N), nc); how[sizeof how - 1] = 0;
+                axAppendHint(how, sizeof how, AXS_UGC_INTRO_HINT);
                 if (resolveKey(base, "str_ugc_title", title, sizeof title) && title[0]) {
                     size_t tl = strlen(title);
                     _snprintf(head, sizeof head, title[tl - 1] == '.' ? "%s %s" : "%s. %s", title, how);
@@ -1617,6 +1651,8 @@ void checkNewGameContent(uintptr_t base) {
             } else {
                 _snprintf(head, sizeof head,
                           axs(g_ngcViewMode ? AXS_DLCVIEW_INTRO_N : AXS_NGC_INTRO_N), nc);
+                head[sizeof head - 1] = 0;
+                axAppendHint(head, sizeof head, g_ngcViewMode ? AXS_DLCVIEW_INTRO_HINT : AXS_NGC_INTRO_HINT);
             }
             head[sizeof head - 1] = 0;
             _snprintf(intro, sizeof intro, "%s %s", head, row0);
@@ -1629,7 +1665,12 @@ void checkNewGameContent(uintptr_t base) {
                     "flag=%u rows=%d)", (int)g_ngcActive, (int)confirmDialogOpen(base), (int)ix,
                     fl, ngcCount(disp));
             g_ngcModsArm = false; g_ngcViewArm = 0;
-            if (!g_ngcActive && !confirmDialogOpen(base)) postSpeech(axs(AXS_UGC_WINDOW_UNREAD));
+            if (!g_ngcActive && !confirmDialogOpen(base)) {
+                char line[256];
+                _snprintf(line, sizeof line, "%s", axs(AXS_UGC_WINDOW_UNREAD)); line[sizeof line - 1] = 0;
+                axAppendHint(line, sizeof line, AXS_UGC_WINDOW_UNREAD_HINT);
+                postSpeech(line);
+            }
         }
     }
     if (!g_ngcActive) return;
@@ -1734,16 +1775,7 @@ bool routeFrontEndKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat
             int n = ngcCount(disp);
             int last = g_ngcViewMode ? (n > 0 ? n - 1 : 0) : n;   // new game: n = the OK row
             int nc = (jump > 0) ? last : 0;
-            g_ngcCursor = nc;
-            float ry = 0;
-            if (nc < n && ngcRowY(disp, nc, &ry) &&
-                (ry > NGC_CLICK_MAX_Y || ry < (g_ngcMods ? UGC_BAND_TOP_Y : NGC_ROW_VIS_TOP))) {
-                ngcWheelStart(nc, ry);
-            } else {
-                g_ngcWhlActive = false;                // an in-band stop cancels any servo
-                ngcHoverItem(disp, g_ngcCursor);
-            }
-            ngcSpeakItem(g_base, disp, g_ngcCursor);
+            ngcLandOn(g_base, disp, nc);               // servo or hover, then the row reader
             return true;
         }
     }
@@ -1759,16 +1791,7 @@ bool routeFrontEndKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat
                 int last = g_ngcViewMode ? (n > 0 ? n - 1 : 0) : n;   // view: no OK row
                 if (nc < 0) nc = 0;
                 if (nc > last) nc = last;              // new game: n = the OK row, the last stop
-                g_ngcCursor = nc;
-                float ry = 0;
-                if (nc < n && ngcRowY(disp, nc, &ry) &&
-                    (ry > NGC_CLICK_MAX_Y || ry < (g_ngcMods ? UGC_BAND_TOP_Y : NGC_ROW_VIS_TOP))) {
-                    ngcWheelStart(nc, ry);
-                } else {
-                    g_ngcWhlActive = false;            // an in-band stop cancels any servo
-                    ngcHoverItem(disp, g_ngcCursor);   // move the game's hover onto it
-                }
-                ngcSpeakItem(g_base, disp, g_ngcCursor);
+                ngcLandOn(g_base, disp, nc);
                 return true;
             }
             if (repeat) return true;                   // Enter: one action per press
@@ -1839,6 +1862,13 @@ bool routeFrontEndKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat
         if (repeat) return true;
         SlotActionResult r = slotDlcAction(g_base);
         if (r == SLOT_ACTION_REFUSED) postSpeech(axs(AXS_DLC_BTN_NONE));
+        if (r != SLOT_ACTION_NA) return true;
+    }
+
+    if (sym == SDLK_SPACE && !(mod & (KMOD_LCTRL | KMOD_RCTRL | KMOD_LALT | KMOD_RALT | KMOD_LSHIFT | KMOD_RSHIFT))) {
+        if (repeat) return saveSlotScreen(g_base) != 0; // one press per physical press, on our screen
+        SlotActionResult r = slotModsAction(g_base);
+        if (r == SLOT_ACTION_REFUSED) postSpeech(axs(AXS_UGC_BTN_NONE));
         if (r != SLOT_ACTION_NA) return true;
     }
 
@@ -1939,4 +1969,110 @@ bool feFocusSync(uintptr_t base, int64_t id, uint32_t owner) {
     g_ngcCursor = cursor;
     ngcSpeakItem(base, disp, cursor);
     return true;
+}
+
+// ---- THE FRONT-END NAVIGATOR'S FIND ENUMERATOR ----
+static const int FE_FIND_MAX = 256;   // a front-end screen registers a few dozen at most
+
+// The listable elements, in walk order, into `ids`. Returns the count.
+static int feFindCollect(int64_t* ids, int max) {
+    uintptr_t begin = 0, end = 0;
+    if (!safeReadPtr(g_base + VEC_BEGIN_RVA, &begin) ||
+        !safeReadPtr(g_base + VEC_END_RVA, &end) || begin == 0 || end <= begin) return 0;
+    uintptr_t count = (end - begin) / ELEM_STRIDE;
+    if (count > 4096) count = 4096;
+    uintptr_t disp = frontEndDisplay(g_base);
+    int st = disp ? frontEndState(disp) : -1;
+    FeConfine c;
+    c.pauseModal  = g_pauseOpen;
+    c.dialogModal = confirmDialogOpen(g_base);
+    c.slotList    = (disp != 0 && st == FE_STATE_SAVESLOTS && !c.dialogModal);
+    c.optList     = (!c.dialogModal && optPageActive());
+    float keys[FE_FIND_MAX];
+    int n = 0;
+    for (uintptr_t i = 0; i < count && n < max; i++) {
+        uintptr_t e = begin + i * ELEM_STRIDE;
+        uint8_t f = 0, s = 0;
+        safeReadU8(e + ELEM_FOCUSABLE_OFF, &f);
+        safeReadU8(e + ELEM_SKIP_OFF, &s);
+        if (!f || s) continue;
+        int64_t eid = 0; safeReadI64(e + ELEM_ID_OFF, &eid);
+        if (feElemConfined(eid, c)) continue;
+        float ex, ey; if (!elemPos(e, &ex, &ey)) continue;
+        float key = ey * 1000.0f + ex;                  // the seed's score: top-most, then left-most
+        int at = n;                                     // insertion sort; a few dozen at most
+        while (at > 0 && keys[at - 1] > key) { keys[at] = keys[at - 1]; ids[at] = ids[at - 1]; at--; }
+        keys[at] = key; ids[at] = eid; n++;
+    }
+    return n;
+}
+
+static void feFindLabel(int64_t id, char* out, int outsz) {
+    out[0] = 0;
+    uint32_t cc = (uint32_t)(uint64_t)id;
+    if (cc - CONFIRM_ANSWER_BASE < (uint32_t)CONFIRM_ANSWER_MAX) {
+        uintptr_t display = frontEndDisplay(g_base);
+        if (display && resolveModeDialog(g_base, display, id, /*announceQuestion=*/false, out, outsz))
+            return;
+        if (resolveGenericConfirm(g_base, id, /*firstEntry=*/false, out, outsz)) return;
+        out[0] = 0;
+        return;
+    }
+    bool pm = g_inPauseMenu;
+    resolveLabel(g_base, g_tbwVtbl, id, out, outsz);
+    g_inPauseMenu = pm;
+}
+
+int feFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    (void)base;
+    if (!frontEndDisplay(g_base) && !g_pauseOpen && !g_axOptionsUp) return 0;   // no screen of ours
+
+    if (g_ngcActive && !confirmDialogOpen(g_base)) {
+        uintptr_t disp = saveSlotScreen(g_base);
+        if (!disp) return 0;
+        int n = ngcCount(disp);
+        int total = g_ngcViewMode ? n : n + 1;         // new game: the OK row is the last stop
+        if (op == AXF_COUNT) return total;
+        if (idx < 0 || idx >= total) return 0;
+        if (op == AXF_LABEL) {
+            if (!out || outsz <= 0) return 0;
+            ngcItemLine(g_base, disp, idx, out, outsz);
+            return 1;
+        }
+        if (op == AXF_GO) {
+            logLine("frontend: find landed on content row %d (of %d)", idx, total);
+            ngcLandOn(g_base, disp, idx);
+            return 1;
+        }
+        return 0;
+    }
+
+    // Everything else: the focus vector under the navigator's own confinements.
+    int64_t ids[FE_FIND_MAX];
+    int n = feFindCollect(ids, FE_FIND_MAX);
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        feFindLabel(ids[idx], out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        int64_t id = ids[idx];
+        uintptr_t elem = feGetElementById(id);
+        if (!elem) {
+            logLine("frontend: find item %d (0x%llx) is no longer on screen", idx, (unsigned long long)id);
+            return 0;
+        }
+        FePick p = { elem, id, g_feFocusId, !isNoFocus(g_feFocusId),
+                     !confirmDialogOpen(g_base) && optPageActive() };
+        if (!feCommitTo(1, p, false)) return 0;        // no centre to park on: the generic hand-back
+        feLandingCancel("focus moved");
+        uintptr_t disp = frontEndDisplay(g_base);
+        int st = disp ? frontEndState(disp) : -1;
+        g_feScreenKey = ((int)currentAxContext() << 8) | (st & 0xff);
+        logLine("frontend: find landed on item %d (of %d), id 0x%llx", idx, n, (unsigned long long)id);
+        return 1;
+    }
+    return 0;
 }

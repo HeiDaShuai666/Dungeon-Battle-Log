@@ -3,9 +3,9 @@ Blindest Dungeon adds screen-reader support and enhanced keyboard navigation to 
 
 ## Current Status & Limitations
 
-Currently, the entire base game is accessible, as well as much of the DLC. It is in public beta so that I can begin to gather player feedback while I polish the mod and support the last of the DLC items.
+The mod is complete. Other than Mac/Linux ports, future updates will mostly just be maintenance. Feedback, suggestions, and feature requests are still welcome.
 
-* Base game: fully accessible. Some specific areas may still need refinement, but it is 100% completable.
+* Base game: fully accessible. Some specific encounters may still need refinement, but should be 100% completable.
 * DLC Characters and Districts: Fully accessible.
 * The Color of  Madness: Fully accessible. Endless mode needs more testing.
 * Crimson Court: Fully Accessible
@@ -17,9 +17,11 @@ Currently, the entire base game is accessible, as well as much of the DLC. It is
 
 ## Installation and Updates
 
-Download and run "Blindest Dungeon Installer.exe" (found in the mod release). It will automatically locate your game path and install the files. It can also be used to uninstall or update the mod with the click of a button.
+After you have downloaded and run the game at least once, use one of the following methods to install the mod.
 
-To manually install or update, copy and paste all files inside the mod directory next to the darkest.exe shortcut: (Darkest Dungeon > Windows > Win64). To uninstall, simply delete them.
+Automatic: Download and run "Blindest Dungeon Installer.exe" (found in the mod release). It will automatically locate your game path and install the file. It can also be used to uninstall or update the mod with the click of a button.
+
+Manual: copy and paste "Version.dll" from the mod archive to the game folder, in the same location as Darkest.exe. For example, the default install location for Steam is ""C:\Program Files (x86)\Steam\steamapps\common\DarkestDungeon\_windows\win64.
 
 The mod will alert you of new updates automatically when you launch the game.
 
@@ -35,7 +37,9 @@ Due to the nature of the game's custom C++ engine and a lack of official script 
 
 ## Getting Started
 ### Starting a Campaign
-Launch the game via the access shortcut included with the mod. The mod will take a minute to load, but then you should hear "accessibility mod loaded". After the opening cinematic, there is a small text preamble that seeks to prepare you for the difficulty of the game. Press the comma key (,) to re-read this message or any other popup found throughout the game.
+Launch the game normally. You should hear "Accessibility mod loaded" if the mod is installed correctly. After the opening cinematic, there is a small text preamble that seeks to prepare you for the difficulty of the game. Press the comma key (,) to re-read this message or any other popup found throughout the game.
+
+After this pop-up you will be greeted by a mod tutorial message. These will appear in many places to help familiarize you with the game. You can press F1 to open the tutorial for your current context at any time. You can disable them from automatically appearing.
 
 The main menu is very simple, you can navigate with the arrow keys, enter to select an item, or escape to open the pause/options menu.
 
@@ -45,9 +49,11 @@ Press enter on an empty slot to start a new game. If you have any DLC or worksho
 
 After selecting a difficulty, name your estate. It starts with the word Darkest" auto-filled, and has a max of 10 characters. You'll hear the updated entry as you type or delete text. Press enter to save.
 
-Pressing enter on a filled save slot will load that save, such as the one you just created. You can delete a save using the delete key.
+Pressing enter on a filled save slot will load that save, such as the one you just created. There are three buttons, each with their own shortcut, listed in the columns to the right of each existing save slot.
 
-You can view and enable DLC installed on an existing save by pressing SHIFT+ENTER. You can enable DLC mid-run, but you cannot disable them.
+* Delete (delete key): clear the current save slot.
+* View and enable DLC (shift+enter): You can enable DLC mid-run, but you cannot disable them.
+* View/enable mods (spacebar): Same as DLC, you can add thhem mid-game, but you cannot remove them.
 
 After the initial cutscene, you will start in a short tutorial mission with 2 characters.
 
@@ -277,6 +283,9 @@ The mod settings also features a debugg logging mode, which will write a log of 
 | Open Character Sheet | C | X |
 | Quick Assign skills on character sheet | 1-4 | N/A |
 | Open Mod Settings | F10 | Select |
+| Show mod tutorial | F1 | unassigned |
+| Toggle control hints | F2 | Unassigned |
+| Toggle automatic tooltips | F3 | Unassigned |
 
 ### Hamlet Controls
 | Action | Keyboard | Controller |

@@ -57,6 +57,14 @@ static const KmFunc kFuncs[] = {
        K(SDLK_c, 0), P(PI_X)),
     F1("general.settings",    KMG_GENERAL, KMS_BOTH, KMX_ANY, KMF_GLOBAL, AXS_FN_SETTINGS,
        K(SDLK_F10, 0), P(PI_BACK)),
+    F1("general.find",        KMG_GENERAL, KMS_BOTH, KMX_ANY, KMF_GLOBAL, AXS_FN_FIND,
+       K(SDLK_f, KM_CTRL), P0),
+    F1("general.mod_tutorial", KMG_GENERAL, KMS_BOTH, KMX_ANY, KMF_GLOBAL, AXS_FN_MOD_TUTORIAL,
+       K(SDLK_F1, 0), P0),
+    F1("general.control_hints", KMG_GENERAL, KMS_BOTH, KMX_ANY, KMF_GLOBAL, AXS_FN_CONTROL_HINTS,
+       K(SDLK_F2, 0), P0),
+    F1("general.auto_tooltips", KMG_GENERAL, KMS_BOTH, KMX_ANY, KMF_GLOBAL, AXS_FN_AUTO_TOOLTIPS,
+       K(SDLK_F3, 0), P0),
     // ---- GENERAL -> quick assign skills on the character sheet (submenu) ----
     F1("general.sheet_slot_1", KMG_GENERAL_SHEET, KMS_BOTH, KMX_SHEET, 0, AXS_FN_SHEET_SLOT1, K(SDLK_KEY_1, 0),     P0),
     F1("general.sheet_slot_2", KMG_GENERAL_SHEET, KMS_BOTH, KMX_SHEET, 0, AXS_FN_SHEET_SLOT2, K(SDLK_KEY_1 + 1, 0), P0),
@@ -355,6 +363,30 @@ void kmChordName(KmChord c, char* out, int outsz) {
               (c.mods & KM_SHIFT) ? axs(AXS_KN_SHIFT) : "", (c.mods & KM_SHIFT) ? " " : "",
               (c.mods & KM_ALT)   ? axs(AXS_KN_ALT)   : "", (c.mods & KM_ALT)   ? " " : "",
               key);
+    out[outsz - 1] = 0;
+}
+
+// ---- A LABEL WITH ITS KEY IN PARENTHESES ----
+void kmLabelWithKey(const char* label, const char* fnId, int slot, char* out, int outsz) {
+    if (!out || outsz <= 0) return;
+    const char* fmt = axs(AXS_TM_ROW_KEY_FMT);
+    if (fmt[0] && label && fnId) {
+        kmEnsureLoaded();                            // the label may speak before any key was pressed
+        int f = kmFind(fnId);
+        if (f < 0) {
+            static const char* s_saidFor = nullptr;  // one line per offending id, not per label
+            if (s_saidFor != fnId) { s_saidFor = fnId; logLine("keymap: kmLabelWithKey: no function \"%s\"", fnId); }
+        } else if (!kmKeyIsBlank(f, slot)) {
+            char key[64];
+            kmChordName(kmKeyCurrent(f, slot), key, sizeof key);
+            if (key[0]) {
+                _snprintf(out, outsz, fmt, label, key);
+                out[outsz - 1] = 0;
+                return;
+            }
+        }
+    }
+    _snprintf(out, outsz, "%s", label ? label : "");
     out[outsz - 1] = 0;
 }
 

@@ -138,6 +138,16 @@ static int glRowCount(uintptr_t base, uintptr_t* objOut) {
     return glCollect(base, obj, false);
 }
 
+static void glCellLine(int row, int col, char* out, int outsz) {
+    const char* cell = (col == 0) ? g_glTerm[row] : g_glDef[row];
+    if (!cell[0]) cell = (col == 0) ? axs(AXS_GL_NO_TERM) : axs(AXS_GL_NO_DEF);
+    size_t cl = strlen(cell);
+    char last = cl ? cell[cl - 1] : 0;
+    bool punct = last == '.' || last == '!' || last == '?' || last == ':';
+    _snprintf(out, outsz, "%s%s", cell, punct ? "" : ".");
+    out[outsz - 1] = 0;
+}
+
 static void glSpeakCell(uintptr_t base, bool withTitle, bool sayColLabel, bool sayPos) {
     uintptr_t obj = 0;
     int n = glRowCount(base, &obj);
@@ -152,8 +162,8 @@ static void glSpeakCell(uintptr_t base, bool withTitle, bool sayColLabel, bool s
     }
     if (g_glRow >= n) g_glRow = n - 1;
     if (g_glRow < 0)  g_glRow = 0;
-    const char* cell = (g_glCol == 0) ? g_glTerm[g_glRow] : g_glDef[g_glRow];
-    if (!cell[0]) cell = (g_glCol == 0) ? axs(AXS_GL_NO_TERM) : axs(AXS_GL_NO_DEF);
+    char cellLine[GL_ROW_MAX + 2];
+    glCellLine(g_glRow, g_glCol, cellLine, sizeof cellLine);
     char colLbl[64]; colLbl[0] = 0;
     if (sayColLabel) {
         _snprintf(colLbl, sizeof colLbl, " %s", g_glCol == 0 ? axs(AXS_GL_COL_TERM)
@@ -166,12 +176,10 @@ static void glSpeakCell(uintptr_t base, bool withTitle, bool sayColLabel, bool s
         _snprintf(pos + 1, sizeof pos - 1, axs(AXS_POS_N_OF_M), g_glRow + 1, n);
         pos[sizeof pos - 1] = 0;
     }
-    size_t cl = strlen(cell);
-    char last = cl ? cell[cl - 1] : 0;
-    bool punct = last == '.' || last == '!' || last == '?' || last == ':';
-    _snprintf(utter, sizeof utter, "%s%s%s%s%s%s",
-              title, titleSp, cell, punct ? "" : ".", colLbl, pos);
+    _snprintf(utter, sizeof utter, "%s%s%s%s%s",
+              title, titleSp, cellLine, colLbl, pos);
     utter[sizeof utter - 1] = 0;
+    axAppendHint(utter, sizeof utter, AXS_GL_CLOSE_HINT);
     postSpeech(utter);
 }
 
@@ -179,6 +187,31 @@ void glReannounce(uintptr_t base) {
     if (!g_glActive) return;
     logLine("glossary: re-announcing after a modal closed");
     glSpeakCell(base, true, true, true);
+}
+
+// ---- THE GLOSSARY'S FIND ENUMERATOR ----
+int glFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_glActive) return 0;
+    uintptr_t obj = 0;
+    int n = glRowCount(base, &obj);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        glCellLine(idx, 0, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        bool colChanged = g_glCol != 0;
+        g_glRow = idx;
+        g_glCol = 0;
+        logLine("glossary: find landed on row %d (of %d)%s", idx, n,
+                colChanged ? ", column -> term" : "");
+        glSpeakCell(base, false, colChanged, true);
+        return 1;
+    }
+    return 0;
 }
 
 void checkGlossary(uintptr_t base) {
@@ -350,9 +383,19 @@ static void hpSpeakWhole(uintptr_t base) {
     }
     char full[MAILBOX_SZ];
     hpBuildWhole(full, sizeof full);
+    axAppendHint(full, sizeof full, AXS_GL_CLOSE_HINT);
     logLine("help: reading whole topic \"%s\", %d paragraphs, %d chars",
             label, g_hpCount, (int)strlen(full));
     postSpeech(full);
+}
+
+static void hpParaLine(int row, char* out, int outsz) {
+    const char* p = g_hpPara[row];
+    size_t l = strlen(p);
+    char last = l ? p[l - 1] : 0;
+    bool punct = last == '.' || last == '!' || last == '?' || last == ':';
+    _snprintf(out, outsz, "%s%s", p, punct ? "" : ".");
+    out[outsz - 1] = 0;
 }
 
 // Speak the paragraph at g_hpRow with its position (the Up/Down re-walk).
@@ -360,17 +403,40 @@ static void hpSpeakPara(uintptr_t base) {
     if (g_hpCount == 0) { postSpeech(axs(AXS_HELP_EMPTY)); return; }
     if (g_hpRow < 0) g_hpRow = 0;
     if (g_hpRow >= g_hpCount) g_hpRow = g_hpCount - 1;
-    const char* p = g_hpPara[g_hpRow];
-    size_t l = strlen(p);
-    char last = l ? p[l - 1] : 0;
-    bool punct = last == '.' || last == '!' || last == '?' || last == ':';
+    char line[HP_PARA_MAX + 2];
+    hpParaLine(g_hpRow, line, sizeof line);
     char posn[64];
     _snprintf(posn, sizeof posn, axs(AXS_HELP_PARA_N_OF_M), g_hpRow + 1, g_hpCount);
     posn[sizeof posn - 1] = 0;
     char utter[MAILBOX_SZ];
-    _snprintf(utter, sizeof utter, "%s%s %s", p, punct ? "" : ".", posn);
+    _snprintf(utter, sizeof utter, "%s %s", line, posn);
     utter[sizeof utter - 1] = 0;
+    axAppendHint(utter, sizeof utter, AXS_GL_CLOSE_HINT);
     postSpeech(utter);
+}
+
+// ---- THE HELP PANEL'S FIND ENUMERATOR ----
+int hpFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_hpActive) return 0;
+    uintptr_t obj = hpObj(base);
+    if (!obj) return 0;
+    if (hpCtxIndex(obj) != g_hpCtxIdx) hpCollect(base, obj, false);   // topic changed: re-read live
+    int n = g_hpCount;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        hpParaLine(idx, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_hpPlaced = true;
+        g_hpRow = idx;
+        logLine("help: find landed on paragraph %d (of %d)", idx, n);
+        hpSpeakPara(base);
+        return 1;
+    }
+    return 0;
 }
 
 void hpReannounce(uintptr_t base) {
@@ -556,6 +622,30 @@ void cpReannounce(uintptr_t base) {
     g_cpPlaced = false;
     g_cpRow = 0;
     cpSpeakWhole(base);
+}
+
+// ---- THE CONTROLS PAGE'S FIND ENUMERATOR ----
+int cpFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_cpActive) return 0;
+    if (g_cpCount == 0) cpCollect(base, false);        // grace-window open: try once more, live
+    int n = g_cpCount;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        out[0] = 0;
+        cpAppend(out, outsz, g_cpLine[idx]);           // leads with its joiner space
+        if (out[0] == ' ') memmove(out, out + 1, strlen(out));
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_cpPlaced = true;
+        g_cpRow = idx;
+        logLine("controls: find landed on line %d (of %d)", idx, n);
+        cpSpeakLine(base);
+        return 1;
+    }
+    return 0;
 }
 
 void checkControls(uintptr_t base) {

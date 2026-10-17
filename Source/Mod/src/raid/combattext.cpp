@@ -226,6 +226,7 @@ static int  g_clogHead  = 0;    // index of the OLDEST line
 static int  g_clogCount = 0;
 volatile bool g_clogOpen = false;
 static int  g_clogCursor = 0;   // 0 = newest; counts BACKWARDS into history
+static uint32_t g_clogSerial = 0;
 
 static const char* clogAt(int fromNewest) {
     if (fromNewest < 0 || fromNewest >= g_clogCount) return nullptr;
@@ -240,6 +241,7 @@ void clogAdd(const char* line) {
     g_clogLines[slot][CLOG_LINE_MAX - 1] = 0;
     if (g_clogCount < CLOG_MAX) g_clogCount++;
     else g_clogHead = (g_clogHead + 1) % CLOG_MAX;   // ring full: the oldest falls off
+    g_clogSerial++;
 }
 
 // ---- sentence punctuation, once ----
@@ -1290,6 +1292,36 @@ bool routeLogKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {  
     return true;
 }
 
+// ---- THE COMBAT LOG'S FIND ENUMERATOR ----
+static uint32_t g_clogFindSerial = 0;   // g_clogSerial when the snapshot was taken
+int clogFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    (void)base;
+    if (!g_clogOpen || g_clogClearAsk) return 0;
+    if (op == AXF_COUNT) { g_clogFindSerial = g_clogSerial; return g_clogCount; }
+    if (g_clogCount <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        const char* s = clogAt(idx);
+        if (!s) return 0;
+        _snprintf(out, outsz, "%s", s);
+        out[outsz - 1] = 0;
+        return 1;
+    }
+    if (op == AXF_GO) {
+        uint32_t drift = g_clogSerial - g_clogFindSerial;
+        if (drift) logLine("combatlog: find -- %u lines arrived under the overlay, index %d -> %d",
+                           drift, idx, idx + (int)drift);
+        idx += (int)drift;
+        if (idx < 0) idx = 0;
+        if (idx >= g_clogCount) idx = g_clogCount - 1;   // evicted since: the oldest is the closest
+        g_clogCursor = idx;
+        logLine("combatlog: find landed on line %d of %d", idx, g_clogCount);
+        clogSpeakCursor();
+        return 1;
+    }
+    return 0;
+}
+
 static void clogKeyGateCheck(uintptr_t base) {
     static bool done = false;
     if (done) return;
@@ -1311,10 +1343,18 @@ bool routeLogToggle(uintptr_t base, uint32_t sym, uint8_t repeat) {
     if (g_clogOpen) { clogSetOpen(false); postSpeech(axs(AXS_CLOG_CLOSED)); return true; }
 
     clogSetOpen(true);
-    if (g_clogCount == 0) { postSpeech(axs(AXS_CLOG_OPEN_EMPTY)); return true; }
-    char head[128], pos[64];
+    if (g_clogCount == 0) {
+        char empty[256];
+        _snprintf(empty, sizeof empty, "%s", axs(AXS_CLOG_OPEN_EMPTY));
+        empty[sizeof empty - 1] = 0;
+        axAppendHint(empty, sizeof empty, AXS_CLOG_OPEN_HINT);
+        postSpeech(empty);
+        return true;
+    }
+    char head[384], pos[64];
     _snprintf(head, sizeof head, axs(AXS_CLOG_OPEN_FMT), g_clogCount);
     head[sizeof head - 1] = 0;
+    axAppendHint(head, sizeof head, AXS_CLOG_OPEN_HINT);
     _snprintf(pos, sizeof pos, axs(AXS_POS_N_OF_M), 1, g_clogCount);
     pos[sizeof pos - 1] = 0;
     char msg[CLOG_LINE_MAX + 256];

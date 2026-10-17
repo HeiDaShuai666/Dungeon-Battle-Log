@@ -1,4 +1,4 @@
-// shared\gamedir.h -- game-directory detection, shared by the INSTALLER and the LAUNCHER.
+// shared\gamedir.h -- game-directory detection for the INSTALLER.
 
 #pragma once
 #include <windows.h>

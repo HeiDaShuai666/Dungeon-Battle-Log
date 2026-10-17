@@ -695,6 +695,7 @@ inline const uintptr_t RR_GOLD_TYPEHASH_RVA = axRva(0x2a7c964, 0x2a56fd4, 0x2a57
 // ---- sheet\charsheet.cpp ----
 inline const uintptr_t CS_TRK_UNEQUIP_RVA = axRva(0x7f8270, 0x7e3f10, 0x7e3df0);
 inline const uintptr_t CS_COMSKILL_TOGGLE_RVA = axRva(0x5c9b10, 0x5b7ba0, 0x5b7aa0);
+inline const uintptr_t CS_CAMPSKILL_TOGGLE_RVA = axRva(0x5c9500, 0x5b7590, 0x5b7490);
 // ---- sheet\composers.cpp ----
 inline const uintptr_t CS_RESIST_TABLE_RVA = axRva(0x2ad3810, 0x2aac410, 0x2aac450);
 inline const uintptr_t CS_RESIST_VALUE_RVA = axRva(0x478600, 0x466f80, 0x466f80);

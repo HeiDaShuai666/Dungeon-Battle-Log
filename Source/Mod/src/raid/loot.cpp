@@ -58,8 +58,10 @@ static bool lootSlotText(uintptr_t base, int nth, char* out, int outsz) {
     int live = lootLiveItems(base, slotIdx, LOOT_MAX_ITEMS);
     if (nth < 0 || nth >= live) return false;
 
-    return invSystemSlotText(base, root + LOOT_SYSTEM_OFF, slotIdx[nth], axs(AXS_LOOT_NOUN_ITEM),
-                             nth + 1, live, out, outsz);
+    if (!invSystemSlotText(base, root + LOOT_SYSTEM_OFF, slotIdx[nth], axs(AXS_LOOT_NOUN_ITEM),
+                           nth + 1, live, out, outsz)) return false;
+    axAppendHint(out, outsz, AXS_LOOT_ROW_HINT);
+    return true;
 }
 
 static bool lootTakeItem(uintptr_t base, int nth) {
@@ -173,10 +175,27 @@ void lootReturn(uintptr_t base, const char* why) {
 
 // ---- The key handler ----
 bool routeLootKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
-    if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) return false;
+    if (mod & (KMOD_LALT | KMOD_RALT)) return false;
 
     int slots = lootItemCount(base);
     if (slots <= 0) return false;        // window is going away; let the game have the key
+
+    if (mod & (KMOD_LCTRL | KMOD_RCTRL)) {
+        if (sym != SDLK_UP && sym != SDLK_DOWN) return false;
+        if (repeat) return true;
+        if (g_lootSlot < 0) { postSpeech(axs(AXS_NO_ROW_SELECTED)); return true; }
+        static int s_tipLine = 0, s_tipSlot = -1;
+        if (s_tipSlot != g_lootSlot) { s_tipSlot = g_lootSlot; s_tipLine = 0; }
+        uintptr_t root = 0;
+        if (!safeReadPtr(base + MAP_ROOT_RVA, &root) || root <= 0x10000) return true;
+        int slotIdx[LOOT_MAX_ITEMS];
+        int live = lootLiveItems(base, slotIdx, LOOT_MAX_ITEMS);
+        if (g_lootSlot >= live) return true;
+        static char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+        int n = invSlotTipLines(base, root + LOOT_SYSTEM_OFF, slotIdx[g_lootSlot], axs(AXS_LOOT_NOUN_ITEM),
+                                g_lootSlot + 1, live, lines, AB_TIP_MAX_LINES);
+        return axTipStep(&s_tipLine, sym == SDLK_UP ? 1 : -1, &lines[0][0], AB_TIP_LINE_SZ, n);
+    }
 
     if (sym == SDLK_ESCAPE) {
         if (repeat) return true;
@@ -283,4 +302,31 @@ bool routeLootKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
     g_lootSlot = target;
     postSpeech(buf);
     return true;
+}
+
+// ---- THE LOOT WINDOW'S FIND ENUMERATOR ----
+int lootFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_lootActive || g_lootAside) return 0;
+    int slots = lootItemCount(base);
+    if (slots < 0) slots = 0;
+    if (op == AXF_COUNT) return slots;
+    if (slots <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= slots) return 0;
+        return lootSlotText(base, idx, out, outsz) ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= slots) idx = slots - 1;      // the list shrank under the snapshot
+        char buf[MAILBOX_SZ];
+        if (!lootSlotText(base, idx, buf, sizeof buf)) {
+            logLine("lootnav: find item %d did not read", idx);
+            return 0;
+        }
+        logLine("lootnav: find landed on item %d (of %d)", idx, slots);
+        g_lootSlot = idx;
+        postSpeech(buf);
+        return 1;
+    }
+    return 0;
 }

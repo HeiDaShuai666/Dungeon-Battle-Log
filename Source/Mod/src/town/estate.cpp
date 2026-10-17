@@ -421,6 +421,21 @@ static void tlTitle(uintptr_t base, char* out, int outsz) {
     out[outsz - 1] = 0;
 }
 
+static void tlRowBody(int cur, bool withLbl, char* out, int outsz) {
+    char lbl[112] = { 0 };
+    if (withLbl && g_tlRowLbl[cur][0])
+        _snprintf(lbl, sizeof lbl, "%s. ", g_tlRowLbl[cur]);
+    const char* row = g_tlRows[cur];
+    size_t rl = strlen(row);
+    char last = rl ? row[rl - 1] : 0;
+    bool punct = last == '.' || last == '!' || last == '?' || last == ':';
+    char done[64] = { 0 };
+    if (g_tlRowDone[cur])
+        _snprintf(done, sizeof done, " %s", axs(AXS_TL_GOAL_DONE));
+    _snprintf(out, outsz, "%s%s%s%s", lbl, row, punct ? "" : ".", done);
+    out[outsz - 1] = 0;
+}
+
 static void tlSpeakRow(uintptr_t base, bool sayTitle, bool sayLbl) {
     uintptr_t panel = tlPanel(base);
     if (!panel) return;
@@ -443,22 +458,13 @@ static void tlSpeakRow(uintptr_t base, bool sayTitle, bool sayLbl) {
     int* cur = tlCursor();
     if (*cur >= n) *cur = n - 1;
     if (*cur < 0)  *cur = 0;
-    char lbl[112] = { 0 };
-    if (sayLbl && g_tlRowLbl[*cur][0])
-        _snprintf(lbl, sizeof lbl, "%s. ", g_tlRowLbl[*cur]);
-    const char* row = g_tlRows[*cur];
-    size_t rl = strlen(row);
-    char last = rl ? row[rl - 1] : 0;
-    bool punct = last == '.' || last == '!' || last == '?' || last == ':';
-    char done[64] = { 0 };
-    if (g_tlRowDone[*cur])
-        _snprintf(done, sizeof done, " %s", axs(AXS_TL_GOAL_DONE));
+    char body[MAILBOX_SZ];
+    tlRowBody(*cur, sayLbl, body, sizeof body);
     char pos[48];
     pos[0] = ' ';
     _snprintf(pos + 1, sizeof pos - 1, axs(AXS_POS_N_OF_M), *cur + 1, n);
     pos[sizeof pos - 1] = 0;
-    _snprintf(utter, sizeof utter, "%s%s%s%s%s%s",
-              pfx, lbl, row, punct ? "" : ".", done, pos);
+    _snprintf(utter, sizeof utter, "%s%s%s", pfx, body, pos);
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
 }
@@ -467,6 +473,43 @@ void tlReannounce(uintptr_t base) {
     if (!g_tlActive) return;
     logLine("townlog: re-announcing after a modal closed");
     tlSpeakRow(base, true, true);
+}
+
+// ---- THE ACTIVITY LOG'S FIND ENUMERATOR ----
+int tlFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    static int s_n0 = -1, s_n1 = 0;
+    static int s_loaded = -1;
+    if (!g_tlActive) { s_n0 = -1; s_loaded = -1; return 0; }
+    uintptr_t panel = tlPanel(base);
+    if (!panel) { s_n0 = -1; s_loaded = -1; return 0; }
+    if (op == AXF_COUNT || s_n0 < 0) {
+        s_n0 = tlCollectColumn(base, panel, 0, false);
+        s_n1 = tlCollectColumn(base, panel, 1, false);
+        s_loaded = 1;
+        if (op == AXF_COUNT) return s_n0 + s_n1;
+    }
+    if (idx < 0 || idx >= s_n0 + s_n1) return 0;
+    int col = idx < s_n0 ? 0 : 1;
+    int row = idx < s_n0 ? idx : idx - s_n0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        if (s_loaded != col) {
+            int n = tlCollectColumn(base, panel, col, false);
+            s_loaded = col;
+            if (row >= n) return 0;                  // the column shrank under the sweep
+        }
+        tlRowBody(row, true, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        s_n0 = -1; s_loaded = -1;                    // the sweep is over; nothing trusts the cache
+        g_tlCol = col;
+        *tlCursor() = row;
+        logLine("townlog: find landed on col %d row %d (item %d)", col, row, idx);
+        tlSpeakRow(base, false, true);               // the column landing's shape: label on
+        return 1;
+    }
+    return 0;
 }
 
 static bool     g_tlAnnounced  = false;   // the entry line was spoken for this open
@@ -782,6 +825,7 @@ static void resSpeakRow(uintptr_t base, const char* prefix) {
     _snprintf(utter, sizeof utter, "%s%s%s.%s", prefix ? prefix : "", prefix ? " " : "",
               g_resRows[g_resRow], pos);
     utter[sizeof utter - 1] = 0;
+    if (g_resIsTrade[g_resRow]) axAppendHint(utter, sizeof utter, AXS_ENTER_ACTIVATE_HINT);
     postSpeech(utter);
 }
 
@@ -789,6 +833,28 @@ void resReannounce(uintptr_t base) {
     if (!g_resActive) return;
     logLine("resources: re-announcing after a modal closed");
     resSpeakRow(base, axs(AXS_RES_TITLE));
+}
+
+// ---- THE RESOURCES BAR'S FIND ENUMERATOR ----
+int resFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_resActive) return 0;
+    int n = resCollect(base, false);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        _snprintf(out, outsz, "%s.", g_resRows[idx]);
+        out[outsz - 1] = 0;
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_resRow = idx;
+        logLine("resources: find landed on row %d", idx);
+        resSpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 void checkResources(uintptr_t base) {

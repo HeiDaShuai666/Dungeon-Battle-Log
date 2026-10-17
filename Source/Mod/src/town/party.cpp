@@ -371,6 +371,7 @@ static void ptySpeakRow(uintptr_t base, const char* prefix) {
     char utter[MAILBOX_SZ];
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", card);
     utter[sizeof utter - 1] = 0;
+    axAppendHint(utter, sizeof utter, g_ptyRows[g_ptyRow].hero ? AXS_PTY_FILLED_HINT : AXS_PTY_EMPTY_HINT);
     postSpeech(utter);
 }
 
@@ -379,6 +380,27 @@ void ptyReannounce(uintptr_t base) {
     logLine("party: re-announcing after a modal closed");
     char hdr[192];
     ptySpeakRow(base, ptyHeader(base, hdr, sizeof hdr));
+}
+
+// ---- THE PARTY LINEUP'S FIND ENUMERATOR ----
+int ptyFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_ptyActive) return 0;
+    int n = ptyCollect(base, false);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        ptyCardLine(base, &g_ptyRows[idx], ptyPositionOfRow(idx), n, out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_ptyRow = idx;
+        logLine("party: find landed on slot %d", idx);
+        ptySpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 typedef void (*PtySetHeroFn)(uintptr_t iface, uintptr_t hero);
@@ -914,12 +936,14 @@ static RosRow g_rosRows[ROS_MAX_ROWS];
 static int    g_rosCount  = 0;
 static int    g_rosRow    = 0;
 static bool   g_rosDumped = false;
+static int    g_rosPickDropped = 0;
 static const uint32_t ROS_PORTRAIT_ID_BASE = 0x72736272u;
 
 bool axIsRoster() { return g_rosActive; }
 
 static int rosCollect(uintptr_t base, bool probe) {
     g_rosCount = 0;
+    g_rosPickDropped = 0;
     uintptr_t root = resTownRoot(base);
     if (!root) return 0;
     uintptr_t rl = root + PTY_ROSTERLIST_OFF;
@@ -933,6 +957,10 @@ static int rosCollect(uintptr_t base, bool probe) {
         uintptr_t rowW = 0, entry = 0;
         if (!safeReadPtr(rec, &rowW) || rowW <= 0x10000) continue;
         if (!safeReadPtr(rowW + PTY_RL_ROW_ENTRY_OFF, &entry) || entry <= 0x10000) continue;
+        if (g_rosPickAct && !bldActPickWantsHero(base, entry + PTY_ENTRY_HERO_OFF)) {
+            g_rosPickDropped++;                  // the ward's filter: not a row on this list
+            continue;
+        }
         g_rosRows[g_rosCount].entry = entry;
         g_rosRows[g_rosCount].hero  = entry + PTY_ENTRY_HERO_OFF;
         g_rosRows[g_rosCount].rowW  = rowW;
@@ -1068,6 +1096,7 @@ static void rosSpeakBar(uintptr_t base, const char* prefix) {
     char utter[MAILBOX_SZ];
     _snprintf(utter, sizeof utter, "%s%s", prefix ? prefix : "", item);
     utter[sizeof utter - 1] = 0;
+    if (g_rosBarCol > 0) axAppendHint(utter, sizeof utter, AXS_ENTER_ACTIVATE_HINT);
     postSpeech(utter);
 }
 
@@ -1180,6 +1209,15 @@ static void rosSpeakRow(uintptr_t base, const char* prefix) {
     _snprintf(utter, sizeof utter, "%s%s.%s%s %s", prefix ? prefix : "",
               card, status, actFrag, posln);
     utter[sizeof utter - 1] = 0;
+    if (!g_rosPickAct) {
+        AxStrId hint = AXS_ROS_HERO_HINT;
+        if (g_rosPickSlot >= 0) {
+            int pn = ptyCollect(base, false);
+            bool inThisSlot = r->hero && g_rosPickSlot < pn && g_ptyRows[g_rosPickSlot].hero == r->hero;
+            hint = inThisSlot ? AXS_ROS_PICK_REMOVE_HINT : AXS_ROS_PICK_SELECT_HINT;
+        }
+        axAppendHint(utter, sizeof utter, hint);   // "" while Control hints is Off
+    }
     postSpeech(utter);
 }
 
@@ -1195,6 +1233,38 @@ void rosReannounce(uintptr_t base) {
                                           ? AXS_ROS_CHOOSE_HERO : AXS_ROS_TITLE));
     pfx[sizeof pfx - 1] = 0;
     rosSpeakRow(base, pfx);
+}
+
+// ---- THE ROSTER'S FIND ENUMERATOR ----
+int rosFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_rosActive) return 0;
+    int n = rosCollect(base, false);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return ROS_BAR_ITEMS + n;
+    if (idx < 0 || idx >= ROS_BAR_ITEMS + n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        if (idx < ROS_BAR_ITEMS) {
+            if (idx == 0) rosCapacityLine(base, out, outsz);
+            else          rosSortLine(base, idx - 1, out, outsz);
+            return 1;
+        }
+        const RosRow* r = &g_rosRows[idx - ROS_BAR_ITEMS];
+        char card[512], status[160];
+        ptyHeroFragEx(base, r->hero, card, sizeof card, true, false);
+        rosStatusFrag(base, r->entry, status, sizeof status);
+        _snprintf(out, outsz, "%s.%s", card, status);
+        out[outsz - 1] = 0;
+        return 1;
+    }
+    if (op == AXF_GO) {
+        if (idx < ROS_BAR_ITEMS) { g_rosOnBar = true;  g_rosBarCol = idx; }
+        else                     { g_rosOnBar = false; g_rosRow = idx - ROS_BAR_ITEMS; }
+        logLine("roster: find landed on item %d (%s)", idx, g_rosOnBar ? "toolbar" : "hero");
+        rosSpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 static void rosEnterFromParty(uintptr_t base, uintptr_t hero, int pickSlot) {
@@ -1247,18 +1317,23 @@ void rosLeave(uintptr_t base, const char* why) {
 
 // ---- The ACTIVITY PICK doors (2026-09-01, player's design: "move focus to the roster and let ----
 bool rosEnterForActivityPick(uintptr_t base, const char* header) {
-    int n = rosCollect(base, !g_rosDumped);
-    g_rosDumped = true;
-    if (n <= 0) { postSpeech(axs(AXS_ROS_NO_ROSTER)); return false; }   // said something; the
-    g_rosActive = true;                                                 // caller stays silent
-    g_ptyActive = false;
-    g_resActive = false;
     g_rosPickSlot = -1;
     g_rosPickAct = true;
+    int n = rosCollect(base, !g_rosDumped);
+    g_rosDumped = true;
+    if (n <= 0) {                                                       // said something; the
+        g_rosPickAct = false;                                           // caller stays silent
+        postSpeech(axs(AXS_ROS_NO_ROSTER));
+        return false;
+    }
+    g_rosActive = true;
+    g_ptyActive = false;
+    g_resActive = false;
     g_rosOnBar = false;
     g_rosBarCol = 0;
     g_rosRow = 0;
-    logLine("roster: active for an ACTIVITY pick, %d heroes", n);
+    logLine("roster: active for an ACTIVITY pick, %d heroes (%d left out by the pick's filter)",
+            n, g_rosPickDropped);
     char pfx[192];
     _snprintf(pfx, sizeof pfx, "%s ", header ? header : axs(AXS_ROS_CHOOSE_HERO));
     pfx[sizeof pfx - 1] = 0;
@@ -1664,15 +1739,7 @@ bool routeRosterKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
             uint32_t state = 0;
             bool haveState = safeReadU32(r->entry + PTY_ENTRY_STATE_OFF, &state);
             if (!haveState || state != 0) {
-                char name[80] = {0}, cls[80] = {0}, status[160] = {0};
-                abHeroNameClassOf(base, r->hero, name, sizeof name, cls, sizeof cls);
-                rosStatusFrag(base, r->entry, status, sizeof status);
-                char utter[256];
-                _snprintf(utter, sizeof utter, axs(AXS_ACT_PICK_BUSY_FMT),
-                          name[0] ? name : axs(AXS_THE_HERO),
-                          status[0] ? status + 1 : axs(AXS_ROS_UNAVAILABLE));
-                utter[sizeof utter - 1] = 0;                 // status+1: past the join space
-                postSpeech(utter);
+                postSpeech(axs(AXS_ACT_PICK_BUSY));
                 return true;
             }
             bldActPickCommitFromRoster(base, r->entry, r->rowW, r->hero);
@@ -1908,12 +1975,7 @@ static void trkFitFrag(uintptr_t base, uintptr_t item, uintptr_t hero, char* out
     out[outsz - 1] = 0;
 }
 
-static void trkSpeakRow(uintptr_t base, const char* prefix) {
-    int n = trkCollect(base);
-    if (n <= 0) { postSpeech(axs(AXS_ROS_NO_ROSTER)); return; }
-    if (g_trkRow >= n) g_trkRow = n - 1;
-    if (g_trkRow < 0)  g_trkRow = 0;
-    const TrkRow* r = &g_trkRows[g_trkRow];
+static void trkRowLabel(uintptr_t base, const TrkRow* r, char* out, int outsz) {
     char card[512], status[160], fit[224];
     if (r->entry) ptyHeroFrag    (base, r->hero, card, sizeof card);
     else          ptyHeroFragBare(base, r->hero, card, sizeof card);
@@ -1922,14 +1984,45 @@ static void trkSpeakRow(uintptr_t base, const char* prefix) {
     else           rosStatusFrag(base, r->entry, status, sizeof status);
     status[sizeof status - 1] = 0;
     trkFitFrag(base, trkItem(base), r->hero, fit, sizeof fit);
+    _snprintf(out, outsz, "%s.%s%s", card, status, fit);
+    out[outsz - 1] = 0;
+}
+
+static void trkSpeakRow(uintptr_t base, const char* prefix) {
+    int n = trkCollect(base);
+    if (n <= 0) { postSpeech(axs(AXS_ROS_NO_ROSTER)); return; }
+    if (g_trkRow >= n) g_trkRow = n - 1;
+    if (g_trkRow < 0)  g_trkRow = 0;
+    char label[MAILBOX_SZ];
+    trkRowLabel(base, &g_trkRows[g_trkRow], label, sizeof label);
     char posln[64];
     _snprintf(posln, sizeof posln, axs(AXS_POS_N_OF_M), g_trkRow + 1, n);
     posln[sizeof posln - 1] = 0;
     char utter[MAILBOX_SZ];
-    _snprintf(utter, sizeof utter, "%s%s.%s%s %s", prefix ? prefix : "",
-              card, status, fit, posln);
+    _snprintf(utter, sizeof utter, "%s%s %s", prefix ? prefix : "", label, posln);
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
+}
+
+// ---- THE TRINKET PICKER'S FIND ENUMERATOR ----
+int trkFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!axIsTrkPick()) return 0;
+    int n = trkCollect(base);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        trkRowLabel(base, &g_trkRows[idx], out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_trkRow = idx;
+        logLine("trkpick: find landed on row %d", idx);
+        trkSpeakRow(base, nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 void trkPickCancel(uintptr_t base, AxStrId why) {
@@ -2188,6 +2281,13 @@ void serviceTrkPick(uintptr_t base) {
     prefix[sizeof prefix - 1] = 0;
     logLine("trkpick: phase 3 — slot pick on %s's sheet", who);
     if (csTrinketRowText(base, 0, row, sizeof row)) {
+        if (axTipWanted()) {
+            char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+            int n = csTrinketTipLines(base, 0, lines);
+            axTipGlueLines(row, sizeof row, &lines[0][0], AB_TIP_LINE_SZ, n, 1);
+            axTipGlueKeywords(row, sizeof row);
+        }
+        csTrinketAppendHint(base, 0, row, sizeof row);
         char utter[MAILBOX_SZ];
         _snprintf(utter, sizeof utter, "%s%s", prefix, row);
         utter[sizeof utter - 1] = 0;

@@ -88,16 +88,18 @@ SLOT_EMPTY_NO_DELETE=该存档位是空的。
 SLOT_HINT_LOAD=按回车键加载战役。
 SLOT_HINT_DLC=按Shift加回车键查看或启用DLC。
 SLOT_HINT_DELETE=按删除键移除存档。
-NGC_INTRO_N=新游戏内容。%d个可下载内容选项。上下键移动，回车键切换，最后按“确定”。
+SLOT_HINT_MODS=按空格键查看或启用模组。
+NGC_INTRO_N=新游戏内容。%d个可下载内容选项。
 NGC_ITEM_STATE=%s，%s。
-NGC_OK_ROW=确定。按回车键开始战役。
+NGC_OK_ROW=确定。
 NGC_NO_OK=无法继续。
 DLC_BTN_NONE=该存档位没有DLC选项。
 DLC_BTN_FALLBACK=启用或查看DLC。
 UGC_BTN_FALLBACK=启用或查看模组。
-UGC_WINDOW_UNREAD=模组窗口暂时无法朗读。按 Escape 关闭。
-UGC_INTRO_N=模组：%d个。上下键移动，回车键切换，Esc键关闭并保存。
-DLCVIEW_INTRO_N=此存档的可下载内容。%d个选项。上下键移动，回车键切换，Esc键关闭。
+UGC_BTN_NONE=该存档位没有模组选项。
+UGC_WINDOW_UNREAD=模组窗口暂时无法朗读。
+UGC_INTRO_N=模组：%d个。
+DLCVIEW_INTRO_N=此存档的可下载内容。%d个选项。
 
 # ---- dlc/butchers_circus/dueling.cpp: the Dueling Grounds ----
 DG_MODE_FRIENDS=好友列表
@@ -158,8 +160,7 @@ RB_UNREADABLE=无法读取排名板。
 BD_TAB_SECTION_FMT=标签页第%d个，共%d个。
 BD_TAB_CURRENT=已选中。
 BD_TAB_CHANGED=尚未应用。
-BD_ROW_RANDOM=随机旗帜。按回车键随机化每个部分。
-BD_ROW_APPLY_FMT=%s。按回车键应用。
+BD_ROW_RANDOM=随机旗帜。
 BD_APPLY_FALLBACK=全部应用
 BD_NO_CHANGES=没有可应用的更改。
 BD_UNSAVED=有未保存的更改。
@@ -229,14 +230,14 @@ RNG_LEAGUE_TIERS_FMT=%s：%u个等级。
 RNG_LEAGUES_EMPTY_FMT=%s。联赛列表为空。
 RNG_LEAGUES_CLOSED=联赛窗口已关闭。
 RNG_LEAGUES_DIDNT_OPEN=联赛窗口没有打开。
-RNG_LEAGUES_STILL_OPEN=联赛窗口仍然打开着。请按Esc键。
-RNG_LEAGUES_OPEN_HINT=联赛窗口已打开。按L或Esc键关闭。
+RNG_LEAGUES_STILL_OPEN=联赛窗口仍然打开着。
+RNG_LEAGUES_OPEN=联赛窗口已打开。
 RNG_PRACTICE_DIDNT_OPEN=练习赛对话框没有打开。
 RNG_TB_MISSING=此处不可用。
 RNG_TB_BUSY=仍在处理。
 
 # ---- dlc/butchers_circus/pit.cpp: choosing which hero acts ----
-PIT_PICK_OPEN_FALLBACK=选择一名英雄行动。按回车键。
+PIT_PICK_OPEN_FALLBACK=选择一名英雄行动。
 PIT_ACTING_HEAD_FMT=%s正在行动。行动。
 PIT_ACTING_FMT=%s正在行动。
 PIT_CANT_ACT_FMT=%s本回合无法行动。
@@ -367,8 +368,6 @@ EMB_REQUIRES_FMT=需要：%s。
 EMB_REQUIRES_N_FMT=需要：%s，%u。
 EMB_ROW_POS_FMT=任务第%d个，共%d个。
 EMB_ROW_SELECTED=已选中。
-EMB_REWARD_FMT=奖励：%s。
-EMB_REWARD_N_FMT=奖励：%s，%u。
 EMB_ALREADY_SELECTED_FMT=%s已经选中。
 EMB_STILL_SELECTING=仍在选择。
 EMB_CANT_SELECT_FMT=现在无法选择%s。
@@ -410,7 +409,7 @@ PROV_REMOVED_FMT=已移除%s。
 # ---- Secret rooms: the in-raid map + dungeon view (2026-08-05) ----
 MAP_SECRET_ROOM=秘密房间
 SECRET_DOOR_LABEL=秘门
-SECRET_ENTER_FROM_HALL=秘密房间要从它所在的通道进入：站在秘门上，按互动键。
+SECRET_ENTER_FROM_HALL=秘密房间要从它所在的通道进入。
 
 # ---- "W to open", the game's own interact key, on the two doors it works on (2026-08-23) ----
 DOOR_PRESS_W=按W打开。
@@ -481,7 +480,7 @@ SHOP_BOUGHT_FREE_FMT=购买了%s。还有%d件在售。
 RCT_NONE=没有可招募的英雄。
 RCT_POS_FMT=可招募英雄第%d个，共%d个。
 RCT_ROSTER_FULL_FMT=英雄名册已满。%d/%d名英雄。升级驿站马车以腾出空间。
-RCT_ADD_FMT=将%s加入英雄名册。按钮。按回车键招募，Esc键取消。
+RCT_ADD_FMT=将%s加入英雄名册。按钮。
 RCT_THIS_HERO=这名英雄
 RCT_STILL_RECRUITING=仍在招募。
 RCT_CANT_NOW=现在无法招募。
@@ -504,8 +503,8 @@ ACT_WING_POS_FMT=%s。活动第%d项，共%d项。
 ACT_SLOT_POS_FMT=位置第%d个，共%d个。
 ACT_CARETAKER_HERE=管家本周在这里。
 ACT_CARETAKER_HERE_SLOT=管家本周在这里。这个位置无法使用。
-ACT_STAYING_FMT=%s，本周留在这里。按回车键将其带出。
-ACT_NOT_CONFIRMED_COST_FMT=%s，尚未确认。%s按回车键确认，退格键将其带出。
+ACT_STAYING_FMT=%s，本周留在这里。
+ACT_NOT_CONFIRMED_COST_FMT=%s，尚未确认。%s
 ACT_CONTAGION_FMT=%s %s
 ACT_CONTAGION_UP_FMT=传染度升至%s。
 ACT_CONTAGION_DOWN_FMT=传染度降至%s。
@@ -513,21 +512,21 @@ INF_UP_FMT=虫害升至%s。
 INF_DOWN_FMT=虫害降至%s。
 ACT_SLOT_LOCKED=已锁定。升级建筑以开放此位置。
 ACT_CLOSED_WEEK=本周关闭。
-ACT_EMPTY_CHOOSE=空。按回车键选择一名英雄。
-ACT_EMPTY_FREE_CHOOSE=空。本周免费。按回车键选择一名英雄。
+ACT_EMPTY_CHOOSE=空。
+ACT_EMPTY_FREE_CHOOSE=空。本周免费。
 ACT_FREE_WEEK=本周免费。
-ACT_NOT_ELIGIBLE=不符合条件。按回车键查看原因。
+ACT_NOT_ELIGIBLE=不符合条件。
 ACT_A_HERO=一名英雄
 ACT_CHOOSE_HERO_FMT=为%s选择一名英雄。%d名可选。
-ACT_PICK_BUSY_FMT=%s无法前来：%s
+ACT_PICK_BUSY=这名英雄正忙。
 ACT_NOT_PLACED=未安排。
-ACT_PLACED_FMT=%s已安排到%s。尚未确认。按回车键确认，退格键将其带出。
+ACT_PLACED_FMT=%s已安排到%s。尚未确认。
 ACT_COMMITTED_PAID_FMT=%s已确认进入%s。支付了%d %s。
 ACT_COMMITTED_FMT=%s已确认进入%s。
 ACT_TAKEN_OUT_REFUND_FMT=%s已从%s带出。退回%d %s。
 ACT_TAKEN_OUT_OF_FMT=%s已从%s带出。
 ACT_TAKEN_OUT_FMT=%s已带出。
-ACT_ALREADY_STAYING=他们已经留在这里。按回车键将其带出。
+ACT_ALREADY_STAYING=他们已经留在这里。
 ACT_NOTHING_TAKE_OUT=这里没有可带出的英雄。
 QT_WORD_LOCK=锁定
 QT_WORD_REMOVE=移除
@@ -551,8 +550,8 @@ QT_DISPLACED_CLEARED_FMT=%s不再设为%s。
 QT_DISPLACED_NOW_FMT=%s现在设为%s。
 QT_TOTAL_COST_FMT=总计%d %s。
 QT_NOTHING_CHOSEN_THERE=那里没有选定任何项目。
-QT_NOTHING_CHOSEN_FMT=%s，尚未选定要治疗的项目。下方是“锁定”和“移除”：在其中一项上按回车键打开列表。然后在这里按回车键确认。退格键将其带出。
-QT_PENDING_FMT=%s，%s。%s按回车键确认，退格键将其带出。
+QT_NOTHING_CHOSEN_FMT=%s，尚未选定要治疗的项目。
+QT_PENDING_FMT=%s，%s。%s
 QT_CHOOSE_TREAT_FIRST=请先选择要治疗的项目。此行下方是这名英雄的特质。
 QT_CLOSED=已关闭。
 HA_NO_HERO=这里没有可处理的英雄。
@@ -845,13 +844,13 @@ EX_NOTHING_FMT=%s：以当前出价换不到任何东西。
 EX_NOT_AVAILABLE=这里无法交易。
 EX_OFFERING_FMT=提供%u %s。
 EX_OFFERING_SET_FMT=提供%u %s。请设置数量。
-EX_OFFERING_HINT_FMT=提供%u %s。上下键设置数量，回车键确认。
+EX_OFFERING_HINT=上下键设置数量，回车键确认。
 EX_CANT_OFFER=无法提供该物品。
 EX_OFFER_MAX=出价不能再高了。
 EX_OFFER_MIN=出价不能再低了。
 EX_OFFER_UNCHANGED=出价没有改变。
 EX_TRADE_IN_PROGRESS=交易进行中。
-EX_NOTHING_TO_RECEIVE=以当前出价换不到任何东西。按加号提高出价。
+EX_NOTHING_TO_RECEIVE=以当前出价换不到任何东西。
 EX_TRADE_UNAVAILABLE=该交易不可用。
 EX_HELP_PICKING=上下键设置数量，回车键确认。
 EX_HELP_IDLE=在一种祖产上按回车键提供它并设置数量。
@@ -865,8 +864,8 @@ TE_TITLE=小镇事件。
 TE_A_HERO=一名英雄
 TE_THIS_HERO=这名英雄
 TE_PRESS_ENTER_TO_FMT=按回车键%s。
-TE_OFFERED_FMT=提供的英雄：%d。%s。上下键查看，C键检视，回车键招募。
-TE_ADD_PROMPT_FMT=将%s加入英雄名册。按钮。按回车键招募，Esc键取消。
+TE_OFFERED_FMT=提供的英雄：%d。%s。
+TE_ADD_PROMPT_FMT=将%s加入英雄名册。按钮。
 TE_ROSTER_FULL_FMT=英雄名册已满。%d/%d名英雄。升级驿站马车以腾出空间。
 TE_HERO_UNREADABLE=无法读取那名英雄。
 TE_CANT_DO_NOW=现在无法进行。
@@ -945,7 +944,7 @@ PM_EXIT_GAME=退出到桌面
 
 # ---- frontend/naming.cpp + frontend/tutorial.cpp (string round, 2026-08-11) ----
 NM_ESTATE_HEAD=为领地命名。
-NM_HELP=输入以编辑，回车键确认，Esc键取消
+NM_HELP=输入以编辑，回车键确认，Esc键取消。
 NM_BLANK=空白
 NM_ESTATE_NAMED_FMT=领地已命名为%s
 NM_SEAL_HELP=按回车键开始战役。
@@ -960,8 +959,8 @@ QZ_BTN_ABANDON=放弃任务
 QZ_GOAL_N_FMT=目标第%d个，共%d个。
 QZ_NOT_READABLE=无法读取。
 QZ_GOAL_UNREADABLE=无法读取目标。
-QZ_HEAD_GOALS_FMT=任务。目标：%d。
-QZ_HEAD_QUEST=任务。
+QZ_HEAD_GOALS_FMT=%s。目标：%d。
+QZ_HEAD_NAME=任务
 QZ_NOTHING_HERE=这里没有内容。
 QZ_NO_QUEST_INFO=没有任务信息。
 QZ_CLOSED=任务面板已关闭。
@@ -988,7 +987,7 @@ RR_DEAD_NO_XP=已死亡。没有获得经验。
 RR_XP_UNKNOWN=经验未知。
 RR_NEW_QUIRK_N_FMT=新特质第%d个，共%d个。
 RR_NEW_QUIRK=新特质。
-RR_QUIRK_HIDDEN=已隐藏。按回车键揭示。
+RR_QUIRK_HIDDEN=已隐藏。
 RR_QUIRKS_REVEALED=特质已揭示。
 RR_HEAD_RESULTS=远征结果。
 RR_HEAD_HEROES=英雄页。
@@ -1086,9 +1085,9 @@ MAP_MOVING_TO_FMT=正在前往%s。
 MAP_STOPPED=已停止。
 MAP_NO_PARTY_POS=无法确定队伍的位置。
 MAP_PROP_IN_REACH_FMT=%s。可触及。
-MAP_DOOR_AT_END_FMT=通往%s的门。按W打开。
-MAP_TRAP_AHEAD=警告：陷阱。按W解除。
-MAP_FARMSTEAD_NO_MOVE=在农庄中地图无法移动队伍。按R打开地牢视图，然后到最后一行继续前进。
+MAP_DOOR_AT_END_FMT=通往%s的门。
+MAP_TRAP_AHEAD=警告：陷阱。
+MAP_FARMSTEAD_NO_MOVE=在农庄中地图无法移动队伍。
 
 # ---- raid/dungeonview.cpp: the ROOM'S ROW LIST (string round, 2026-08-09) ----
 RV_POSITION_FMT=第%d位
@@ -1111,8 +1110,6 @@ RV_LABEL_ENEMY=敌人
 RV_LABEL_PARTY_MEMBER=队伍成员
 RV_EXIT_TO_FMT=通往%s的出口。第%d个，共%d个。
 RV_OBJECT_N_OF_M_FMT=%s。物件第%d个，共%d个。
-RV_PRESS_ENTER_FMT=%s。按回车键。
-RV_LAST_ROW_FMT=%s。这是地牢视图的最后一行。
 RV_TRAP_UNREACHABLE=无法到达陷阱。
 RV_DISARMING_WHO_FMT=%s正在解除%s。
 RV_DISARMING_FMT=正在解除%s。
@@ -1247,8 +1244,8 @@ EV_TRK_PURGE_NEG=治愈特质
 EV_TRK_PURGE_POS=失去特质
 EV_TRK_SUMMON=召唤
 EV_TRK_TORCH_UP=火把增强
-EV_CHOOSE_ITEM_FMT=选择一件物品。%s。回车键使用，Esc键返回。
-EV_CHOOSE_ITEM=选择一件物品。回车键使用，Esc键返回。
+EV_CHOOSE_ITEM_FMT=选择一件物品。%s。
+EV_CHOOSE_ITEM=选择一件物品。
 EV_BAG_EMPTY=背包是空的。
 EV_THE_ITEM=该物品
 EV_ITEM_USED_FMT=已使用%s。
@@ -1258,7 +1255,7 @@ EV_NO_EFFECT_FALLBACK=该物品没有效果。
 EV_CHOICE_FAILED=无法做出该选择。
 
 # ---- raid/inventory.cpp: THE PARTY BAG (string round, 2026-08-09) ----
-INV_TITLE=背包。
+INV_NAME=背包
 INV_NOUN_SLOT=栏位
 INV_EMPTY_FMT=空。%s第%d个，共%d个。
 INV_NAME_COUNT_FMT=%s，%d
@@ -1275,7 +1272,7 @@ INV_EQUIP_CHOOSE_FMT=装备%s。选择目标。%d个可选。
 INV_ALREADY_USED_ITEM=这名英雄本回合已经使用过物品。
 INV_NO_ONE_CAN_USE=现在没有人能使用物品。
 INV_NO_TARGET_SELECTED=没有选中目标。
-INV_MAKE_CAMP_PROMPT=扎营吗？回车键确认，Esc键取消。
+INV_MAKE_CAMP_PROMPT=扎营吗？
 INV_MAKING_CAMP=正在扎营。
 INV_CANT_CAMP_HERE=无法在这里扎营。
 INV_NO_CAMP_HERE=你不能在这里扎营。木柴已保留。
@@ -1329,8 +1326,8 @@ SM_DEBUGLOG_ON_FMT=调试日志已开启。日志文件：%s
 SM_DEBUGLOG_OFF=调试日志已关闭。
 SM_DEBUGLOG_FAIL_FMT=无法创建日志文件%s。调试日志保持关闭。
 SM_CAT_UPDATES=启动时检查更新
-SM_UPDATES_ON=更新检查已开启。启动器会在每次游戏启动时查找新版本。
-SM_UPDATES_OFF=更新检查已关闭。启动器不会查找新版本。
+SM_UPDATES_ON=更新检查已开启。模组会在每次游戏启动时查找新版本。
+SM_UPDATES_OFF=更新检查已关闭。模组不会查找新版本。
 SM_ANN_HEADER=播报。%d项设置。
 SM_ANN_SUBTITLES=字幕
 SM_ANN_SUBS_ON=朗读字幕已开启。
@@ -1366,7 +1363,7 @@ SM_SP_PCT_FMT=%d%%
 SM_SP_SAPI_NOTE=SAPI当前没有在朗读。设置已保存，在它朗读时生效。
 SM_LIST_HEADER_FMT=%s。%d个命令。
 SM_UNASSIGNED=未分配
-SM_CAPTURE_FMT=请按下新的按键用于：%s Esc键取消。
+SM_CAPTURE_FMT=请按下新的按键用于：%s
 SM_MENUKEY_REFUSED=%s用于打开此菜单，不能分配。
 SM_ASSIGNED_FMT=已分配%s。
 SM_STOLEN_FMT=该按键原属于另一个命令，该命令现在未分配：%s
@@ -1429,7 +1426,7 @@ SM_GRP_BLDG_SUB=建筑快捷键
 SM_GRP_SKILLS_SUB=技能快捷键
 SM_SUBMENU=子菜单
 SM_GROUPS_HEADER_FMT=按键。%d个项目。
-SM_BIND_HEADER_FMT=%s。%d个绑定。回车键修改，Delete键清除，退格键恢复默认。
+SM_BIND_HEADER_FMT=%s。%d个绑定。
 SM_ROW_FMT=%s。键盘：%s。手柄：%s
 SM_DEV_KEYBOARD=键盘
 SM_DEV_CONTROLLER=手柄
@@ -1453,7 +1450,7 @@ SM_SLOT_TO_JEWELER=前往珠宝商
 SM_SLOT_FROM_JEWELER=返回货车商人
 SM_SLOT_TO_SHARDS=前往碎片雇佣兵
 SM_SLOT_FROM_SHARDS=返回马车的可招募英雄
-SM_CAPTURE_PAD_FMT=请按下手柄按键用于：%s 长按可绑定为长按操作。Esc键取消。
+SM_CAPTURE_PAD_FMT=请按下手柄按键用于：%s
 SM_MENUKEY_KEEP=菜单键不能清除。
 SM_CLEARED=未分配。
 SM_RESTORED_FMT=已恢复默认：%s。
@@ -1560,9 +1557,9 @@ COM_NONE_SECURED=尚未获得任何奖励。
 FE_UNLABELED_BUTTON=无标签按钮
 EX_NO_HEIRLOOMS=没有祖产。
 EX_NOTHING_TO_TRADE_FOR=没有可换取的物品。
-CS_TRK_UNEQUIP_CONFIRM_FMT=卸下%s？再按一次回车键确认。
+CS_TRK_UNEQUIP_CONFIRM_FMT=卸下%s？
 CS_TRK_FALLBACK=该饰品
-CS_COM_CAP_FMT=你已经装备了%d个技能。请先卸下一个，或按1到%d将此技能放入栏位。
+CS_COM_CAP_FMT=你已经装备了%d个技能。请先卸下一个。
 MAP_AC_BATTLE=战斗
 MAP_AC_AMBUSH=伏击
 MAP_AC_TRAP=陷阱
@@ -1577,11 +1574,12 @@ MAP_AC_AMBUSH_CURIO=有伏击的奇物
 MAP_AC_AMBUSH_TREASURE=有伏击的宝箱
 MAP_AC_SECRET_DOOR=秘门
 MAP_AC_PRISONER=囚犯
-MAP_OPEN_FMT=地图。%s。%s。方向键在房间之间移动，Ctrl加方向键沿通道行走。
+MAP_NAME=地图
+MAP_OPEN_FMT=%s。%s。%s。
 MAP_NOT_WHILE_FIGHTING=战斗中无法移动。
 MAP_KEY_NOT_TAKEN=游戏没有接受移动按键。
 MAP_PARTY_DIDNT_MOVE=队伍没有移动。
-AB_HEADER_ACTIONS=行动。
+AB_HEADER_NAME=行动
 CAMP_ALREADY_USED=已使用
 CAMP_NOT_ENOUGH_TIME=时间不足
 CAMP_NO_FOOD=不吃东西
@@ -1608,3 +1606,300 @@ CLOG_CLEARED=战斗日志已清空。
 
 # ---- Added 2026-10-09: a move that cannot leave its rank (the Musketeer's back-2 / forward-0 from rank 4): the Enter refusal; %s is the game's own Back / Forward tooltip lines ----
 TS_CANT_MOVE_FROM_FMT=无法从第%d位移动。移动：%s。
+
+# ---- Added 2026-10-09: the Ctrl+F FIND overlay (core/find.cpp) -- the query typed so far, the match count, the opener, the refusals, and the keymap row name ----
+FD_OPEN_FMT=查找。项目：%d。
+FD_TYPED_FMT=%s。结果：%d。
+FD_TYPED_NONE_FMT=%s。无结果。
+FD_CLEARED_FMT=已清空搜索。项目：%d。
+FD_NO_RESULTS=无结果。
+FD_NOTHING_HERE=此屏幕上没有可搜索的内容。
+FD_EMPTY=没有可搜索的内容：列表为空。
+FN_FIND=在此屏幕上查找
+
+# ---- Added 2026-10-09: the two link rows at the bottom of the F10 menu (Open the readme / Join the Discord): the row names, the two opened lines and the refusal; %s is the web address ----
+SM_CAT_README=打开自述文件
+SM_CAT_DISCORD=加入Discord
+SM_LINK_README_OPENED=正在浏览器中打开自述文件。
+SM_LINK_DISCORD_OPENED=正在浏览器中打开Discord邀请。
+SM_LINK_FAILED_FMT=无法打开浏览器。地址为%s。
+
+# ---- Added 2026-10-09: the F10 "Control hints" row (Announcements) and the hint halves split off the sentences above -- every line that names a key on a mod-built surface is its own entry now (the fact lines kept their key and were shortened in place); %d in CS_COM_CAP_HINT_FMT is the slot count ----
+SM_ANN_HINTS=操作提示
+SM_ANN_HINTS_ON=操作提示已开启。模组会说明哪个键做什么，例如按回车键确认。
+SM_ANN_HINTS_OFF=操作提示已关闭。模组不再说明哪个键做什么。
+NGC_INTRO_HINT=上下键移动，回车键切换，最后按“确定”。
+NGC_OK_HINT=按回车键开始战役。
+UGC_WINDOW_UNREAD_HINT=按 Escape 关闭。
+UGC_INTRO_HINT=上下键移动，回车键切换，Esc键关闭并保存。
+DLCVIEW_INTRO_HINT=上下键移动，回车键切换，Esc键关闭。
+BD_ROW_RANDOM_HINT=按回车键随机化每个部分。
+BD_ROW_APPLY_HINT=按回车键应用。
+RNG_LEAGUES_CLOSE_HINT=按L或Esc键关闭。
+RV_PRESS_ENTER=按回车键。
+SECRET_ENTER_HINT=站在秘门上，按互动键。
+RCT_ADD_HINT=按回车键招募，Esc键取消。
+ACT_TAKE_OUT_HINT=按回车键将其带出。
+ACT_CONFIRM_HINT=按回车键确认，退格键将其带出。
+ACT_CHOOSE_HINT=按回车键选择一名英雄。
+ACT_NOT_ELIGIBLE_HINT=按回车键查看原因。
+QT_NOTHING_CHOSEN_HINT=下方是“锁定”和“移除”：在其中一项上按回车键打开列表。然后在这里按回车键确认。退格键将其带出。
+EX_INCREASE_HINT=按加号提高出价。
+TE_OFFERED_HINT=上下键查看，C键检视，回车键招募。
+CS_TRK_UNEQUIP_CONFIRM_HINT=再按一次回车键确认。
+CS_COM_CAP_HINT_FMT=或按1到%d将此技能放入栏位。
+RR_REVEAL_HINT=按回车键揭示。
+MAP_OPEN_HINT=方向键：在房间之间移动，Ctrl加方向键：探索通道，Home键：回到队伍。
+MAP_TRAP_DISARM_HINT=按W解除。
+MAP_FARMSTEAD_HINT=按R打开地牢视图，然后到最后一行继续前进。
+RV_LAST_ROW_HINT=这是地牢视图的最后一行。
+EV_CHOOSE_ITEM_HINT=回车键使用，Esc键返回。
+INV_MAKE_CAMP_HINT=回车键确认，Esc键取消。
+SM_BIND_HINT=回车键修改，Delete键清除，退格键恢复默认。
+SM_CAPTURE_HINT=Esc键取消。
+SM_CAPTURE_PAD_HINT=长按可绑定为长按操作。Esc键取消。
+FD_OPEN_HINT=输入以搜索，Escape取消。
+# ---- Added 2026-10-10: the MOD TUTORIAL dialogs (core/modtutorial.cpp) -- the F10 "Mod tutorials" row, the title screen's five paragraphs, the checkbox and OK rows, the opt-out hint, the no-topic refusal and the keymap row name; %s in MT_OPTOUT_FMT is checked / unchecked ----
+SM_ANN_TUTORIALS=模组教程
+SM_ANN_TUT_ON=模组教程已开启。首次进入新界面时会显示帮助信息。
+SM_ANN_TUT_OFF=模组教程已关闭。帮助信息不再自动显示。
+MT_TITLE_P1=欢迎来到 Darkest Dungeon！像这样的模组教程会在游戏的许多地方自动出现，帮助你学习如何游玩。你也可以随时按 F1 查看当前界面的帮助。
+MT_TITLE_P2=基本操作：使用方向键、十字键或左摇杆在用户界面中移动。按 Enter 键或手柄的 A 键确认。按 Escape 键或手柄的 B 键返回上一界面、取消操作或打开暂停菜单。
+MT_TITLE_P3=朗读弹窗：按逗号键可重新朗读当前弹窗或对话框。
+MT_TITLE_P4=朗读提示框：提示框包含英雄、敌人、物品、技能等的详细信息。默认情况下会自动朗读，但可以在模组设置中或按 F3 更改。按 Ctrl+上下方向键可逐行朗读。有些提示框分为多个部分，按 Ctrl+左右方向键可在各部分之间切换。使用手柄时，按住左扳机并用十字键或左摇杆导航。
+MT_TITLE_P5=搜索：在游戏的大多数区域按 Ctrl+F 即可搜索。
+MT_TITLE_P6=设置：在游戏的任何地方按 F10 即可打开模组设置。游戏选项位于暂停菜单中。部分选项（例如游戏音量和音乐音量）使用滑块，可以用左右方向键调节。
+MT_TITLE_P7=支持：GitHub 上的 readme 提供了 Darkest Dungeon 各个部分的入门指南。如果你遇到错误、有反馈或需要帮助，可以在 Discord 上联系我。readme 和我的 Discord 服务器的链接都在模组设置中。
+MT_TITLE_P8=如果你不想再看到这样的信息，请勾选下方的复选框以关闭模组教程。
+MT_OPTOUT_FMT=不再显示模组教程，复选框，%s。
+MT_OK=确定，按钮。
+MT_OPTOUT_HINT=你仍然可以按 F1 打开教程，或在模组设置中重新开启。
+MT_NONE_HERE=此界面没有模组教程。
+MT_CLOSED=已关闭。
+FN_MOD_TUTORIAL=此界面的模组教程
+# ---- Added 2026-10-10 (evening): the CAMPAIGN (save-slot) screen's mod tutorial (core/modtutorial.cpp, six paragraphs: the screen, a new game, naming the estate, deleting, DLC, mods); the mods button's Space hint and its refusal sit in their own blocks above ----
+MT_CAMP_P1=战役界面：共有九个战役存档位，每个存档位右侧有三个按钮（删除、DLC 和模组）。界面顶部有一个 Butcher's Circus 按钮，这是一个可免费下载的竞技多人模式。
+MT_CAMP_P2=开始新游戏：激活一个空存档位即可开始新游戏。如果你拥有 DLC，接下来会选择要为该战役添加的内容。之后选择难度，最后为你的庄园命名。激活新建的存档即可开始。
+MT_CAMP_P3=为庄园命名：编辑框中已预先填入 Darkest 一词，最多可输入 10 个字符。输入或删除文字时，你会听到更新后的内容。按 Enter 键完成并创建新存档。
+MT_CAMP_P4=删除存档：每个存档位右侧都有一个删除按钮，也可以按键盘上的删除键。删除前会要求你确认。
+MT_CAMP_P5=DLC 内容：按 Shift+Enter 或使用现有存档位右侧的按钮，可以随时查看该战役已启用的 DLC，或启用更多内容。但请注意，DLC 一旦启用，在该战役的剩余时间里就无法再禁用。
+MT_CAMP_P6=启用模组：按空格键或使用现有存档右侧的按钮，可以打开该战役的模组管理器，在那里可以启用或禁用模组。请注意，不建议在战役进行中禁用模组，因为这可能损坏你的存档文件。
+# ---- Added 2026-10-10 (night): the DUNGEON VIEW's mod tutorial (core/modtutorial.cpp, twelve paragraphs: the view, heroes, interaction, light, the log, map/inventory, movement, navigation assist, party order, quests, review mode, skills) ----
+MT_DUNG_P1=地牢视图：游戏的大部分时间都在横向卷轴的地牢中进行。你的角色排列在屏幕左侧，面朝右方，也就是物品、敌人和门出现的方向。因此你的队伍从右到左编号，而面朝左方的敌人则从左到右编号。
+MT_DUNG_P2=英雄：队伍最多可以有四名英雄。按 Q/E（手柄为 LB/RB）可切换当前英雄。当前英雄会与奇物、宝藏和陷阱互动，并承受其影响。按 C（手柄为 X）可随时打开当前英雄的角色面板。队伍中每个角色的提示框里都有其当前状态的摘要。
+MT_DUNG_P3=互动：按 W 可与奇物、障碍物和宝藏互动，穿过门，以及解除陷阱（手柄为 LT+A）。你也可以直接激活当前有焦点的对象。
+MT_DUNG_P4=光照：按 L 可朗读当前光照等级及其效果。光照会随时间下降，需要用火把补充。T 点亮火把，Shift+T 调暗一级，Ctrl+Shift+T 则完全熄灭。使用手柄时，按住 LT 再按 Y 点亮火把，按 B 调暗，长按 LT+B 熄灭。
+MT_DUNG_P5=日志：随着你在地牢中前进，英雄们会遇到各种各样的事。按句号键（手柄为 LT+RB）可打开战斗日志，其中记录了发生过的一切。Page Up 和 Page Down 每次移动十条记录，按 Delete 键可以清空整个日志。
+MT_DUNG_P6=地图/背包：地牢地图和队伍背包共用屏幕上的同一个面板。Tab 将焦点移到该面板并在两者之间切换。你也可以按 M 或 I 直接打开地图或背包（手柄为 LT/RT）。
+MT_DUNG_P7=移动：地牢由一系列通过走廊相连的房间组成。你在地图上选择下一个要前往的房间，然后用 D 前进、A 后退（手柄为右摇杆）带领队伍穿过走廊。前进始终是向右，朝着你选定的目的地。
+MT_DUNG_P8=导航辅助：Shift+A/D 每次只移动一格，这样播报不会被打断，你也不会错过任何东西。在房间里，它会把你带到房间内奇物或宝藏的可触及范围内。它还能防止你踩到队伍已经发现的陷阱。
+MT_DUNG_P9=队伍阵型：战斗中队伍顺序可能会被打乱。要移动某个英雄，在该英雄上按 Enter（手柄为 A），然后选择新位置。战斗结束后，在任意英雄上按 Shift+Enter（手柄长按 A）可快速恢复默认队伍阵型。
+MT_DUNG_P10=任务：地牢视图上方是任务面板，显示当前目标，以及一个用于撤出战斗、放弃任务或完成任务并返回城镇的按钮。你也可以按 G 直接跳转到目标，或按 Shift+Escape 作为快捷键，根据当前情况撤退、放弃任务或返回小镇。
+MT_DUNG_P11=查看模式：按 Alt+1 到 Alt+4 可快速查看队伍每个位置上是谁。战斗中，Alt+5 到 Alt+8 可查看敌方每个位置上站着谁。
+MT_DUNG_P12=技能：当前英雄的技能位于地牢视图下方的行动栏。按波浪号键（数字 1 左边）也可以从任何地方直接跳转到那里。战斗中，按 1 到 5 可按行动栏上的位置快速选择技能。5 始终是移动行动。
+# ---- Added 2026-10-10 (night, second round): the in-raid MAP's mod tutorial (core/modtutorial.cpp, four paragraphs: the map and scouting, room to room + Enter, Ctrl+arrows along hallways, Home) ----
+MT_MAP_P1=地图：在地图上可以查看地牢的布局并选择下一个目的地。你能看到多少取决于队伍的侦察。
+MT_MAP_P2=用方向键把光标从一个房间移到另一个房间。在与队伍当前位置相邻的房间上按 Enter，队伍就会进入连接两者的走廊。
+MT_MAP_P3=按住 Ctrl 并使用方向键，可沿走廊逐格移动光标（手柄为 LT+十字键或左摇杆）。
+MT_MAP_P4=按 Home 可让光标回到队伍当前位置（手柄为按下左摇杆）。
+# ---- Added 2026-10-10 (night, third round): the in-raid INVENTORY's mod tutorial (core/modtutorial.cpp, five paragraphs: the grid, using an item, equipping a trinket, rearranging, discarding) ----
+MT_BAG_P1=背包：背包共有 16 个格子，分成两排，每排八个。
+MT_BAG_P2=激活一件物品后，可以将它用在你的某位英雄身上。战斗中，每位英雄每回合只能对自己使用一件物品。
+MT_BAG_P3=激活一件饰品后，可以将它装备给你的某位英雄，前提是该英雄有空余的饰品栏。
+MT_BAG_P4=你可以用空格键（手柄为按下左摇杆）重新排列背包中的物品。
+MT_BAG_P5=你可以用 Delete 键（手柄长按 Y）从背包中移除物品。
+# ---- Added 2026-10-11: the CHARACTER SHEET's mod tutorial (core/modtutorial.cpp, eleven paragraphs: the sheet, the walk, quirks, base stats, equipment, trinkets, combat skills, camping skills, reassigning skills, diseases, manage) ----
+MT_CS_P1=角色面板：在这里可以查看英雄的全部信息、装备饰品，以及更换他们的战斗技能和扎营技能。
+MT_CS_P2=上/下在各个区域之间移动。左/右浏览每一行中的信息。
+MT_CS_P3=特质：影响该角色的特性。正面特质和负面特质各最多可以有 5 个。当获得的新特质会超出上限时，它会随机替换另一个特质。
+MT_CS_P4=基础属性：英雄的最大生命值、命中、防护等。任何特殊修正都会以提示框显示。
+MT_CS_P5=装备：每个职业独有的武器和护甲，会影响该英雄的基础属性，并且可以在城镇中升级。
+MT_CS_P6=饰品：装备给角色的特殊物品。每个角色最多可以装备两件饰品，在饰品栏上按 Enter 或从背包中装备。
+MT_CS_P7=战斗技能：英雄在战斗中可以采取的行动。每个技能的提示框会显示其效果、可以在哪些位置使用，以及可以瞄准哪些位置。所有技能的伤害、命中和暴击率都基于你的基础属性，但某个技能可能会对其进行修正。例如，一个标注 30 百分比伤害的技能，造成的伤害就是你基础伤害的 30 百分比。战斗技能区域还包含一份摘要，说明当前装备的技能中有多少可以在各个位置使用，以及它们可以瞄准哪些位置。
+MT_CS_P8=扎营技能：英雄在扎营时可以采取的行动。每个技能的提示框会描述其效果、可以瞄准谁，以及需要花费多少时间。
+MT_CS_P9=你可以按 Enter 选中和取消选中技能，按你希望它们出现在行动栏上的顺序来重新分配技能。或者，按数字 1 到 4 把技能快速分配到特定的栏位。
+MT_CS_P10=疾病：冒险中通过各种途径获得的负面特性，必须在城镇中治愈。
+MT_CS_P11=管理：为英雄改名或将其从队伍名单中遣散的选项。
+# ---- Added 2026-10-11: the HAMLET's mod tutorial (core/modtutorial.cpp, nine paragraphs: the hamlet, the Tab walk, locations, roster, resources, the trinket inventory, the activity log, town events, embarking -- a buildings paragraph was P9 here for part of the day and moved to the building topic at the end of the file) ----
+MT_HAM_P1=小镇：在冒险之间，你在这里管理英雄、物品和其他资源。
+MT_HAM_P2=按 Tab 和 Shift+Tab 可以在小镇界面的各个区域之间切换（手柄为 RT 和 LT）。
+MT_HAM_P3=小镇地点：地图以列表形式呈现。每座建筑都有特定的功能，大多数都可以升级。有字母快捷键可以直接打开各座建筑（完整列表见 readme 或模组的操作设置）。
+MT_HAM_P4=英雄名册：在这里可以查看你的所有英雄，排成一个竖向列表。顶部是一条横向栏，显示名册上限和名册排序选项。你也可以手动调整英雄位置：按空格键拿起英雄，移动到想要的位置，再按一次空格键放下（手柄为按下左摇杆）。
+MT_HAM_P5=资源：显示你拥有的金币、祖产和其他资源的数量。交易祖产按钮可以用一种祖产换取另一种。
+MT_HAM_P6=饰品栏：按 I 键打开饰品栏，其中是未装备给任何角色的饰品。网格上方有卸下所有英雄饰品的选项，以及对网格中物品排序的选项。在饰品上按 Enter 可以把它装备给一名英雄。按 Shift+Enter 可以把不需要的饰品卖掉换取金币。
+MT_HAM_P7=活动日志：按句号打开每一周所发生事情的记录。
+MT_HAM_P8=小镇事件：冒险归来的大多数周都会发生小镇事件，可能带来各种正面或负面的效果。窗口打开时，按逗号可以重新朗读，按 Escape 关闭；随时可以按 Shift+句号重新打开。
+MT_HAM_P9=启程：按 E 启程前往下一个任务。
+
+# ---- Added 2026-10-11: the EMBARK screen's mod tutorial (core/modtutorial.cpp, five paragraphs: quest planning, the Tab walk, the quest map, the party lineup, provisions) ----
+MT_EMB_P1=任务规划：在这个界面上，你要选择挑战的任务并组建英雄队伍。
+MT_EMB_P2=按 Tab 和 Shift+Tab 在不同区域之间切换。
+MT_EMB_P3=任务地图：按左/右浏览地图上的地点。按上/下查看该地点的任务。每个任务的更多信息见其提示框。按 Enter 选择任务。
+MT_EMB_P4=队伍阵型：位置从右到左编号，与地牢中的排列一致。在一个空位上按 Enter 打开名册，选择要安排到该位置的英雄。若选中的正是该位置上的英雄，则会将其移出队伍。用空格键（手柄为按下左摇杆）调整队伍中英雄的位置而不移出他们。
+MT_EMB_P5=补给：按 E（手柄为按下右摇杆）进入补给商，为远征购买物资。
+
+# ---- Added 2026-10-11: the PROVISIONING screen's mod tutorial (core/modtutorial.cpp, six paragraphs: provisioning, the Tab walk, the provisioner's two grids, quest info, the party lineup, embarking) ----
+MT_PROV_P1=补给：在这个界面上，你要为冒险购买物资。
+MT_PROV_P2=用 Tab 和 Shift+Tab 在不同区域之间切换。
+MT_PROV_P3=补给商：主区域分为两列。左边是商店的货物，右边是你的物品。按 Enter 键购买或退回单个物品，按 Shift+Enter 购买或退回整堆。
+MT_PROV_P4=任务信息：任务信息面板显示你所选任务的信息以及队伍的侦查几率。
+MT_PROV_P5=队伍阵型：在这个界面上你同样可以查看和管理队伍中的英雄。
+MT_PROV_P6=启程：按 E（按下右摇杆）完成准备并开始任务。
+
+# ---- Added 2026-10-11: a BUILDING interior's mod tutorial (core/modtutorial.cpp, one paragraph, moved out of the hamlet topic the same day: rows and columns, U = LT opens the upgrades, Page Up / Page Down swap buildings) ----
+MT_BLDG_P1=建筑：每座建筑的界面通常按行和列组织。在建筑内按 U 键（手柄为 LT）可以打开升级菜单。用 Page Up 和 Page Down 可以快速切换到其他建筑。
+
+# ---- Added 2026-10-11: a CAMP's mod tutorial (core/modtutorial.cpp, three paragraphs: the two phases, respite points and the rest button, Q/E and the camping skills on the action bar) ----
+MT_CAMPING_P1=扎营分为两个阶段。首先，你要在一个简单的选项列表中选择吃多少食物。第二个阶段是技能阶段，你的英雄可以在此使用扎营技能来治疗、减少压力，并为接下来的旅程强化自己。
+MT_CAMPING_P2=在技能阶段，你会在地牢视图的读报中听到自己还有多少休整点数。每个扎营技能都要花费一定数量的点数。当剩余点数不超过 6 时，行动栏上会出现一个休息按钮，按下它就会结束扎营，回到普通的地牢。
+MT_CAMPING_P3=按 Q/E（手柄为 LB/RB）切换选中的英雄，并在地牢视图下方的行动栏中找到其扎营技能。查看技能的提示框可以了解每个技能的作用。
+
+# ---- Added 2026-10-11: THE BUTCHER'S CIRCUS mod tutorials (core/modtutorial.cpp, one topic per Circus screen: the Banner Designer (five paragraphs), the Dueling Grounds (two), the Prize Box (one), the Ranking Board (two), The Ring (six)) ----
+MT_BANNER_P1=旗帜设计师：旗帜相当于你的玩家徽记，其他玩家会在比赛中看到它。旗帜由六个部件组成，完成比赛后会作为奖励解锁。
+MT_BANNER_P2=这个界面的布局相当简单。焦点落在一个竖向的标签列表上，旗帜的每个部件各有一个标签。标签下方有一个随机选择的按钮和一个应用全部更改的按钮。标签右侧是一个网格，显示所选标签的各个部件。
+MT_BANNER_P3=按 Ctrl+Enter 保存你的更改。
+MT_BANNER_P4=按 R 随机生成一面旗帜。
+MT_BANNER_P5=按 B 键朗读当前旗帜设计的完整摘要。
+MT_DUEL_P1=决斗场：在这里你可以向其他玩家发起私人比赛。它有两列：左边是你的好友列表，在任意在线好友上按 Enter 即可发送邀请；右边是一个区域，可以输入玩家的 Steam ID 来邀请对方。或者，你也可以创建一个大厅 ID，只要双方输入相同的 ID 就会连接到一起。
+MT_DUEL_P2=连接之后，你需要选择一支队伍并按 E 表示已准备好。玩家都准备好后，比赛就会开始。
+MT_PRIZE_P1=奖品箱：在这里可以查看你积累了多少声望、已经解锁的奖励，以及后续等级会解锁的内容。它是一个简单的网格。上/下在声望等级之间移动，左/右浏览该等级各项奖励的详情。在旗帜部件上按 Enter 会带你到旗帜设计师中预览它。
+MT_RANK_P1=排名榜：在这里可以查看你的多人排名和比赛记录。顶部列出你当前的排名、下一个排名，以及达成它的进度。赢得比赛会获得骷髅，推动你向下一排名前进。输掉比赛可能会失去骷髅，甚至掉落一个排名。
+MT_RANK_P2=排名信息下方是一个列表，顶部有两个标签页：匹配记录对应公开比赛，挑战记录对应你在决斗场的战绩。用左/右方向键切换标签页，上/下浏览列表。在每一行你会听到战斗的结果、双方队伍中的英雄，以及谁在战斗中被杀。
+MT_RING_P1=擂台：这是 The Butcher's Circus 的主要区域，你在这里组建队伍、为他们装备饰品，并派他们上场战斗。这里的一切同样适用于通过决斗场进行的私人比赛。
+MT_RING_P2=队伍阵型及其操作与单人战役完全相同。Enter 选择，C 查看角色面板，空格键调整位置。
+MT_RING_P3=装备饰品的方式也与战役完全相同。在英雄角色面板的饰品栏上按 Enter，或者按 I 打开饰品栏，在饰品上按 Enter，然后选择要装备给谁。
+MT_RING_P4=准备好与其他玩家开始比赛时按 E（手柄为按下右摇杆）。你的第一场比赛是一场对阵 AI 对手的教学赛。
+MT_RING_P5=按 P 可以开始一场练习赛或重玩教学赛（手柄为 LB）。
+MT_RING_P6=按 L 打开各联赛排名的参考说明（手柄为 RB）。
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's batch (main menu, pause menu + options sliders, hamlet arrival + jump letters, buildings + upgrades + recruits, trinket inventory, resources bar, heirloom exchange). All thirteen are AXH entries: blank while the F10 "Control hints" row is Off ----
+ENTER_ACTIVATE_HINT=按回车键激活。
+FE_TITLE_HINT=Esc键：游戏选项，F10键：模组设置，F1键：模组帮助。
+OPT_ADJUST_HINT=左右键调整。
+TM_ARRIVAL_HINT=Tab和Shift+Tab：下一个和上一个区域，句点：活动日志，Shift+句点：小镇事件，R：资源，I：饰品栏，E：启程。
+TM_ROW_KEY_FMT=%s（%s）
+BLD_ARRIVAL_HINT=按U键打开升级，Page Up和Page Down：上一座和下一座建筑。
+BLD_UPGRADE_HINT=按回车键升级。
+RCT_ROW_HINT=回车键招募，C键查看角色面板。
+RI_TRINKET_HINT=回车键装备给英雄，Shift加回车键出售。
+RI_TRINKET_CIRCUS_HINT=回车键装备给英雄。
+EX_SELECT_HINT=按回车键选择。
+EX_ADJUST_HINT=按回车键调整出价。
+EX_TRADE_HINT=按回车键交易。
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's second batch (roster rows + sort buttons, the sheet's two skill grids + Manage, the embark quest list, the party lineup, the provisioner's two grids). All AXH: blank while the F10 "Control hints" row is Off ----
+ROS_HERO_HINT=回车键或C键查看角色面板，空格键调整顺序。
+ROS_PICK_SELECT_HINT=按回车键选择，C键查看角色面板。
+ROS_PICK_REMOVE_HINT=按回车键移出，C键查看角色面板。
+CS_SKILL_SELECT_HINT_FMT=按回车键选择，数字键1到%d：快速分配。
+CS_SKILL_DESELECT_HINT_FMT=按回车键取消选择，数字键1到%d：快速分配。
+PTY_EMPTY_HINT=按回车键选择一名英雄。
+PTY_FILLED_HINT=按回车键更换，空格键调整队伍顺序。
+PROV_BUY_HINT=回车键购买，Shift加回车键购买整组。
+PROV_SELL_HINT=回车键出售，Shift加回车键出售整组。
+
+# ---- Added 2026-10-12: THE UPDATE CHECK moved from the retired launcher into the mod (core/updatecheck.cpp): the one "update available" line, spoken once at startup in the session language. %s 1 = the newer version, %s 2 = the installed one, digits only ----
+UPDATE_AVAILABLE_FMT=无障碍模组有可用更新：版本 %s。你当前的版本是 %s。请运行 Blindest Dungeon 安装程序进行更新。
+
+# ---- Added 2026-10-12: CONTROL HINTS, the dev's DUNGEON batch (the quest bar's key and button row, the action bar's key / portrait / skill, skip and reorder buttons with their greyed state, the dungeon view's arrival keys and its party and object rows, the targeting layer's commit line, the map's and the bag's panel lines with the Tab switch, each bag item, the combat log's header, the light meter's torch keys). All AXH: blank while the F10 "Control hints" row is Off ----
+AB_PORTRAIT_HINT=C键：查看角色面板。
+AB_PORTRAIT_HINT_SWAP=C键：查看角色面板，Q键和E键：更换选中的英雄。
+AB_SKIP_HINT=按回车键跳过这名英雄的回合。
+AB_REORDER_HINT=按回车键恢复队伍顺序。
+RV_HEAD_HINT=R键：房间概要，L键：朗读当前光照，句点：打开战斗日志。
+RV_PARTY_ROW_HINT=按回车键移动，Shift加回车键：默认队伍顺序。
+RV_PROP_USE_HINT=按回车键或W键互动。
+RV_TRAP_DISARM_HINT=按回车键或W键解除。
+RV_PROP_WALK_HINT=按回车键走过去。
+TS_USE_ON_HINT_FMT=按回车键使用%s，目标：%s。
+TS_USE_HINT_FMT=按回车键使用%s。
+TS_MOVE_TO_HINT_FMT=按回车键移动到第%d位。
+INV_EQUIP_ON_HINT_FMT=按回车键装备%s，目标：%s。
+MAP_TAB_HINT=按Tab键切换到背包。
+INV_TAB_HINT=按Tab键切换到地图。
+INV_ROW_HINT=回车键：使用物品，Delete键：丢弃，空格键：调整顺序。
+INV_ROW_TRINKET_HINT=回车键：装备给英雄，Delete键：丢弃，空格键：调整顺序。
+INV_ROW_NO_USE_HINT=Delete键：丢弃，空格键：调整顺序。
+CLOG_OPEN_HINT=Esc键：关闭，Page Up和Page Down：移动十行，Delete键：清空战斗日志。
+LIGHT_KEYS_HINT=T键：点亮火把，Shift加T键：调暗火把，Ctrl加Shift加T键：熄灭火把。
+
+# ---- Added 2026-10-13: CONTROL HINTS, the dev's SWEEP batch (the loot window, the camp's Rest button, the raid map's rooms, the hamlet locations, the districts, the building shops and the shard mercenaries, the glossary and help's close key, the F10 menu's value rows, the banner designer's preview key, the ranking board's sections). All AXH: blank while the F10 "Control hints" row is Off ----
+LOOT_ROW_HINT=按回车键拿取，空格键：全部拿取。
+AB_REST_HINT=按回车键结束扎营。
+MAP_TRAVEL_HINT=按回车键前往。
+TM_ROW_OPEN_HINT=按回车键打开。
+DST_BUILD_HINT=按回车键建造。
+SHOP_BUY_HINT=按回车键购买。
+RCT_SHARD_ROW_HINT=回车键雇佣，C键查看角色面板。
+GL_CLOSE_HINT=Esc键关闭。
+SM_CHOICE_HINT=按回车键激活，左右方向键：更改设置。
+BD_PREVIEW_KEY_HINT=B键：预览旗帜。
+RB_SECTION_HINT=左右方向键：切换栏目。
+
+# ---- Added 2026-10-14: the Medical Ward's pick filter (its roster list shows only the heroes with a disease; this is the line the slot row speaks when there is none) ----
+ACT_NO_DISEASED_HERO=名册中没有英雄患有可治疗的疾病。
+
+# ---- Added 2026-10-16: the tooltip channel (F10 -> Announcements -> "Automatically speak tooltips": the row and its On / Off outcome lines) ----
+SM_ANN_TOOLTIPS=自动朗读提示
+SM_ANN_TIPS_ON=自动提示已开启。朗读一行后会紧接着朗读该行的提示。
+SM_ANN_TIPS_OFF=自动提示已关闭。只有在请求时才朗读提示。
+
+# ---- Added 2026-10-16: raid results, heroes page -- the hero the Farmstead's Endless Harvest took instead of killing (Color of Madness "in time and space"); the game swaps the portrait, this is the picture in words ----
+RR_LOST_TIME_SPACE=迷失在时空之中。
+
+# ---- Added 2026-10-16: raid results, the heirloom totals row (the game's per-kind counter strip under the heirloom grid; %s of the first = the list, each item = the second with the count and the game's own kind name) ----
+RR_HEIRLOOM_TOTAL_FMT=祖产总计：%s。
+RR_HEIRLOOM_TOTAL_ITEM_FMT=%d %s
+
+# ---- Added 2026-10-16: raid results, the Color of Madness WAVE skin (Endless Harvest): the shard row = the game's title + the number; the two fallbacks for the DLC's own "Collected Comet Shards" / "KILLS: %d" when the key is missing ----
+RR_WAVE_SHARDS_FMT=%s：%d。
+RR_SECT_SHARDS=已收集彗星碎片
+RR_WAVE_KILLS_FMT=击杀数：%d。
+
+# ---- Added 2026-10-16: the F10 Announcements row "Expand abbreviations" and its table. The ABBR_* half is NOT a translation of the English letters: it is what the game's own text in this language writes (comma-separated when it uses more than one), matched as whole words; the _FULL half is what to say instead. Sweep of the shipped string tables: the Chinese tables write the words out; the English spellings stay for the places the game leaves English in. ----
+SM_ANN_ABBREV=展开缩写
+SM_ANN_ABBREV_ON=展开缩写已开启。缩写的属性将以完整词语朗读。
+SM_ANN_ABBREV_OFF=展开缩写已关闭。缩写的属性将按游戏的写法朗读。
+ABBR_ACC=acc
+ABBR_ACC_FULL=精准
+ABBR_CRIT=crit
+ABBR_CRIT_FULL=暴击
+ABBR_DMG=dmg
+ABBR_DMG_FULL=伤害
+ABBR_DOT=DOT
+ABBR_DOT_FULL=持续伤害
+ABBR_HP=HP
+ABBR_HP_FULL=生命值
+ABBR_MAX_HP=max hp
+ABBR_MAX_HP_FULL=最大生命值
+ABBR_PROT=prot
+ABBR_PROT_FULL=防御
+ABBR_SPD=spd
+ABBR_SPD_FULL=速度
+
+# ---- Added 2026-10-16: the F10 Announcements row "Glossary definitions" (its three values and three outcome lines) and KW_DEF_FMT, the one line "<term>: <definition>" -- both halves are the game's own glossary text in this language, so only the punctuation is the translator's ----
+SM_ANN_KEYWORDS=术语表定义
+SM_ANN_KW_V_SPOKEN=随提示一起朗读
+SM_ANN_KW_V_BUFFER=仅在提示缓冲区中
+SM_ANN_KW_SPOKEN=术语表定义随提示一起朗读。提示的末尾会朗读其中提到的每个术语表术语的定义。
+SM_ANN_KW_BUFFER=术语表定义仅在提示缓冲区中。按请求朗读提示时，它们跟在提示自身的各行之后。
+SM_ANN_KW_OFF=术语表定义已关闭。
+KW_DEF_FMT=%s：%s
+
+# ---- Added 2026-10-16: the quest tooltip's rewards heading (the fallback for the game's own town_quest_rewards; the two per-line "Reward: %s" formats it replaced were removed above) ----
+EMB_REWARDS_HEAD=奖励
+
+# ---- Added 2026-10-17: the item card's value line in the raid bag and the loot window (the game's hover "[Value: N Gold Each]"; %d the unit value, %s the game's currency name, the second %d a stack's sum) -- the 2026-10-16 results-screen wording, moved to the grids that show it ----
+INV_VALUE_FMT=价值：%d %s。
+INV_VALUE_EACH_FMT=价值：%d %s，共计：%d。
+
+# ---- Added 2026-10-17: the welcome tutorial's Control hints paragraph and the two F10 toggles' key names (F2 control hints, F3 automatic tooltips); MT_TITLE_P4 above gained its second sentence in place ----
+MT_TITLE_HINTS=操作提示：模组会在每个界面和控件上告知可用的命令。你可以在模组设置中或按 F2 关闭它们。
+FN_CONTROL_HINTS=操作提示开或关
+FN_AUTO_TOOLTIPS=自动提示开或关
+
+# ---- Added 2026-10-17: the Expand abbreviations table's round / rounds pair (the game's DOT, mark and stealth durations: 'pts/rd for 3 rds'). Same rule as the ABBR_* block: the spelling half is what the game writes in this language, the _FULL half the word to say. Sweep: the Chinese tables write 回合 in full; the English spellings are kept for the places the game leaves English in ----
+ABBR_RD=rd
+ABBR_RD_FULL=回合
+ABBR_RDS=rds
+ABBR_RDS_FULL=回合

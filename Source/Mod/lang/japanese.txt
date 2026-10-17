@@ -93,16 +93,18 @@ SLOT_EMPTY_NO_DELETE=このスロットは空です。
 SLOT_HINT_LOAD=エンターキーで探索をロードします。
 SLOT_HINT_DLC=シフトキーとエンターキーでDLCを表示または有効化します。
 SLOT_HINT_DELETE=デリートキーでセーブデータを消去します。
-NGC_INTRO_N=新規ゲームの追加コンテンツ。ダウンロードオプション%d件。上下キーで移動、エンターキーで切り替え、最後にOKを選びます。
+SLOT_HINT_MODS=スペースキーでModを表示または有効化します。
+NGC_INTRO_N=新規ゲームの追加コンテンツ。ダウンロードオプション%d件。
 NGC_ITEM_STATE=%s、%s。
-NGC_OK_ROW=OK。エンターキーで探索を開始します。
+NGC_OK_ROW=OK。
 NGC_NO_OK=続行できませんでした。
 DLC_BTN_NONE=このスロットにDLCの選択肢はありません。
 DLC_BTN_FALLBACK=DLCを有効化または表示
 UGC_BTN_FALLBACK=MODを有効化または表示
-UGC_WINDOW_UNREAD=MODウィンドウはまだ読み上げできません。Escapeキーで閉じます。
-UGC_INTRO_N=MOD：%d件。上下キーで移動、エンターキーで切り替え、エスケープキーで閉じて保存します。
-DLCVIEW_INTRO_N=このセーブデータのダウンロードコンテンツ。%d件。上下キーで移動、エンターキーで切り替え、エスケープキーで閉じます。
+UGC_BTN_NONE=このスロットにModの選択肢はありません。
+UGC_WINDOW_UNREAD=MODウィンドウはまだ読み上げできません。
+UGC_INTRO_N=MOD：%d件。
+DLCVIEW_INTRO_N=このセーブデータのダウンロードコンテンツ。%d件。
 
 # ---- dlc/butchers_circus/dueling.cpp: the Dueling Grounds ----
 DG_MODE_FRIENDS=フレンドリスト
@@ -163,8 +165,7 @@ RB_UNREADABLE=ランキングボードを読み取れません。
 BD_TAB_SECTION_FMT=タブ%d、全%d件。
 BD_TAB_CURRENT=選択中。
 BD_TAB_CHANGED=未適用。
-BD_ROW_RANDOM=ランダムバナー。エンターキーで全セクションをランダムにします。
-BD_ROW_APPLY_FMT=%s。エンターキーで適用します。
+BD_ROW_RANDOM=ランダムバナー。
 BD_APPLY_FALLBACK=すべて適用
 BD_NO_CHANGES=適用する変更はありません。
 BD_UNSAVED=未保存の変更があります。
@@ -234,14 +235,14 @@ RNG_LEAGUE_TIERS_FMT=%s：ティア%u件。
 RNG_LEAGUES_EMPTY_FMT=%s。リーグの一覧は空です。
 RNG_LEAGUES_CLOSED=リーグを閉じました。
 RNG_LEAGUES_DIDNT_OPEN=リーグのウィンドウが開きませんでした。
-RNG_LEAGUES_STILL_OPEN=リーグのウィンドウはまだ開いています。エスケープキーを押してください。
-RNG_LEAGUES_OPEN_HINT=リーグのウィンドウが開いています。Lキーまたはエスケープキーで閉じます。
+RNG_LEAGUES_STILL_OPEN=リーグのウィンドウはまだ開いています。
+RNG_LEAGUES_OPEN=リーグのウィンドウが開いています。
 RNG_PRACTICE_DIDNT_OPEN=練習試合のダイアログが開きませんでした。
 RNG_TB_MISSING=ここでは利用できません。
 RNG_TB_BUSY=処理中です。
 
 # ---- dlc/butchers_circus/pit.cpp: choosing which hero acts ----
-PIT_PICK_OPEN_FALLBACK=行動するヒーローを選んでください。エンターキーを押します。
+PIT_PICK_OPEN_FALLBACK=行動するヒーローを選んでください。
 PIT_ACTING_HEAD_FMT=%sの行動です。アクション。
 PIT_ACTING_FMT=%sの行動です。
 PIT_CANT_ACT_FMT=%sはこのターン行動できません。
@@ -372,8 +373,6 @@ EMB_REQUIRES_FMT=必要なもの：%s。
 EMB_REQUIRES_N_FMT=必要なもの：%s、%u。
 EMB_ROW_POS_FMT=クエスト%d件目、全%d件。
 EMB_ROW_SELECTED=選択中。
-EMB_REWARD_FMT=報酬：%s。
-EMB_REWARD_N_FMT=報酬：%s、%u。
 EMB_ALREADY_SELECTED_FMT=%sはすでに選択されています。
 EMB_STILL_SELECTING=選択中です。
 EMB_CANT_SELECT_FMT=今は%sを選択できません。
@@ -415,7 +414,7 @@ PROV_REMOVED_FMT=%sを外しました。
 # ---- Secret rooms: the in-raid map + dungeon view (2026-08-05) ----
 MAP_SECRET_ROOM=秘密の広間
 SECRET_DOOR_LABEL=秘密の扉
-SECRET_ENTER_FROM_HALL=秘密の広間へは廊下から入ります。秘密の扉の上に立ち、インタラクトキーを押してください。
+SECRET_ENTER_FROM_HALL=秘密の広間へは廊下から入ります。
 
 # ---- "W to open", the game's own interact key, on the two doors it works on (2026-08-23) ----
 DOOR_PRESS_W=Wキーで開きます。
@@ -486,7 +485,7 @@ SHOP_BOUGHT_FREE_FMT=%sを購入しました。在庫は残り%d。
 RCT_NONE=雇用できるヒーローがいません。
 RCT_POS_FMT=候補%d人目、全%d人。
 RCT_ROSTER_FULL_FMT=メンバーリストがいっぱいです。ヒーロー%d人、上限%d人。駅馬車をアップグレードすると枠が増えます。
-RCT_ADD_FMT=%sをメンバーリストに加えます。ボタン。エンターキーで雇用、エスケープキーでキャンセルします。
+RCT_ADD_FMT=%sをメンバーリストに加えます。ボタン。
 RCT_THIS_HERO=このヒーロー
 RCT_STILL_RECRUITING=雇用処理中です。
 RCT_CANT_NOW=今は雇用できません。
@@ -509,8 +508,8 @@ ACT_WING_POS_FMT=%s。アクティビティ%d、全%d件。
 ACT_SLOT_POS_FMT=枠%d、全%d件。
 ACT_CARETAKER_HERE=今週は世話人がここにいます。
 ACT_CARETAKER_HERE_SLOT=今週は世話人がここにいます。この枠では何もできません。
-ACT_STAYING_FMT=%s、今週滞在します。エンターキーで外します。
-ACT_NOT_CONFIRMED_COST_FMT=%s、まだ確定していません。%s エンターキーで確定、バックスペースキーで外します。
+ACT_STAYING_FMT=%s、今週滞在します。
+ACT_NOT_CONFIRMED_COST_FMT=%s、まだ確定していません。%s
 ACT_CONTAGION_FMT=%s %s
 ACT_CONTAGION_UP_FMT=感染が%sに上がりました。
 ACT_CONTAGION_DOWN_FMT=感染が%sに下がりました。
@@ -518,21 +517,21 @@ INF_UP_FMT=蔓延度が%sに上がりました。
 INF_DOWN_FMT=蔓延度が%sに下がりました。
 ACT_SLOT_LOCKED=ロック中。建物をアップグレードするとこの枠が開きます。
 ACT_CLOSED_WEEK=今週は閉まっています。
-ACT_EMPTY_CHOOSE=空。エンターキーでヒーローを選びます。
-ACT_EMPTY_FREE_CHOOSE=空。今週は無料です。エンターキーでヒーローを選びます。
+ACT_EMPTY_CHOOSE=空。
+ACT_EMPTY_FREE_CHOOSE=空。今週は無料です。
 ACT_FREE_WEEK=今週は無料です。
-ACT_NOT_ELIGIBLE=対象外です。エンターキーで理由を確認できます。
+ACT_NOT_ELIGIBLE=対象外です。
 ACT_A_HERO=ヒーロー
 ACT_CHOOSE_HERO_FMT=%sに入れるヒーローを選んでください。%d人が選べます。
-ACT_PICK_BUSY_FMT=%sは来られません：%s
+ACT_PICK_BUSY=この英雄は手が離せません。
 ACT_NOT_PLACED=配置されませんでした。
-ACT_PLACED_FMT=%sを%sに配置しました。まだ確定していません。エンターキーで確定、バックスペースキーで外します。
+ACT_PLACED_FMT=%sを%sに配置しました。まだ確定していません。
 ACT_COMMITTED_PAID_FMT=%sを%sに確定しました。%d%s支払いました。
 ACT_COMMITTED_FMT=%sを%sに確定しました。
 ACT_TAKEN_OUT_REFUND_FMT=%sを%sから外しました。%d%s戻りました。
 ACT_TAKEN_OUT_OF_FMT=%sを%sから外しました。
 ACT_TAKEN_OUT_FMT=%sを外しました。
-ACT_ALREADY_STAYING=すでに滞在しています。エンターキーで外します。
+ACT_ALREADY_STAYING=すでに滞在しています。
 ACT_NOTHING_TAKE_OUT=ここには外すものがありません。
 QT_WORD_LOCK=固定
 QT_WORD_REMOVE=除去
@@ -556,8 +555,8 @@ QT_DISPLACED_CLEARED_FMT=%sは%sの対象ではなくなりました。
 QT_DISPLACED_NOW_FMT=%sは%sの対象になりました。
 QT_TOTAL_COST_FMT=合計%d%s。
 QT_NOTHING_CHOSEN_THERE=そこには何も選ばれていません。
-QT_NOTHING_CHOSEN_FMT=%s、治療する対象がまだ選ばれていません。下に固定と除去があります。どちらかでエンターキーを押すと一覧が開きます。その後ここでエンターキーを押すと確定します。バックスペースキーで外します。
-QT_PENDING_FMT=%s、%s。%s エンターキーで確定、バックスペースキーで外します。
+QT_NOTHING_CHOSEN_FMT=%s、治療する対象がまだ選ばれていません。
+QT_PENDING_FMT=%s、%s。%s
 QT_CHOOSE_TREAT_FIRST=先に治療する対象を選んでください。この下の行はこのヒーローの奇癖です。
 QT_CLOSED=閉じました。
 HA_NO_HERO=作業できるヒーローがここにいません。
@@ -850,13 +849,13 @@ EX_NOTHING_FMT=%s：現在の提供数では入手できません。
 EX_NOT_AVAILABLE=ここでは交換できません。
 EX_OFFERING_FMT=%u個の%sを提供します。
 EX_OFFERING_SET_FMT=%u個の%sを提供します。数量を設定してください。
-EX_OFFERING_HINT_FMT=%u個の%sを提供します。上下キーで数量を設定し、エンターキーで確定します。
+EX_OFFERING_HINT=上下キーで数量を設定し、エンターキーで確定します。
 EX_CANT_OFFER=それは提供できません。
 EX_OFFER_MAX=これ以上増やせません。
 EX_OFFER_MIN=これ以上減らせません。
 EX_OFFER_UNCHANGED=提供数は変わりませんでした。
 EX_TRADE_IN_PROGRESS=交換処理中です。
-EX_NOTHING_TO_RECEIVE=現在の提供数では何も入手できません。プラスキーで提供数を増やしてください。
+EX_NOTHING_TO_RECEIVE=現在の提供数では何も入手できません。
 EX_TRADE_UNAVAILABLE=その交換はできません。
 EX_HELP_PICKING=上下キーで数量を設定し、エンターキーで確定します。
 EX_HELP_IDLE=家宝の上でエンターキーを押すと、提供して数量を設定できます。
@@ -870,8 +869,8 @@ TE_TITLE=村のイベント。
 TE_A_HERO=ヒーロー
 TE_THIS_HERO=このヒーロー
 TE_PRESS_ENTER_TO_FMT=エンターキーで%s。
-TE_OFFERED_FMT=提示されたヒーロー%d人。%s。上下キーで確認、Cキーで詳細、エンターキーで雇用します。
-TE_ADD_PROMPT_FMT=%sをメンバーリストに加えます。ボタン。エンターキーで雇用、エスケープキーでキャンセルします。
+TE_OFFERED_FMT=提示されたヒーロー%d人。%s。
+TE_ADD_PROMPT_FMT=%sをメンバーリストに加えます。ボタン。
 TE_ROSTER_FULL_FMT=メンバーリストがいっぱいです。ヒーロー%d人、上限%d人。駅馬車をアップグレードすると枠が増えます。
 TE_HERO_UNREADABLE=そのヒーローを読み取れません。
 TE_CANT_DO_NOW=今は実行できません。
@@ -950,7 +949,7 @@ PM_EXIT_GAME=デスクトップに戻る
 
 # ---- frontend/naming.cpp + frontend/tutorial.cpp (string round, 2026-08-11) ----
 NM_ESTATE_HEAD=領地の名前。
-NM_HELP=入力して編集、エンターキーで確定、エスケープキーでキャンセルします
+NM_HELP=入力して編集、エンターキーで確定、エスケープキーでキャンセルします。
 NM_BLANK=空白
 NM_ESTATE_NAMED_FMT=領地の名前を%sにしました
 NM_SEAL_HELP=エンターキーで探索を開始します。
@@ -965,8 +964,8 @@ QZ_BTN_ABANDON=クエストを放棄
 QZ_GOAL_N_FMT=目標%d、全%d件。
 QZ_NOT_READABLE=読み取れません。
 QZ_GOAL_UNREADABLE=目標を読み取れません。
-QZ_HEAD_GOALS_FMT=クエスト。目標%d件。
-QZ_HEAD_QUEST=クエスト。
+QZ_HEAD_GOALS_FMT=%s。目標%d件。
+QZ_HEAD_NAME=クエスト
 QZ_NOTHING_HERE=ここには何もありません。
 QZ_NO_QUEST_INFO=クエストの情報がありません。
 QZ_CLOSED=クエストを閉じました。
@@ -993,7 +992,7 @@ RR_DEAD_NO_XP=死亡。経験値は得られません。
 RR_XP_UNKNOWN=経験値は不明です。
 RR_NEW_QUIRK_N_FMT=新しい奇癖%d、全%d件。
 RR_NEW_QUIRK=新しい奇癖。
-RR_QUIRK_HIDDEN=非表示。エンターキーで表示します。
+RR_QUIRK_HIDDEN=非表示。
 RR_QUIRKS_REVEALED=奇癖が表示されました。
 RR_HEAD_RESULTS=探索の結果。
 RR_HEAD_HEROES=ヒーローのページ。
@@ -1091,9 +1090,9 @@ MAP_MOVING_TO_FMT=%sへ移動します。
 MAP_STOPPED=停止しました。
 MAP_NO_PARTY_POS=パーティーの位置が分かりません。
 MAP_PROP_IN_REACH_FMT=%s。手が届きます。
-MAP_DOOR_AT_END_FMT=%sへの扉。Wキーで開きます。
-MAP_TRAP_AHEAD=警告：トラップ。Wキーで解除します。
-MAP_FARMSTEAD_NO_MOVE=農場ではマップからパーティーを動かせません。Rキーでダンジョンビューに切り替え、最後の行へ移動して進んでください。
+MAP_DOOR_AT_END_FMT=%sへの扉。
+MAP_TRAP_AHEAD=警告：トラップ。
+MAP_FARMSTEAD_NO_MOVE=農場ではマップからパーティーを動かせません。
 
 # ---- raid/dungeonview.cpp: the ROOM'S ROW LIST (string round, 2026-08-09) ----
 RV_POSITION_FMT=ポジション%d
@@ -1116,8 +1115,6 @@ RV_LABEL_ENEMY=敵
 RV_LABEL_PARTY_MEMBER=パーティーメンバー
 RV_EXIT_TO_FMT=%sへの出口。%d、全%d件。
 RV_OBJECT_N_OF_M_FMT=%s。オブジェクト%d、全%d件。
-RV_PRESS_ENTER_FMT=%s。エンターキーを押します。
-RV_LAST_ROW_FMT=%s。ダンジョンビューの最後の行です。
 RV_TRAP_UNREACHABLE=そのトラップには手が届きません。
 RV_DISARMING_WHO_FMT=%sが%sを解除しています。
 RV_DISARMING_FMT=%sを解除しています。
@@ -1252,8 +1249,8 @@ EV_TRK_PURGE_NEG=奇癖治療
 EV_TRK_PURGE_POS=奇癖喪失
 EV_TRK_SUMMON=召喚
 EV_TRK_TORCH_UP=松明強化
-EV_CHOOSE_ITEM_FMT=アイテムを選んでください。%s。エンターキーで使用、エスケープキーで戻ります。
-EV_CHOOSE_ITEM=アイテムを選んでください。エンターキーで使用、エスケープキーで戻ります。
+EV_CHOOSE_ITEM_FMT=アイテムを選んでください。%s。
+EV_CHOOSE_ITEM=アイテムを選んでください。
 EV_BAG_EMPTY=アイテムリストは空です。
 EV_THE_ITEM=このアイテム
 EV_ITEM_USED_FMT=%sを使用しました。
@@ -1263,7 +1260,7 @@ EV_NO_EFFECT_FALLBACK=そのアイテムは効果がありませんでした。
 EV_CHOICE_FAILED=その選択は行えませんでした。
 
 # ---- raid/inventory.cpp: THE PARTY BAG (string round, 2026-08-09) ----
-INV_TITLE=アイテムリスト。
+INV_NAME=アイテムリスト
 INV_NOUN_SLOT=枠
 INV_EMPTY_FMT=空。%s%d、全%d件。
 INV_NAME_COUNT_FMT=%s、%d
@@ -1280,7 +1277,7 @@ INV_EQUIP_CHOOSE_FMT=%sを装備します。ターゲットを選んでくださ
 INV_ALREADY_USED_ITEM=このヒーローはこのターンすでにアイテムを使用しています。
 INV_NO_ONE_CAN_USE=今はアイテムを使えるヒーローがいません。
 INV_NO_TARGET_SELECTED=ターゲットが選択されていません。
-INV_MAKE_CAMP_PROMPT=キャンプしますか。エンターキーで確定、エスケープキーでキャンセルします。
+INV_MAKE_CAMP_PROMPT=キャンプしますか。
 INV_MAKING_CAMP=キャンプを始めます。
 INV_CANT_CAMP_HERE=ここではキャンプできませんでした。
 INV_NO_CAMP_HERE=ここではキャンプできません。薪はそのまま残っています。
@@ -1334,8 +1331,8 @@ SM_DEBUGLOG_ON_FMT=デバッグログをオンにしました。ログファイ�
 SM_DEBUGLOG_OFF=デバッグログをオフにしました。
 SM_DEBUGLOG_FAIL_FMT=ログファイル%sを作成できませんでした。デバッグログはオフのままです。
 SM_CAT_UPDATES=起動時に更新を確認
-SM_UPDATES_ON=更新の確認をオンにしました。ゲームを起動するたびにランチャーが新しいバージョンを探します。
-SM_UPDATES_OFF=更新の確認をオフにしました。ランチャーは新しいバージョンを探しません。
+SM_UPDATES_ON=更新の確認をオンにしました。ゲームを起動するたびにモッドが新しいバージョンを探します。
+SM_UPDATES_OFF=更新の確認をオフにしました。モッドは新しいバージョンを探しません。
 SM_ANN_HEADER=読み上げ。設定%d件。
 SM_ANN_SUBTITLES=字幕
 SM_ANN_SUBS_ON=字幕の読み上げをオンにしました。
@@ -1371,7 +1368,7 @@ SM_SP_PCT_FMT=%d%%
 SM_SP_SAPI_NOTE=現在SAPIは読み上げていません。設定は保存され、SAPIを使うときに反映されます。
 SM_LIST_HEADER_FMT=%s。コマンド%d件。
 SM_UNASSIGNED=未割り当て
-SM_CAPTURE_FMT=新しいキーを押してください。対象：%s エスケープキーでキャンセルします。
+SM_CAPTURE_FMT=新しいキーを押してください。対象：%s
 SM_MENUKEY_REFUSED=%sはこのメニューを開くキーなので、割り当てられません。
 SM_ASSIGNED_FMT=%sを割り当てました。
 SM_STOLEN_FMT=そのキーは別のコマンドのものでした。そのコマンドは未割り当てになりました：%s
@@ -1434,7 +1431,7 @@ SM_GRP_BLDG_SUB=建物のショートカット
 SM_GRP_SKILLS_SUB=スキルのショートカット
 SM_SUBMENU=サブメニュー
 SM_GROUPS_HEADER_FMT=操作。項目%d件。
-SM_BIND_HEADER_FMT=%s。割り当て%d件。エンターキーで変更、Deleteキーで解除、バックスペースでデフォルトに戻します。
+SM_BIND_HEADER_FMT=%s。割り当て%d件。
 SM_ROW_FMT=%s。キーボード：%s。コントローラー：%s
 SM_DEV_KEYBOARD=キーボード
 SM_DEV_CONTROLLER=コントローラー
@@ -1458,7 +1455,7 @@ SM_SLOT_TO_JEWELER=宝石商へ
 SM_SLOT_FROM_JEWELER=馬車の商人に戻る
 SM_SLOT_TO_SHARDS=シャード傭兵へ
 SM_SLOT_FROM_SHARDS=駅馬車の雇用候補に戻る
-SM_CAPTURE_PAD_FMT=コントローラーの入力を押してください。対象：%s 長押しすると長押し操作として割り当てます。エスケープキーでキャンセルします。
+SM_CAPTURE_PAD_FMT=コントローラーの入力を押してください。対象：%s
 SM_MENUKEY_KEEP=メニューキーは解除できません。
 SM_CLEARED=未割り当て。
 SM_RESTORED_FMT=デフォルトに戻しました：%s。
@@ -1565,9 +1562,9 @@ COM_NONE_SECURED=まだ何も獲得していません。
 FE_UNLABELED_BUTTON=ラベルのないボタン
 EX_NO_HEIRLOOMS=家宝がありません。
 EX_NOTHING_TO_TRADE_FOR=交換で手に入るものはありません。
-CS_TRK_UNEQUIP_CONFIRM_FMT=%sを外しますか？確認するにはもう一度エンターキーを押してください。
+CS_TRK_UNEQUIP_CONFIRM_FMT=%sを外しますか？
 CS_TRK_FALLBACK=そのトリンケット
-CS_COM_CAP_FMT=すでにスキルを%d個装備しています。先にどれかを外すか、1から%dのキーを押してこのスキルを枠に入れてください。
+CS_COM_CAP_FMT=すでにスキルを%d個装備しています。先にどれかを外してください。
 MAP_AC_BATTLE=戦闘
 MAP_AC_AMBUSH=待ち伏せ
 MAP_AC_TRAP=トラップ
@@ -1582,11 +1579,12 @@ MAP_AC_AMBUSH_CURIO=待ち伏せのあるキュリオ
 MAP_AC_AMBUSH_TREASURE=待ち伏せのある宝
 MAP_AC_SECRET_DOOR=秘密の扉
 MAP_AC_PRISONER=囚人
-MAP_OPEN_FMT=マップ。%s。%s。矢印キーで広間の間を移動し、Ctrl＋矢印キーで廊下を歩きます。
+MAP_NAME=マップ
+MAP_OPEN_FMT=%s。%s。%s。
 MAP_NOT_WHILE_FIGHTING=戦闘中はできません。
 MAP_KEY_NOT_TAKEN=ゲームが移動キーを受け付けませんでした。
 MAP_PARTY_DIDNT_MOVE=パーティーは移動しませんでした。
-AB_HEADER_ACTIONS=アクション。
+AB_HEADER_NAME=アクション
 CAMP_ALREADY_USED=使用済み
 CAMP_NOT_ENOUGH_TIME=時間が足りない
 CAMP_NO_FOOD=食事なし
@@ -1613,3 +1611,300 @@ CLOG_CLEARED=戦闘ログを消去しました。
 
 # ---- Added 2026-10-09: a move that cannot leave its rank (the Musketeer's back-2 / forward-0 from rank 4): the Enter refusal; %s is the game's own Back / Forward tooltip lines ----
 TS_CANT_MOVE_FROM_FMT=ポジション%dからは移動できません。移動: %s。
+
+# ---- Added 2026-10-09: the Ctrl+F FIND overlay (core/find.cpp) -- the query typed so far, the match count, the opener, the refusals, and the keymap row name ----
+FD_OPEN_FMT=検索。項目数：%d。
+FD_TYPED_FMT=%s。該当：%d件。
+FD_TYPED_NONE_FMT=%s。該当なし。
+FD_CLEARED_FMT=検索をクリアしました。項目数：%d。
+FD_NO_RESULTS=該当なし。
+FD_NOTHING_HERE=この画面には検索できる項目がありません。
+FD_EMPTY=検索できる項目がありません：リストが空です。
+FN_FIND=この画面で検索
+
+# ---- Added 2026-10-09: the two link rows at the bottom of the F10 menu (Open the readme / Join the Discord): the row names, the two opened lines and the refusal; %s is the web address ----
+SM_CAT_README=Readmeを開く
+SM_CAT_DISCORD=Discordに参加
+SM_LINK_README_OPENED=ブラウザーでReadmeを開いています。
+SM_LINK_DISCORD_OPENED=ブラウザーでDiscordの招待を開いています。
+SM_LINK_FAILED_FMT=ブラウザーを開けませんでした。アドレスは%sです。
+
+# ---- Added 2026-10-09: the F10 "Control hints" row (Announcements) and the hint halves split off the sentences above -- every line that names a key on a mod-built surface is its own entry now (the fact lines kept their key and were shortened in place); %d in CS_COM_CAP_HINT_FMT is the slot count ----
+SM_ANN_HINTS=操作ヒント
+SM_ANN_HINTS_ON=操作ヒントオン。どのキーが何をするかをMODが読み上げます。例：エンターキーで確定。
+SM_ANN_HINTS_OFF=操作ヒントオフ。どのキーが何をするかをMODは読み上げなくなります。
+NGC_INTRO_HINT=上下キーで移動、エンターキーで切り替え、最後にOKを選びます。
+NGC_OK_HINT=エンターキーで探索を開始します。
+UGC_WINDOW_UNREAD_HINT=Escapeキーで閉じます。
+UGC_INTRO_HINT=上下キーで移動、エンターキーで切り替え、エスケープキーで閉じて保存します。
+DLCVIEW_INTRO_HINT=上下キーで移動、エンターキーで切り替え、エスケープキーで閉じます。
+BD_ROW_RANDOM_HINT=エンターキーで全セクションをランダムにします。
+BD_ROW_APPLY_HINT=エンターキーで適用します。
+RNG_LEAGUES_CLOSE_HINT=Lキーまたはエスケープキーで閉じます。
+RV_PRESS_ENTER=エンターキーを押します。
+SECRET_ENTER_HINT=秘密の扉の上に立ち、インタラクトキーを押してください。
+RCT_ADD_HINT=エンターキーで雇用、エスケープキーでキャンセルします。
+ACT_TAKE_OUT_HINT=エンターキーで外します。
+ACT_CONFIRM_HINT=エンターキーで確定、バックスペースキーで外します。
+ACT_CHOOSE_HINT=エンターキーでヒーローを選びます。
+ACT_NOT_ELIGIBLE_HINT=エンターキーで理由を確認できます。
+QT_NOTHING_CHOSEN_HINT=下に固定と除去があります。どちらかでエンターキーを押すと一覧が開きます。その後ここでエンターキーを押すと確定します。バックスペースキーで外します。
+EX_INCREASE_HINT=プラスキーで提供数を増やしてください。
+TE_OFFERED_HINT=上下キーで確認、Cキーで詳細、エンターキーで雇用します。
+CS_TRK_UNEQUIP_CONFIRM_HINT=確認するにはもう一度エンターキーを押してください。
+CS_COM_CAP_HINT_FMT=または1から%dのキーを押してこのスキルを枠に入れてください。
+RR_REVEAL_HINT=エンターキーで表示します。
+MAP_OPEN_HINT=矢印キー：広間を移動、Ctrl＋矢印キー：廊下を探索、Homeキー：パーティーに戻る。
+MAP_TRAP_DISARM_HINT=Wキーで解除します。
+MAP_FARMSTEAD_HINT=Rキーでダンジョンビューに切り替え、最後の行へ移動して進んでください。
+RV_LAST_ROW_HINT=ダンジョンビューの最後の行です。
+EV_CHOOSE_ITEM_HINT=エンターキーで使用、エスケープキーで戻ります。
+INV_MAKE_CAMP_HINT=エンターキーで確定、エスケープキーでキャンセルします。
+SM_BIND_HINT=エンターキーで変更、Deleteキーで解除、バックスペースでデフォルトに戻します。
+SM_CAPTURE_HINT=エスケープキーでキャンセルします。
+SM_CAPTURE_PAD_HINT=長押しすると長押し操作として割り当てます。エスケープキーでキャンセルします。
+FD_OPEN_HINT=入力して検索、Escapeでキャンセル。
+# ---- Added 2026-10-10: the MOD TUTORIAL dialogs (core/modtutorial.cpp) -- the F10 "Mod tutorials" row, the title screen's five paragraphs, the checkbox and OK rows, the opt-out hint, the no-topic refusal and the keymap row name; %s in MT_OPTOUT_FMT is checked / unchecked ----
+SM_ANN_TUTORIALS=Modチュートリアル
+SM_ANN_TUT_ON=Modチュートリアルがオンになりました。新しい画面に初めて入ったとき、ヘルプメッセージが表示されます。
+SM_ANN_TUT_OFF=Modチュートリアルがオフになりました。ヘルプメッセージは自動では表示されなくなります。
+MT_TITLE_P1=Darkest Dungeonへようこそ！このようなModチュートリアルは、遊び方を学べるようゲームの多くの場面で自動的に表示されます。F1キーを押せば、いつでもその画面のヘルプとして表示できます。
+MT_TITLE_P2=基本操作：矢印キー、十字キー、または左スティックでユーザーインターフェースを移動します。Enterキー、またはコントローラーのAボタンで決定します。Escapeキー、またはコントローラーのBボタンで前の画面に戻る、操作を取り消す、またはポーズメニューを開きます。
+MT_TITLE_P3=ポップアップの読み上げ：カンマキーを押すと、表示中のポップアップやダイアログをもう一度読み上げます。
+MT_TITLE_P4=ツールチップの読み上げ：ツールチップには、ヒーロー、敵、アイテム、スキルなどの詳しい情報があります。初期設定では自動で読み上げますが、Mod設定または F3 キーで変更できます。Ctrl+上下矢印キーで一行ずつ読めます。複数のセクションを持つツールチップもあり、Ctrl+左右矢印キーでセクションを移動できます。コントローラーでは、左トリガーを押したまま十字キーまたは左スティックで移動します。
+MT_TITLE_P5=検索：Ctrl+Fを押すと、ゲームのほとんどの場面で検索できます。
+MT_TITLE_P6=設定：ゲーム中のどこでもF10キーを押すとMod設定を開けます。ゲームのオプションはポーズメニューにあります。ゲーム音量や音楽音量などの一部のオプションはスライダーになっており、左右の矢印キーで調整できます。
+MT_TITLE_P7=サポート：GitHubのreadmeには、Darkest Dungeonの各場面を始めるためのガイドがあります。バグの報告、ご意見、お困りのことがあれば、Discordで連絡してください。readmeと私のDiscordサーバーへのリンクはMod設定にあります。
+MT_TITLE_P8=このようなメッセージを今後表示したくない場合は、下のチェックボックスをオンにしてModチュートリアルを無効にしてください。
+MT_OPTOUT_FMT=Modチュートリアルを表示しない、チェックボックス、%s。
+MT_OK=OK、ボタン。
+MT_OPTOUT_HINT=F1キーでいつでも開けます。Mod設定で再び有効にすることもできます。
+MT_NONE_HERE=この画面にはModチュートリアルがありません。
+MT_CLOSED=閉じました。
+FN_MOD_TUTORIAL=この画面のModチュートリアル
+# ---- Added 2026-10-10 (evening): the CAMPAIGN (save-slot) screen's mod tutorial (core/modtutorial.cpp, six paragraphs: the screen, a new game, naming the estate, deleting, DLC, mods); the mods button's Space hint and its refusal sit in their own blocks above ----
+MT_CAMP_P1=キャンペーン画面：キャンペーンのセーブスロットは9つあり、それぞれの右側に3つのボタン（削除、DLC、Mod）があります。画面上部にはButcher's Circusのボタンがあります。これは無料でダウンロードできる対戦型マルチプレイヤーモードです。
+MT_CAMP_P2=新しいゲームの開始：空のスロットを決定すると新しいゲームが始まります。DLCを所有している場合は、次にそのキャンペーンに追加するコンテンツを選びます。その後、難易度を選び、最後に領地に名前を付けます。作成したばかりのセーブデータを決定すると開始です。
+MT_CAMP_P3=領地の命名：入力欄にはあらかじめDarkestという単語が入っており、最大10文字まで入力できます。文字を入力または削除するたびに、現在の内容が読み上げられます。Enterキーを押すと確定し、新しいセーブデータが作成されます。
+MT_CAMP_P4=セーブデータの削除：各セーブスロットの右側に削除ボタンがあります。キーボードのDeleteキーを押しても構いません。削除の前に確認を求められます。
+MT_CAMP_P5=DLCコンテンツ：Shift+Enterを押すか、既存のセーブスロットの右側にあるボタンを使うと、そのキャンペーンで有効なDLCをいつでも確認したり、さらにコンテンツを有効化したりできます。ただし、一度有効にしたDLCは、そのキャンペーンの間は無効にできません。
+MT_CAMP_P6=Modの有効化：スペースキーを押すか、既存のセーブデータの右側にあるボタンを使うと、そのキャンペーンのModマネージャーが開き、Modの有効と無効を切り替えられます。なお、キャンペーンの途中でModを無効にすることはおすすめしません。セーブデータが壊れるおそれがあります。
+# ---- Added 2026-10-10 (night): the DUNGEON VIEW's mod tutorial (core/modtutorial.cpp, twelve paragraphs: the view, heroes, interaction, light, the log, map/inventory, movement, navigation assist, party order, quests, review mode, skills) ----
+MT_DUNG_P1=ダンジョンビュー：ゲームの大部分は横スクロールのダンジョンで進みます。あなたのキャラクターは画面の左側に並び、オブジェクト、敵、扉が現れる右側を向いています。そのため、パーティーは右から左へ、左を向いている敵は左から右へ番号が付きます。
+MT_DUNG_P2=ヒーロー：パーティーには最大4人のヒーローを入れられます。Q/E（コントローラーではLB/RB）で操作中のヒーローを切り替えられます。操作中のヒーローが、キュリオ、宝物、罠を調べ、その影響を受けます。C（コントローラーではX）で、操作中のヒーローのキャラクターシートをいつでも開けます。パーティーの各キャラクターのツールチップには、現在の状態の要約があります。
+MT_DUNG_P3=調べる：Wで、キュリオ、障害物、宝物を調べたり、扉を通ったり、罠を解除したりできます（コントローラーではLT+A）。フォーカスしているものを決定することもできます。
+MT_DUNG_P4=光：Lで現在の光量とその効果を読み上げます。光は時間とともに減り、たいまつで補充する必要があります。Tでたいまつを明るくし、Shift+Tで1段階暗くし、Ctrl+Shift+Tで完全に消します。コントローラーでは、LTを押したままYで明るく、Bで暗く、LT+Bを長押しで消します。
+MT_DUNG_P5=ログ：ダンジョンを進むにつれて、ヒーローたちにさまざまな出来事が起こります。ピリオドキー（コントローラーではLT+RB）で戦闘ログを開くと、起こったことがすべて確認できます。Page UpとPage Downで項目を10件ずつ移動でき、Deleteキーでログを完全に消去できます。
+MT_DUNG_P6=マップ／アイテムリスト：ダンジョンのマップとパーティーのアイテムリストは、画面上の同じパネルを共有しています。Tabでそのパネルにフォーカスを移し、両者を切り替えます。MまたはIで、マップやアイテムリストを直接開くこともできます（コントローラーではLT/RT）。
+MT_DUNG_P7=移動：ダンジョンは、通路でつながった一連の部屋でできています。マップで次に向かう部屋を選び、その後、Dで前進、Aで後退しながらパーティーを通路の中を歩かせます（コントローラーでは右スティック）。前進は常に右方向、つまり選んだ目的地の方向です。
+MT_DUNG_P8=ナビゲーション補助：Shift+A/Dで1マスずつ前進・後退できるので、読み上げが途切れず、何かを通り過ぎることもありません。部屋の中では、そこにあるキュリオや宝物に手が届く位置まで移動します。また、パーティーがすでに床に見つけた罠を踏んでしまうことも防ぎます。
+MT_DUNG_P9=パーティーの並び順：戦闘中にパーティーの並びが入れ替わることがあります。移動させたいヒーローの上でEnter（コントローラーではA）を押し、新しい位置を選ぶとヒーローを動かせます。戦闘後にデフォルトの整列順へすばやく戻すには、任意のヒーローの上でShift+Enter（コントローラーではAを長押し）を押します。
+MT_DUNG_P10=クエスト：ダンジョンビューの上にはクエストパネルがあり、現在の目標と、戦闘からの退却、クエストの放棄、またはクエストを完了して町へ戻るためのボタンがあります。Gで目標へ直接移動することも、Shift+Escapeで状況に応じて退却、クエストの放棄、または村への帰還を行うこともできます。
+MT_DUNG_P11=確認モード：Alt+1からAlt+4で、パーティーの各ポジションに誰がいるかをすばやく確認できます。戦闘中は、Alt+5からAlt+8で敵側の誰がどこにいるかを確認できます。
+MT_DUNG_P12=スキル：操作中のヒーローのスキルは、ダンジョンビューの下のアクションバーにあります。チルダキー（USキーボードでは数字の1の左）を押すと、どこからでも直接そこへ移動できます。戦闘中は、1から5でアクションバー上の位置に応じたスキルをすばやく選べます。5は常に移動アクションです。
+# ---- Added 2026-10-10 (night, second round): the in-raid MAP's mod tutorial (core/modtutorial.cpp, four paragraphs: the map and scouting, room to room + Enter, Ctrl+arrows along hallways, Home) ----
+MT_MAP_P1=マップ：マップではダンジョンの構造を確認し、次の目的地を選べます。どこまで見えるかは、パーティーの偵察次第です。
+MT_MAP_P2=矢印キーでカーソルを部屋から部屋へ移動します。パーティーの現在地に隣接する部屋の上でEnterを押すと、パーティーはその間の通路へ進みます。
+MT_MAP_P3=Ctrlを押したまま矢印キーを使うと、通路に沿ってカーソルを1マスずつ移動できます（コントローラーではLT+十字キーまたは左スティック）。
+MT_MAP_P4=Homeを押すと、カーソルがパーティーの現在地に戻ります（コントローラーでは左スティック押し込み）。
+# ---- Added 2026-10-10 (night, third round): the in-raid INVENTORY's mod tutorial (core/modtutorial.cpp, five paragraphs: the grid, using an item, equipping a trinket, rearranging, discarding) ----
+MT_BAG_P1=アイテムリスト：アイテムリストは16個のスロットからなり、8個ずつ2列に並んでいます。
+MT_BAG_P2=アイテムを決定すると、ヒーローの1人に使えます。戦闘中、各ヒーローは1ターンに自分へ1つのアイテムしか使えません。
+MT_BAG_P3=トリンケットを決定すると、ヒーローの1人に装備できます。ただし、そのヒーローにトリンケットの空きスロットが必要です。
+MT_BAG_P4=スペースキー（コントローラーでは左スティック押し込み）でアイテムリスト内のアイテムを並べ替えられます。
+MT_BAG_P5=Deleteキー（コントローラーではYを長押し）でアイテムリストからアイテムを捨てられます。
+# ---- Added 2026-10-11: the CHARACTER SHEET's mod tutorial (core/modtutorial.cpp, eleven paragraphs: the sheet, the walk, quirks, base stats, equipment, trinkets, combat skills, camping skills, reassigning skills, diseases, manage) ----
+MT_CS_P1=キャラクターシート：ここではヒーローの全情報を確認し、トリンケットを装備し、戦闘スキルとキャンプスキルを入れ替えられます。
+MT_CS_P2=上下キーでセクションを移動します。左右キーで各行の情報を順に読みます。
+MT_CS_P3=奇癖：そのキャラクターに影響する特性です。良い奇癖と悪い奇癖はそれぞれ5つまで持てます。上限を超える新しい奇癖を得ると、ほかの奇癖がランダムに置き換えられます。
+MT_CS_P4=基本ステータス：ヒーローの最大HP、命中、防御などです。特別な修正値はツールチップに表示されます。
+MT_CS_P5=装備：クラスごとに固有の武器と防具で、ヒーローの基本ステータスに影響し、町で強化できます。
+MT_CS_P6=トリンケット：キャラクターに装備する特別なアイテムです。各キャラクターはトリンケットを2つまで装備でき、スロットの上でEnterを押すか、アイテムリストから装備します。
+MT_CS_P7=戦闘スキル：ヒーローが戦闘で取れる行動です。各スキルのツールチップには、効果、使用できるポジション、狙えるポジションが表示されます。どのスキルもダメージ、命中、クリティカル率に基本ステータスを使いますが、個々のスキルがそれらを変更することがあります。たとえば、ダメージ30パーセントと書かれたスキルは、基本ダメージの30パーセントを与えます。戦闘スキルのセクションには、現在装備中のスキルのうちいくつが各ポジションから使え、どのポジションを狙えるかのまとめもあります。
+MT_CS_P8=キャンプスキル：キャンプ中にヒーローが取れる行動です。各スキルのツールチップには、効果、対象にできる相手、必要な時間が書かれています。
+MT_CS_P9=スキルを割り当て直すには、アクションバーに並べたい順にEnterで選択・選択解除します。または、数字の1から4を押して、特定のスロットにスキルを素早く割り当てることもできます。
+MT_CS_P10=病気：冒険中にさまざまな形でかかる悪い特性で、町で治療する必要があります。
+MT_CS_P11=管理：ヒーローの名前を変えたり、ロスターから解雇したりするオプションです。
+# ---- Added 2026-10-11: the HAMLET's mod tutorial (core/modtutorial.cpp, nine paragraphs: the hamlet, the Tab walk, locations, roster, resources, the trinket inventory, the activity log, town events, embarking -- a buildings paragraph was P9 here for part of the day and moved to the building topic at the end of the file) ----
+MT_HAM_P1=村：ここでは冒険の合間にヒーロー、アイテム、その他の資源を管理します。
+MT_HAM_P2=TabキーとShift+Tabキーで村の画面の各セクションを移動できます（コントローラーではRTとLT）。
+MT_HAM_P3=村の場所一覧：マップはリスト形式で表示されます。各建物には特定の役割があり、ほとんどはアップグレードできます。文字キーで各建物を直接開くこともできます（一覧はreadmeまたはModの操作設定を参照してください）。
+MT_HAM_P4=メンバーリスト：ここではすべてのヒーローを縦のリストで確認できます。一番上には、メンバーの上限とリストを並べ替えるオプションが横に並んでいます。手動で並べ替えることもできます。スペースキーでヒーローを持ち上げ、目的の位置まで移動してから、もう一度スペースキーを押して置きます（コントローラーでは左スティック押し込み）。
+MT_HAM_P5=資源：所持しているゴールド、家宝、その他の資源の量を表示します。家宝のトレードボタンで、ある種類の家宝を別の種類と交換できます。
+MT_HAM_P6=トリンケットリスト：Iキーを押すと、どのキャラクターにも装備されていないトリンケットの一覧が開きます。グリッドの上には、全ヒーローのトリンケットを外すオプションと、グリッド内のアイテムを並べ替えるオプションがあります。トリンケットの上でEnterを押すとヒーローに装備できます。不要なトリンケットはShift+Enterでゴールドと引き換えに売却できます。
+MT_HAM_P7=アクティビティ・ログ：ピリオドキーを押すと、毎週何が起きたかの記録が開きます。
+MT_HAM_P8=村のイベント：冒険から戻ったほとんどの週に村のイベントが発生し、良い効果や悪い効果がさまざまにもたらされます。ウィンドウが開いている間はカンマキーで読み直し、Escapeキーで閉じられます。また、Shift+ピリオドでいつでも開き直せます。
+MT_HAM_P9=出発：Eキーを押すと次のクエストに出発します。
+
+# ---- Added 2026-10-11: the EMBARK screen's mod tutorial (core/modtutorial.cpp, five paragraphs: quest planning, the Tab walk, the quest map, the party lineup, provisions) ----
+MT_EMB_P1=クエストの計画：この画面では、挑むクエストを選び、ヒーローのパーティーを編成します。
+MT_EMB_P2=TabキーとShift+Tabキーで各セクションを移動します。
+MT_EMB_P3=クエストマップ：左右キーでマップ上の場所を切り替えます。上下キーでその場所のクエストを確認します。各クエストの詳しい情報はツールチップで確認できます。Enterキーでクエストを選択します。
+MT_EMB_P4=パーティー編成：隊列の位置は右から左へ番号が付いており、ダンジョンでの並びと同じです。枠の上でEnterキーを押すとメンバーリストが開き、その位置に配置するヒーローを選べます。その位置にいるヒーローをもう一度選ぶと、パーティーから外れます。スペースキー（コントローラーでは左スティック押し込み）で、ヒーローを外さずに並び替えられます。
+MT_EMB_P5=物資：Eキー（コントローラーでは右スティック押し込み）で物資準備の画面に進み、遠征に必要な物資を購入できます。
+
+# ---- Added 2026-10-11: the PROVISIONING screen's mod tutorial (core/modtutorial.cpp, six paragraphs: provisioning, the Tab walk, the provisioner's two grids, quest info, the party lineup, embarking) ----
+MT_PROV_P1=物資準備：この画面では、冒険に必要な物資を購入します。
+MT_PROV_P2=TabキーとShift+Tabキーで各セクションを移動します。
+MT_PROV_P3=物資商人：メインの領域は二つの列に分かれています。左が店の品物、右があなたの持ち物です。Enterキーで一つずつ購入または売却し、Shift+Enterキーでまとまりごと購入または売却します。
+MT_PROV_P4=クエスト情報：クエスト情報パネルには、選んだクエストの情報とパーティーの偵察確率が表示されます。
+MT_PROV_P5=パーティー編成：この画面でもパーティーのヒーローを確認・管理できます。
+MT_PROV_P6=出発：Eキー（右スティック押し込み）で準備を終え、クエストを開始します。
+
+# ---- Added 2026-10-11: a BUILDING interior's mod tutorial (core/modtutorial.cpp, one paragraph, moved out of the hamlet topic the same day: rows and columns, U = LT opens the upgrades, Page Up / Page Down swap buildings) ----
+MT_BLDG_P1=建物：各建物の画面は、基本的に行と列で構成されています。建物の中ではUキー（コントローラーではLT）でアップグレードメニューを開けます。Page UpキーとPage Downキーで建物をすばやく切り替えられます。
+
+# ---- Added 2026-10-11: a CAMP's mod tutorial (core/modtutorial.cpp, three paragraphs: the two phases, respite points and the rest button, Q/E and the camping skills on the action bar) ----
+MT_CAMPING_P1=キャンプには2つの段階があります。まず、どれだけの食料を食べるかを、シンプルな選択肢のリストから選びます。2つ目のスキル段階では、ヒーローがキャンプスキルを使って回復し、ストレスを減らし、この先に備えて強化できます。
+MT_CAMPING_P2=スキル段階では、ダンジョンビューの読み上げで休息ポイントがいくつあるかが聞けます。各キャンプスキルには、このポイントがいくつか必要です。残りが6以下になると、アクションバーに休息ボタンが表示されます。これを押すとキャンプが終わり、通常のダンジョンに戻ります。
+MT_CAMPING_P3=Q/E（コントローラーではLB/RB）で選択中のヒーローを切り替え、ダンジョンビューの下のアクションバーでそのヒーローのキャンプスキルを探してください。各スキルが何をするかは、ツールチップで確認できます。
+
+# ---- Added 2026-10-11: THE BUTCHER'S CIRCUS mod tutorials (core/modtutorial.cpp, one topic per Circus screen: the Banner Designer (five paragraphs), the Dueling Grounds (two), the Prize Box (one), the Ranking Board (two), The Ring (six)) ----
+MT_BANNER_P1=バナーデザイナー：バナーはプレイヤーのエンブレムのようなもので、試合中に他のプレイヤーに表示されます。バナーは6つのパーツでできており、試合を終えるごとに報酬として解除されます。
+MT_BANNER_P2=この画面の構成はかなりシンプルです。フォーカスはまず縦に並んだタブのリストに置かれます。タブはバナーのパーツごとに1つずつあります。タブの下には、選択をランダムにするボタンと、すべての変更を適用するボタンがあります。タブの右側には、選択中のタブのパーツを並べたグリッドがあります。
+MT_BANNER_P3=Ctrl+Enterを押すと変更を保存します。
+MT_BANNER_P4=Rを押すとランダムなバナーになります。
+MT_BANNER_P5=Bキーを押すと、現在のバナーデザインの全体を読み上げます。
+MT_DUEL_P1=決闘場：ここでは他のプレイヤーにプライベートマッチを申し込めます。2つの列があります。左はフレンドリストで、オンラインのフレンドの上でEnterを押すと招待を送れます。右は、相手のSteam IDを入力して招待する欄です。または、ロビーIDを作ることもでき、両方が同じIDを入力すると接続されます。
+MT_DUEL_P2=接続したら、パーティーを選び、Eを押して準備完了にします。プレイヤー全員の準備が整うと試合が始まります。
+MT_PRIZE_P1=景品箱：ここでは、これまでに獲得した威信、解除済みの報酬、そして今後のレベルで解除される報酬を確認できます。シンプルなグリッドです。上下で威信レベルを移動し、左右でそのレベルの報酬の詳細を見ていきます。バナーのパーツの上でEnterを押すと、バナーデザイナーでそのパーツをプレビューできます。
+MT_RANK_P1=ランキングボード：ここではマルチプレイのランクと対戦履歴を確認できます。一番上には、現在のランク、次のランク、そこまでの進み具合が表示されます。試合に勝つとスカルを獲得し、次のランクに近づきます。試合に負けるとスカルを失い、ランクが下がることもあります。
+MT_RANK_P2=ランク情報の下にはリストがあり、上部に2つのタブがあります。公開マッチの「マッチメイキング履歴」と、決闘場での戦績の「チャレンジ履歴」です。左右の矢印キーでタブを切り替え、上下でリストを移動します。各行では、戦いの結果、両パーティーのヒーロー、戦いで倒されたヒーローが読み上げられます。
+MT_RING_P1=The Ring：ここはThe Butcher's Circusのメインエリアで、パーティーを組み、トリンケットを装備させ、戦いに送り出す場所です。ここでの操作はすべて、決闘場を通したプライベートマッチにも当てはまります。
+MT_RING_P2=パーティー編成とその操作は、シングルプレイのキャンペーンとまったく同じです。Enterで選択、Cでキャラクターシートを表示、スペースキーで並び替えです。
+MT_RING_P3=トリンケットの装備もキャンペーンと同じように行えます。ヒーローのキャラクターシートにあるトリンケットのスロットの上でEnterを押すか、Iを押してトリンケットリストを開き、トリンケットの上でEnterを押してから、装備させるヒーローを選びます。
+MT_RING_P4=他のプレイヤーとの試合を始める準備ができたらEを押します（コントローラーでは右スティック押し込み）。最初の試合は、AIの対戦相手を相手にしたチュートリアルです。
+MT_RING_P5=Pを押すと練習試合を始めるか、チュートリアルをもう一度プレイできます（コントローラーではLB）。
+MT_RING_P6=Lを押すと、各リーグランクの一覧が開きます（コントローラーではRB）。
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's batch (main menu, pause menu + options sliders, hamlet arrival + jump letters, buildings + upgrades + recruits, trinket inventory, resources bar, heirloom exchange). All thirteen are AXH entries: blank while the F10 "Control hints" row is Off ----
+ENTER_ACTIVATE_HINT=エンターキーで実行します。
+FE_TITLE_HINT=エスケープキー：ゲームのオプション、F10キー：モッドの設定、F1キー：モッドのヘルプ。
+OPT_ADJUST_HINT=左右キーで調整します。
+TM_ARRIVAL_HINT=TabキーとShift+Tabキー：次と前のセクション、ピリオドキー：アクティビティ・ログ、Shift+ピリオドキー：村のイベント、Rキー：資源、Iキー：トリンケットリスト、Eキー：出発。
+TM_ROW_KEY_FMT=%s（%s）
+BLD_ARRIVAL_HINT=Uキーでアップグレード、Page UpキーとPage Downキー：前と次の建物。
+BLD_UPGRADE_HINT=エンターキーでアップグレードします。
+RCT_ROW_HINT=エンターキーで雇用、Cキーでキャラクターシートを確認します。
+RI_TRINKET_HINT=エンターキーでヒーローに装備、Shift+エンターキーで売却します。
+RI_TRINKET_CIRCUS_HINT=エンターキーでヒーローに装備します。
+EX_SELECT_HINT=エンターキーで選択します。
+EX_ADJUST_HINT=エンターキーで提供数を調整します。
+EX_TRADE_HINT=エンターキーでトレードします。
+
+# ---- Added 2026-10-11: CONTROL HINTS, the dev's second batch (roster rows + sort buttons, the sheet's two skill grids + Manage, the embark quest list, the party lineup, the provisioner's two grids). All AXH: blank while the F10 "Control hints" row is Off ----
+ROS_HERO_HINT=エンターキーまたはCキーでキャラクターシート、スペースキーで並べ替えます。
+ROS_PICK_SELECT_HINT=エンターキーで選択、Cキーでキャラクターシートを確認します。
+ROS_PICK_REMOVE_HINT=エンターキーで外す、Cキーでキャラクターシートを確認します。
+CS_SKILL_SELECT_HINT_FMT=エンターキーで選択、数字キー1から%d：クイック割り当て。
+CS_SKILL_DESELECT_HINT_FMT=エンターキーで選択解除、数字キー1から%d：クイック割り当て。
+PTY_EMPTY_HINT=エンターキーでヒーローを選びます。
+PTY_FILLED_HINT=エンターキーで変更、スペースキーでパーティ内の並べ替え。
+PROV_BUY_HINT=エンターキーで購入、Shift+エンターキーでスタック全体を購入します。
+PROV_SELL_HINT=エンターキーで売却、Shift+エンターキーでスタック全体を売却します。
+
+# ---- Added 2026-10-12: THE UPDATE CHECK moved from the retired launcher into the mod (core/updatecheck.cpp): the one "update available" line, spoken once at startup in the session language. %s 1 = the newer version, %s 2 = the installed one, digits only ----
+UPDATE_AVAILABLE_FMT=アクセシビリティモッドの更新があります: バージョン%s。現在のバージョンは%sです。更新するにはBlindest Dungeonインストーラーを実行してください。
+
+# ---- Added 2026-10-12: CONTROL HINTS, the dev's DUNGEON batch (the quest bar's key and button row, the action bar's key / portrait / skill, skip and reorder buttons with their greyed state, the dungeon view's arrival keys and its party and object rows, the targeting layer's commit line, the map's and the bag's panel lines with the Tab switch, each bag item, the combat log's header, the light meter's torch keys). All AXH: blank while the F10 "Control hints" row is Off ----
+AB_PORTRAIT_HINT=Cキー：キャラクターシートを見る。
+AB_PORTRAIT_HINT_SWAP=Cキー：キャラクターシートを見る、QキーとEキー：選択中のヒーローを切り替える。
+AB_SKIP_HINT=エンターキーでこのヒーローのターンをスキップします。
+AB_REORDER_HINT=エンターキーでパーティーの並び順をリセットします。
+RV_HEAD_HINT=Rキー：広間の概要、Lキー：現在の光量を読み上げ、ピリオドキー：戦闘ログを開く。
+RV_PARTY_ROW_HINT=エンターキーで移動、Shift+エンターキー：パーティーの標準の並び順。
+RV_PROP_USE_HINT=エンターキーまたはWキーで調べます。
+RV_TRAP_DISARM_HINT=エンターキーまたはWキーで解除します。
+RV_PROP_WALK_HINT=エンターキーでそこまで歩きます。
+TS_USE_ON_HINT_FMT=エンターキーで%sを%sに使います。
+TS_USE_HINT_FMT=エンターキーで%sを使います。
+TS_MOVE_TO_HINT_FMT=エンターキーでポジション%dへ移動します。
+INV_EQUIP_ON_HINT_FMT=エンターキーで%sを%sに装備します。
+MAP_TAB_HINT=Tabキーでアイテムリストへ。
+INV_TAB_HINT=Tabキーでマップへ。
+INV_ROW_HINT=エンターキー：アイテムを使う、Deleteキー：捨てる、スペースキー：並べ替え。
+INV_ROW_TRINKET_HINT=エンターキー：ヒーローに装備、Deleteキー：捨てる、スペースキー：並べ替え。
+INV_ROW_NO_USE_HINT=Deleteキー：捨てる、スペースキー：並べ替え。
+CLOG_OPEN_HINT=エスケープキー：閉じる、Page UpキーとPage Downキー：10行移動、Deleteキー：戦闘ログを消去。
+LIGHT_KEYS_HINT=Tキー：たいまつを明るくする、Shift+Tキー：たいまつを暗くする、Ctrl+Shift+Tキー：たいまつを消す。
+
+# ---- Added 2026-10-13: CONTROL HINTS, the dev's SWEEP batch (the loot window, the camp's Rest button, the raid map's rooms, the hamlet locations, the districts, the building shops and the shard mercenaries, the glossary and help's close key, the F10 menu's value rows, the banner designer's preview key, the ranking board's sections). All AXH: blank while the F10 "Control hints" row is Off ----
+LOOT_ROW_HINT=エンターキーで取る、スペースキー：すべて取る。
+AB_REST_HINT=エンターキーで野営を終えます。
+MAP_TRAVEL_HINT=エンターキーで移動します。
+TM_ROW_OPEN_HINT=エンターキーで開きます。
+DST_BUILD_HINT=エンターキーで建設します。
+SHOP_BUY_HINT=エンターキーで購入します。
+RCT_SHARD_ROW_HINT=エンターキーで雇う、Cキーでキャラクターシート。
+GL_CLOSE_HINT=エスケープキーで閉じます。
+SM_CHOICE_HINT=エンターキーで実行、左右の矢印キー：設定を変更。
+BD_PREVIEW_KEY_HINT=Bキー：旗のプレビュー。
+RB_SECTION_HINT=左右の矢印キー：セクションを切り替え。
+
+# ---- Added 2026-10-14: the Medical Ward's pick filter (its roster list shows only the heroes with a disease; this is the line the slot row speaks when there is none) ----
+ACT_NO_DISEASED_HERO=名簿に治療できる病気を持つ英雄はいません。
+
+# ---- Added 2026-10-16: the tooltip channel (F10 -> Announcements -> "Automatically speak tooltips": the row and its On / Off outcome lines) ----
+SM_ANN_TOOLTIPS=ツールチップを自動で読み上げる
+SM_ANN_TIPS_ON=ツールチップの自動読み上げをオンにしました。行の直後にそのツールチップを読み上げます。
+SM_ANN_TIPS_OFF=ツールチップの自動読み上げをオフにしました。ツールチップは要求したときだけ読み上げます。
+
+# ---- Added 2026-10-16: raid results, heroes page -- the hero the Farmstead's Endless Harvest took instead of killing (Color of Madness "in time and space"); the game swaps the portrait, this is the picture in words ----
+RR_LOST_TIME_SPACE=時空の彼方に消えた。
+
+# ---- Added 2026-10-16: raid results, the heirloom totals row (the game's per-kind counter strip under the heirloom grid; %s of the first = the list, each item = the second with the count and the game's own kind name) ----
+RR_HEIRLOOM_TOTAL_FMT=家宝の合計：%s。
+RR_HEIRLOOM_TOTAL_ITEM_FMT=%d %s
+
+# ---- Added 2026-10-16: raid results, the Color of Madness WAVE skin (Endless Harvest): the shard row = the game's title + the number; the two fallbacks for the DLC's own "Collected Comet Shards" / "KILLS: %d" when the key is missing ----
+RR_WAVE_SHARDS_FMT=%s：%d。
+RR_SECT_SHARDS=集めた彗星の欠片
+RR_WAVE_KILLS_FMT=撃破数：%d。
+
+# ---- Added 2026-10-16: the F10 Announcements row "Expand abbreviations" and its table. The ABBR_* half is NOT a translation of the English letters: it is what the game's own text in this language writes (comma-separated when it uses more than one), matched as whole words; the _FULL half is what to say instead. Sweep of the shipped string tables: the Japanese tables keep the Latin ACC, CRIT, DMG, DOT, HP, MAXHP, PROT, SPD, glued to kanji. ----
+SM_ANN_ABBREV=略語を展開する
+SM_ANN_ABBREV_ON=略語の展開をオンにしました。略されたステータスは完全な語で読み上げます。
+SM_ANN_ABBREV_OFF=略語の展開をオフにしました。略されたステータスはゲームの表記どおりに読み上げます。
+ABBR_ACC=ACC
+ABBR_ACC_FULL=命中率
+ABBR_CRIT=CRIT
+ABBR_CRIT_FULL=クリティカル率
+ABBR_DMG=DMG
+ABBR_DMG_FULL=ダメージ
+ABBR_DOT=DOT
+ABBR_DOT_FULL=継続ダメージ
+ABBR_HP=HP
+ABBR_HP_FULL=ヒットポイント
+ABBR_MAX_HP=MAXHP, MAX HP
+ABBR_MAX_HP_FULL=最大ヒットポイント
+ABBR_PROT=PROT
+ABBR_PROT_FULL=防御
+ABBR_SPD=SPD
+ABBR_SPD_FULL=速度
+
+# ---- Added 2026-10-16: the F10 Announcements row "Glossary definitions" (its three values and three outcome lines) and KW_DEF_FMT, the one line "<term>: <definition>" -- both halves are the game's own glossary text in this language, so only the punctuation is the translator's ----
+SM_ANN_KEYWORDS=用語集の定義
+SM_ANN_KW_V_SPOKEN=ツールチップと一緒に読み上げる
+SM_ANN_KW_V_BUFFER=ツールチップのバッファのみ
+SM_ANN_KW_SPOKEN=用語集の定義をツールチップと一緒に読み上げます。ツールチップの最後に、そこに出てくる用語集の各用語の定義を読み上げます。
+SM_ANN_KW_BUFFER=用語集の定義はツールチップのバッファのみに入ります。要求して読み上げたとき、ツールチップ自身の行の後に続きます。
+SM_ANN_KW_OFF=用語集の定義をオフにしました。
+KW_DEF_FMT=%s：%s
+
+# ---- Added 2026-10-16: the quest tooltip's rewards heading (the fallback for the game's own town_quest_rewards; the two per-line "Reward: %s" formats it replaced were removed above) ----
+EMB_REWARDS_HEAD=報酬
+
+# ---- Added 2026-10-17: the item card's value line in the raid bag and the loot window (the game's hover "[Value: N Gold Each]"; %d the unit value, %s the game's currency name, the second %d a stack's sum) -- the 2026-10-16 results-screen wording, moved to the grids that show it ----
+INV_VALUE_FMT=価値：%d%s。
+INV_VALUE_EACH_FMT=価値：%d%s、合計：%d。
+
+# ---- Added 2026-10-17: the welcome tutorial's Control hints paragraph and the two F10 toggles' key names (F2 control hints, F3 automatic tooltips); MT_TITLE_P4 above gained its second sentence in place ----
+MT_TITLE_HINTS=操作のヒント：各画面や各項目で使えるコマンドをModが案内します。Mod設定または F2 キーでオフにできます。
+FN_CONTROL_HINTS=操作のヒントのオン／オフ
+FN_AUTO_TOOLTIPS=ツールチップ自動読み上げのオン／オフ
+
+# ---- Added 2026-10-17: the Expand abbreviations table's round / rounds pair (the game's DOT, mark and stealth durations: 'pts/rd for 3 rds'). Same rule as the ABBR_* block: the spelling half is what the game writes in this language, the _FULL half the word to say. Sweep: the Japanese tables write ラウンド in full and leave rd / rds in two tray tooltips ('rdにつき', '（3rds）' -- the glued digit keeps the second from matching) ----
+ABBR_RD=rd
+ABBR_RD_FULL=ラウンド
+ABBR_RDS=rds
+ABBR_RDS_FULL=ラウンド

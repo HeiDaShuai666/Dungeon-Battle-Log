@@ -55,15 +55,12 @@ static void tutAppendCloseHelp(uintptr_t base, char* buf, int bufsz) {
     bool ctrl = g_inputIsController;
     const char* key = axs(!ctrl ? AXS_KEY_ESCAPE
                                 : (altControllerGlyphs(base) ? AXS_BTN_CIRCLE : AXS_BTN_B));
+    const char* fmt = axs(AXS_TUT_CLOSE_HELP_FMT);
+    if (!fmt[0] || !buf[0]) return;
     char help[96];
-    _snprintf(help, sizeof help, axs(AXS_TUT_CLOSE_HELP_FMT), key);
+    _snprintf(help, sizeof help, fmt, key);
     help[sizeof help - 1] = 0;
-    size_t n = strlen(buf);
-    if (n == 0 || (int)n >= bufsz - 2) {
-        return;
-    }
-    _snprintf(buf + n, (size_t)bufsz - n, "%s %s", (buf[n - 1] == '.') ? "" : ".", help);
-    buf[bufsz - 1] = 0;
+    axAppendHintText(buf, bufsz, help);    // supplies the missing final period, as before
 }
 
 bool tutPopupActive() {

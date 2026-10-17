@@ -370,6 +370,17 @@ static DWORD WINAPI SpeechThread(LPVOID) {
     InitializeCriticalSection(&g_cs);
     axSpeechInit();
                       // on without speech rather than dying -- the old Tolk contract, kept.
+
+    // ---- The kill switch ----
+    if (!axModEnabled()) {
+        logLine("=== mod_enabled=0 in settings.ini: no hooks installed, mod inactive ===");
+        speakUtf8("Accessibility mod is switched off in its settings file. "
+                  "The game is running without it.", true);
+        Sleep(6000);                        // let the line finish before speech goes away
+        axSpeechShutdown();
+        DeleteCriticalSection(&g_cs);
+        return 0;
+    }
     Sleep(300);
 
     g_base    = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
@@ -433,6 +444,7 @@ static DWORD WINAPI SpeechThread(LPVOID) {
         return 0;
     }
     speakUtf8("Accessibility mod loaded.", true);
+    axUpdateCheckStart();
 
     DWORD handoverTick = 0;
     bool  sawSpeaking  = false;
@@ -459,11 +471,17 @@ static DWORD WINAPI SpeechThread(LPVOID) {
 
         int perr = -1;
         bool ok = speakUtf8(text, !append, &perr);
-        const char* sr = axSpeechReaderName();
-        logLine("speech->prism kind=%s%s est=%lu ok=%d len=%d err=%s speech=%d backend=%s \"%.60s\"",
-                speechKindName(kind), append ? " polite=1 (chained)" : "", (unsigned long)est, ok ? 1 : 0,
-                (int)len, axSpeechErrName(perr), axSpeechHasSpeech() ? 1 : 0,
-                sr ? sr : "none", text);
+        if (ok) {
+            logLine("speech->prism kind=%s%s est=%lu len=%d \"%.60s\"",
+                    speechKindName(kind), append ? " polite=1 (chained)" : "", (unsigned long)est,
+                    (int)len, text);
+        } else {
+            const char* sr = axSpeechReaderName();
+            logLine("speech->prism kind=%s%s est=%lu ok=0 len=%d err=%s speech=%d backend=%s \"%.60s\"",
+                    speechKindName(kind), append ? " polite=1 (chained)" : "", (unsigned long)est,
+                    (int)len, axSpeechErrName(perr), axSpeechHasSpeech() ? 1 : 0,
+                    sr ? sr : "none", text);
+        }
     };
 
     for (;;) {
@@ -602,10 +620,46 @@ static DWORD WINAPI SpeechThread(LPVOID) {
     }
 }
 
+// ---- THE VERSION.DLL PROXY ----
+#define AX_REAL_VERSION_DLL "\\\\.\\GLOBALROOT\\SystemRoot\\System32\\version.dll"
+#define AX_FWD(name, ord) \
+    __pragma(comment(linker, "/EXPORT:" #name "=" AX_REAL_VERSION_DLL "." #name ",@" #ord))
+AX_FWD(GetFileVersionInfoA,        1)
+AX_FWD(GetFileVersionInfoByHandle, 2)
+AX_FWD(GetFileVersionInfoExA,      3)
+AX_FWD(GetFileVersionInfoExW,      4)
+AX_FWD(GetFileVersionInfoSizeA,    5)
+AX_FWD(GetFileVersionInfoSizeExA,  6)
+AX_FWD(GetFileVersionInfoSizeExW,  7)
+AX_FWD(GetFileVersionInfoSizeW,    8)
+AX_FWD(GetFileVersionInfoW,        9)
+AX_FWD(VerFindFileA,              10)
+AX_FWD(VerFindFileW,              11)
+AX_FWD(VerInstallFileA,           12)
+AX_FWD(VerInstallFileW,           13)
+AX_FWD(VerLanguageNameA,          14)
+AX_FWD(VerLanguageNameW,          15)
+AX_FWD(VerQueryValueA,            16)
+AX_FWD(VerQueryValueW,            17)
+#undef AX_FWD
+#undef AX_REAL_VERSION_DLL
+
+static bool axHostIsDarkest() {
+    wchar_t exe[MAX_PATH * 2];
+    DWORD n = GetModuleFileNameW(nullptr, exe, MAX_PATH * 2);
+    if (n == 0 || n >= MAX_PATH * 2) return false;
+    const wchar_t* base = exe;
+    for (DWORD i = n; i > 0; --i) {
+        if (exe[i - 1] == L'\\' || exe[i - 1] == L'/') { base = exe + i; break; }
+    }
+    return lstrcmpiW(base, L"Darkest.exe") == 0;
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID) {
     if (reason == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(hModule);
-        CreateThread(nullptr, 0, SpeechThread, nullptr, 0, nullptr);
+        if (axHostIsDarkest())
+            CreateThread(nullptr, 0, SpeechThread, nullptr, 0, nullptr);
     }
     return TRUE;
 }

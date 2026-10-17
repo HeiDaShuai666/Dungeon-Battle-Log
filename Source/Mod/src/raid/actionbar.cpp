@@ -363,7 +363,11 @@ bool abHeroNameClassOf(uintptr_t base, uintptr_t hero,
         }
     }
 
-    logLine("actionbar hero=%p class=%p name=\"%s\" class=\"%s\"", (void*)hero, (void*)cobj, name, cls);
+    static uintptr_t lastHero = 0, lastCobj = 0;
+    if (hero != lastHero || cobj != lastCobj) {
+        lastHero = hero; lastCobj = cobj;
+        logLine("actionbar hero=%p class=%p name=\"%s\" class=\"%s\"", (void*)hero, (void*)cobj, name, cls);
+    }
     return name[0] || cls[0];
 }
 
@@ -1576,15 +1580,85 @@ static int abBuildLines(uintptr_t base, const ActionItem* it, int slotCount,
     return nl;
 }
 
-static void abBuildLabel(uintptr_t base, const ActionItem* it, int slotCount, char* out, int outsz) {
+// ---- THE BAR'S BUTTONS: KEY, STATE, HINT ----
+static bool tsIsMoveSkill(uintptr_t skill);
+
+static bool abPassAvailable(uintptr_t base) {
+    uintptr_t root = mapRoot(base);
+    if (!root || !abBattleLive(root)) return false;
+    uintptr_t turn = abCurrentTurnActor(root);
+    uintptr_t hero = abSelectedHero(base);
+    return !turn || !hero || turn == hero;
+}
+
+static bool abReorderAvailable(uintptr_t base) {
+    uintptr_t root = mapRoot(base);
+    return root && !abBattleLive(root);
+}
+
+static void abButtonDecorate(char* out, int outsz, bool available, AxStrId hint) {
+    if (available) axAppendHint(out, outsz, hint);
+    else           axAppendHintText(out, outsz, axs(AXS_AB_UNAVAILABLE));
+}
+
+void abHeaderText(char* out, int outsz) {
+    char name[160];
+    kmLabelWithKey(axs(AXS_AB_HEADER_NAME), "dungeon.action_bar", 0, name, sizeof name);
+    _snprintf(out, outsz, "%s.", name);
+    out[outsz - 1] = 0;
+}
+
+static void abBuildLabel(uintptr_t base, const ActionItem* it, int slotCount, char* out, int outsz,
+                         bool withTip = false) {
+    const bool tip = withTip && axTipWanted();
     if (it->kind != AB_SKILL) {
-        abItemText(base, it, slotCount, out, outsz);
+        abItemText(base, it, slotCount, out, outsz);   // "<label>."
+        if (it->kind == AB_PORTRAIT) {
+            if (tip) {
+                spSetBriefTooltip(true);
+                char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+                int nl = abBuildLines(base, it, slotCount, lines);
+                for (int i = 1; i < nl; i++)
+                    if (!rvIsTipHintLine(lines[i])) axTipGlue(out, outsz, lines[i]);
+                uintptr_t hero = abSelectedHero(base);
+                int slotEnd = 0;
+                int slot = rvRankFromGame(hero, nullptr, &slotEnd);
+                spAppendHeroPanels(base, hero, slot, slotEnd, false, out, outsz);
+                spSetBriefTooltip(false);
+                axTipGlueKeywords(out, outsz);
+            }
+            uintptr_t root = mapRoot(base);
+            axAppendHint(out, outsz, (root && abBattleLive(root)) ? AXS_AB_PORTRAIT_HINT
+                                                                   : AXS_AB_PORTRAIT_HINT_SWAP);
+            return;
+        }
+        if (it->kind == AB_PASS || it->kind == AB_REORDER) {
+            size_t n = strlen(out);
+            if (n > 0 && out[n - 1] == '.') out[n - 1] = 0;   // abItemText's period: the role adds its own
+            if (it->kind == AB_PASS) abButtonDecorate(out, outsz, abPassAvailable(base),    AXS_AB_SKIP_HINT);
+            else                     abButtonDecorate(out, outsz, abReorderAvailable(base), AXS_AB_REORDER_HINT);
+        }
+        if (it->kind == AB_REST) {
+            char label[128];
+            if (!abTipPlain(base, "camping_respite_rest", label, sizeof label) || !label[0])
+                _snprintf(label, sizeof label, "%s", axs(AXS_AB_LABEL_REST));
+            label[sizeof label - 1] = 0;
+            _snprintf(out, outsz, "%s", label);
+            out[outsz - 1] = 0;
+            abButtonDecorate(out, outsz, true, AXS_AB_REST_HINT);
+        }
         return;
     }
     if (campInSkillPhase(base)) {
         if (!campBarLabel(base, it->skillIdx, out, outsz)) {
             _snprintf(out, outsz, axs(AXS_AB_CAMP_SKILL_N_FMT), it->skillIdx + 1);
             out[outsz - 1] = 0;
+        }
+        if (tip) {                                      // the effect lines + the uses line
+            char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+            int nl = abBuildLines(base, it, slotCount, lines);
+            axTipGlueLines(out, outsz, &lines[0][0], AB_TIP_LINE_SZ, nl, 1);
+            axTipGlueKeywords(out, outsz);          // the glossary terms it names (core/keywords.cpp)
         }
         return;
     }
@@ -1594,15 +1668,30 @@ static void abBuildLabel(uintptr_t base, const ActionItem* it, int slotCount, ch
         out[outsz - 1] = 0;
         return;
     }
-    char fallback[64], titled[320], type[256];
+    char fallback[64], titled[320], type[256], core[600];
     _snprintf(fallback, sizeof fallback, axs(AXS_AB_ACTION_N_FMT), it->skillIdx + 1);
     abSkillTitled(base, skill, fallback, titled, sizeof titled, false);   // no level on the label
     abSkillTypeText(base, skill, type, sizeof type);
-    if (type[0]) _snprintf(out, outsz, "%s. %s.", titled, type);
-    else         _snprintf(out, outsz, "%s.", titled);
-    out[outsz - 1] = 0;
-    if (skillUnavailable(skill, abSelectedHero(base)))
-        { strncat(out, " ", outsz - strlen(out) - 1); strncat(out, axs(AXS_AB_UNAVAILABLE), outsz - strlen(out) - 1); }
+    if (type[0]) _snprintf(core, sizeof core, "%s, %s", titled, type);
+    else         _snprintf(core, sizeof core, "%s", titled);
+    core[sizeof core - 1] = 0;
+    char fn[32];
+    const char* fnId = nullptr;
+    if (tsIsMoveSkill(skill)) fnId = "dungeon.skill_move";
+    else if (it->skillIdx >= 0 && it->skillIdx < 4) {
+        _snprintf(fn, sizeof fn, "dungeon.skill_%d", it->skillIdx + 1);
+        fn[sizeof fn - 1] = 0;
+        fnId = fn;
+    }
+    if (fnId) kmLabelWithKey(core, fnId, 0, out, outsz);
+    else      { _snprintf(out, outsz, "%s", core); out[outsz - 1] = 0; }
+    if (tip) {                                          // ranks, gates, the stat block, effects
+        char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
+        int nl = abBuildLines(base, it, slotCount, lines);
+        axTipGlueLines(out, outsz, &lines[0][0], AB_TIP_LINE_SZ, nl, 1);
+        axTipGlueKeywords(out, outsz);              // the glossary terms it names (core/keywords.cpp)
+    }
+    abButtonDecorate(out, outsz, !skillUnavailable(skill, abSelectedHero(base)), AXS_EX_SELECT_HINT);
 }
 
 static int g_abTipCol = 0;
@@ -1612,35 +1701,64 @@ static void abSpeakTipLine(uintptr_t base, const ActionItem* it, int slotCount, 
     char lines[AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
     int n = abBuildLines(base, it, slotCount, lines);
     if (n <= 0) { if (head && head[0]) postSpeech(head); return; }
-    if (line < 0) line = n - 1;
-    if (line >= n) line = 0;
+    int total = n + axTipKeywordCount(&lines[0][0], AB_TIP_LINE_SZ, n, 1, nullptr);   // 1: line 0 is the label
+    if (line < 0) line = total - 1;
+    if (line >= total) line = 0;
     g_abTipLine = line;
-    logLine("actionbar tipline %d/%d -> \"%s\"", line, n, lines[line]);
+    char def[AB_TIP_LINE_SZ];
+    const char* text = lines[0];
+    if (line < n) text = lines[line];
+    else if (axTipKeywordLine(&lines[0][0], AB_TIP_LINE_SZ, n, 1, nullptr, line - n, def, sizeof def)) text = def;
+    logLine("actionbar tipline %d/%d -> \"%s\"", line, total, text);
     if (head && head[0]) {
         char full[AB_TIP_LINE_SZ + 128];
-        _snprintf(full, sizeof full, "%s %s", head, lines[line]);
+        _snprintf(full, sizeof full, "%s %s", head, text);
         full[sizeof full - 1] = 0;
         postSpeech(full);
         return;
     }
-    postSpeech(lines[line]);
+    postSpeech(text);
 }
 
 void abSpeakLabel(uintptr_t base, const ActionItem* it, int slotCount,
                   const char* head) {
-    char label[AB_TIP_LINE_SZ];
-    abBuildLabel(base, it, slotCount, label, sizeof label);
+    char label[MAILBOX_SZ];
+    abBuildLabel(base, it, slotCount, label, sizeof label, true);
     g_abTipLine = 0;
     g_abTipCol  = 0;
     logLine("actionbar label -> \"%s\"", label);
     if (head && head[0]) {
-        char full[AB_TIP_LINE_SZ + 128];
+        char full[MAILBOX_SZ];
         _snprintf(full, sizeof full, "%s %s", head, label);
         full[sizeof full - 1] = 0;
         postSpeech(full);
         return;
     }
     postSpeech(label);
+}
+
+// ---- THE ACTION BAR'S FIND ENUMERATOR ----
+int abFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_abActive || !mapRoot(base)) return 0;
+    ActionItem items[AB_MAX_ITEMS];
+    int n = abBuildBar(base, items, AB_MAX_ITEMS);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        abBuildLabel(base, &items[idx], abSlotCount(items, n), out, outsz);
+        return 1;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;              // the bar changed shape under the snapshot
+        g_abCursor = idx;
+        logLine("actionbar: find landed on item %d of %d", idx, n);
+        abSpeakLabel(base, &items[idx], abSlotCount(items, n));
+        return 1;
+    }
+    return 0;
 }
 
 static void abItemText(uintptr_t base, const ActionItem* it, int slotCount, char* out, int outsz) {
@@ -2179,7 +2297,9 @@ bool routeActionToggle(uintptr_t base, uint32_t sym, uint8_t repeat) {
     } else {
         g_abRoomReturn = rvRow;
     }
-    abSpeakLabel(base, &items[g_abCursor], abSlotCount(items, n), axs(AXS_AB_HEADER_ACTIONS));
+    char head[192];
+    abHeaderText(head, sizeof head);
+    abSpeakLabel(base, &items[g_abCursor], abSlotCount(items, n), head);
     return true;
 }
 // ---- Selected hero: announce the swap ----
@@ -2303,10 +2423,11 @@ static void serviceGameArmedSkill(uintptr_t base, uintptr_t hero) {
             uint32_t st = 0;
             safeReadU32(mapRoot(base) + RAID_IN_COMBAT_OFF, &st);
             if (st != g_axLastArmState) {
+                uint32_t was = g_axLastArmState;
                 g_axLastArmState = st;
-                logLine("armed-watch: state -> 0x%x with the pointer UNCHANGED (armed=%p hero=%p "
-                        "tsActive=%d) -- an arming press of THIS SAME skill is invisible to the "
-                        "pointer edge", st, (void*)armed, (void*)hero, (int)g_tsActive);
+                if (st == 0x1e)
+                    logLine("armed-watch: state 0x%x -> 0x1e, pointer UNCHANGED (armed=%p hero=%p tsActive=%d)",
+                            was, (void*)armed, (void*)hero, (int)g_tsActive);
             }
         }
         return;
@@ -2565,7 +2686,12 @@ static bool tsBarAnchorOffset(uintptr_t base, float* out) {
     }
     if (got <= 0) return false;
     *out = sum / (float)got;
-    logLine("targeting: bar anchor offset = %.1f px, calibrated on %d hero(es) this frame", *out, got);
+    static float lastOut = -1e9f;
+    static int   lastGot = -1;
+    if (got != lastGot || *out - lastOut > 0.1f || lastOut - *out > 0.1f) {
+        lastOut = *out; lastGot = got;
+        logLine("targeting: bar anchor offset = %.1f px, calibrated on %d hero(es) this frame", *out, got);
+    }
     return true;
 }
 
@@ -3074,10 +3200,19 @@ static bool tsTargetRowText(uintptr_t base, const RvEntry& e, char* out, int out
     return true;
 }
 
-static bool tsComposeRow(uintptr_t base, const RvEntry* rows, int n, int cur, char* out, int outsz) {
+static bool tsComposeRow(uintptr_t base, const RvEntry* rows, int n, int cur, char* out, int outsz,
+                         bool withTip = false) {
     if (cur < 0 || cur >= n) return false;
     if (g_tsMove && tsMoveRowText(base, rows[cur], out, outsz)) {
-        logLine("target row %d/%d (move -> position %d) -> \"%s\"", cur, n, rows[cur].slot, out);
+        const char* fmt = axs(AXS_TS_MOVE_TO_HINT_FMT);
+        if (fmt[0]) {
+            char hint[160];
+            _snprintf(hint, sizeof hint, fmt, rows[cur].slot);
+            hint[sizeof hint - 1] = 0;
+            axAppendHintText(out, outsz, hint);
+        }
+        logLine("target row %d/%d (move -> position %d) len=%d -> \"%.160s\"",
+                cur, n, rows[cur].slot, (int)strlen(out), out);
         return true;
     }
     if (!tsTargetRowText(base, rows[cur], out, outsz)) {
@@ -3106,8 +3241,27 @@ static bool tsComposeRow(uintptr_t base, const RvEntry* rows, int n, int cur, ch
         }
     }
 
-    logLine("target row %d/%d (%s idx=%d slot=%d) area=%d -> \"%s\"",
-            cur, n, rows[cur].enemy ? "enemy" : "party", rows[cur].idx, rows[cur].slot, na, out);
+    if (withTip) rvAppendActorTip(base, rows[cur].actor, out, outsz);   // (asks axTipWanted itself)
+
+    {
+        const char* fmtOn = axs(AXS_TS_USE_ON_HINT_FMT);
+        const char* fmt   = axs(AXS_TS_USE_HINT_FMT);
+        char hint[400]; hint[0] = 0;
+        char who[160];
+        if (na > 1) {
+            if (fmt[0]) _snprintf(hint, sizeof hint, fmt, g_tsSkillName);
+        } else if (fmtOn[0] && tsShortName(base, rows[cur], who, sizeof who) && who[0]) {
+            _snprintf(hint, sizeof hint, fmtOn, g_tsSkillName, who);
+        } else if (fmt[0]) {
+            _snprintf(hint, sizeof hint, fmt, g_tsSkillName);   // a nameless row: the skill alone
+        }
+        hint[sizeof hint - 1] = 0;
+        if (hint[0]) axAppendHintText(out, outsz, hint);
+    }
+
+    logLine("target row %d/%d (%s idx=%d slot=%d) area=%d len=%d -> \"%.160s\"",
+            cur, n, rows[cur].enemy ? "enemy" : "party", rows[cur].idx, rows[cur].slot, na,
+            (int)strlen(out), out);
     return true;
 }
 
@@ -3120,13 +3274,39 @@ static void tsFollowCursor(uintptr_t base, const RvEntry* rows, int n, int cur) 
 }
 
 static void tsSpeakRow(uintptr_t base, const RvEntry* rows, int n, int cur) {
-    char out[768];
-    if (tsComposeRow(base, rows, n, cur, out, sizeof out)) postSpeech(out);
+    char out[MAILBOX_SZ];
+    if (tsComposeRow(base, rows, n, cur, out, sizeof out, true)) postSpeech(out);
     tsFollowCursor(base, rows, n, cur);
 }
 
 static int tsRoomIndexOf(uintptr_t base, const RvEntry& e) {
     return rvRoomIndexOfActor(base, e.actor);
+}
+
+// ---- THE TARGET LIST'S FIND ENUMERATOR ----
+int tsFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    if (!g_tsActive) return 0;
+    RvEntry rows[RV_MAX_ROWS];
+    int n = tsBuildTargets(base, rows, RV_MAX_ROWS);
+    if (n < 0) n = 0;
+    if (op == AXF_COUNT) return n;
+    if (n <= 0) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0 || idx < 0 || idx >= n) return 0;
+        return tsComposeRow(base, rows, n, idx, out, outsz) ? 1 : 0;
+    }
+    if (op == AXF_GO) {
+        if (idx < 0) idx = 0;
+        if (idx >= n) idx = n - 1;              // a target left while the overlay was up
+        g_tsCursor  = idx;
+        g_rvTipLine = 0;                        // a new row rewinds the shared tooltip buffer
+        g_rvTipCol  = 0;                        // ...and closes its side panel
+        g_rvCursor  = tsRoomIndexOf(base, rows[g_tsCursor]);
+        logLine("targeting: find landed on target %d of %d", idx, n);
+        tsSpeakRow(base, rows, n, g_tsCursor);
+        return 1;
+    }
+    return 0;
 }
 
 void tsSetActive(bool on) {
