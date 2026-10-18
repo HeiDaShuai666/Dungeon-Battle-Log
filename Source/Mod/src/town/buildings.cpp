@@ -3851,6 +3851,11 @@ static HaTree g_haTrees[HA_MAX_TREES];
 static uint32_t g_haProbedGuid = 0;      // the hero whose columns were last logged
 static uint32_t g_haSeenGuid = 0;        // ...and the one the previous read saw
 static int      g_haColProbes = 0;       // capped, like every other one-shot dump
+static bool haIdEndsWith(const char* id, const char* suffix) {
+    size_t n = strlen(id), m = strlen(suffix);
+    return n >= m && strcmp(id + n - m, suffix) == 0;
+}
+
 static int haTrees(uintptr_t base, uintptr_t panel, uintptr_t hero, bool probe) {
     HaTree* out = g_haTrees;
     const int max = HA_MAX_TREES;
@@ -4032,8 +4037,8 @@ static int haTrees(uintptr_t base, uintptr_t panel, uintptr_t hero, bool probe) 
             }
         }
 
-        if (strstr(t.id, ".weapon"))      t.kind = HA_WEAPON;
-        else if (strstr(t.id, ".armour")) t.kind = HA_ARMOUR;
+        if (haIdEndsWith(t.id, ".weapon"))      t.kind = HA_WEAPON;
+        else if (haIdEndsWith(t.id, ".armour")) t.kind = HA_ARMOUR;
         else if (heroClass) {
             int ci = haCombatIndexOf(base, heroClass, t.id);
             if (ci >= 0) { t.kind = HA_COMBAT; t.skillIdx = ci; }
@@ -4411,6 +4416,12 @@ static bool haSpeakCellPfx(uintptr_t base, uintptr_t panel, AxStrId pfxId, bool 
 #define HA_TIP_COLS 2
 static char g_haTip[HA_TIP_COLS][AB_TIP_MAX_LINES][AB_TIP_LINE_SZ];
 static int  g_haTipCount[HA_TIP_COLS];
+
+static int haTipColsOf(const HaTree* t) {
+    if (t->kind == HA_WEAPON || t->kind == HA_ARMOUR) return 2;
+    if (t->kind == HA_COMBAT && t->level >= 0)        return 2;
+    return 1;
+}
 static int  g_haTipCol = 0;                 // which buffer column
 static int  g_haTipLine = -1;
 static uint32_t g_haTipTree = 0;
@@ -4509,19 +4520,9 @@ static bool haBuildTip(uintptr_t base, uintptr_t hero, const HaTree* t) {
             strncpy(g_haTip[0][0], first, AB_TIP_LINE_SZ - 1);
             g_haTip[0][0][AB_TIP_LINE_SZ - 1] = 0;
         }
-        if (nx) {
-            if (t->level < 0) {                      // the next step IS learning it: say the deal
-                char cost[128];
-                haCostText(base, t->hash, nx, cost, sizeof cost);
-                if (cost[0]) _snprintf(g_haTip[1][0], AB_TIP_LINE_SZ,
-                                       axs(AXS_HA_LEARN_DEAL_FMT), cost);
-                else         _snprintf(g_haTip[1][0], AB_TIP_LINE_SZ,
-                                       "%s", axs(AXS_HA_LEARN_DEAL_FREE));
-                g_haTipCount[1] = 1;
-            } else {
-                uintptr_t up = haCombatRecordOf(base, cls, t->skillIdx, t->level + 1);
-                if (up) g_haTipCount[1] = abBuildSkillLines(base, up, 0, t->name, g_haTip[1]);
-            }
+        if (nx && t->level >= 0) {
+            uintptr_t up = haCombatRecordOf(base, cls, t->skillIdx, t->level + 1);
+            if (up) g_haTipCount[1] = abBuildSkillLines(base, up, 0, t->name, g_haTip[1]);
         }
     } else if (t->kind == HA_CAMP) {
         uintptr_t ccls = haCampClassOf(base, t->id);
@@ -4540,7 +4541,7 @@ static bool haBuildTip(uintptr_t base, uintptr_t hero, const HaTree* t) {
         _snprintf(g_haTip[0][0], AB_TIP_LINE_SZ, "%s", axs(AXS_NO_MORE_INFO));
         g_haTipCount[0] = 1;
     }
-    if (g_haTipCount[1] == 0) {
+    if (haTipColsOf(t) == 2 && g_haTipCount[1] == 0) {
         char cost[128];
         cost[0] = 0;
         const char* tipFreeTag = haFreeTagOf(t);
@@ -4560,15 +4561,14 @@ static bool haBuildTip(uintptr_t base, uintptr_t hero, const HaTree* t) {
 static AxStrId haTipHead(const HaTree* t, int col) {
     if (col == 0)                                      return AXS_HA_HEAD_NOW;
     if (t->kind == HA_WEAPON || t->kind == HA_ARMOUR)  return AXS_HA_HEAD_NEXT_TIER;
-    if (t->kind == HA_COMBAT && t->level >= 0)         return AXS_HA_HEAD_NEXT_RANK;
-    return AXS_HA_HEAD_IF_BUY;
+    return AXS_HA_HEAD_NEXT_RANK;
 }
 
 static void haAppendTip(uintptr_t base, uintptr_t hero, const HaTree* t, char* buf, int bufsz) {
     haBuildTip(base, hero, t);
     g_haTipCol  = 0;
     g_haTipLine = -1;
-    for (int c = 0; c < HA_TIP_COLS; c++)
+    for (int c = 0; c < haTipColsOf(t); c++)
         axTipGluePanel(buf, bufsz, axs(haTipHead(t, c)), &g_haTip[c][0][0], AB_TIP_LINE_SZ,
                        g_haTipCount[c], 0);
     axTipGlueKeywords(buf, bufsz);
@@ -5371,14 +5371,11 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
             if (sym == SDLK_LEFT || sym == SDLK_RIGHT) {
                 int want = g_haTipCol + (sym == SDLK_RIGHT ? 1 : -1);
                 if (want < 0) want = 0;
-                if (want >= HA_TIP_COLS) want = HA_TIP_COLS - 1;   // hard stops, like every buffer
+                const int cols = haTipColsOf(t);           // 1 for an unlearned skill: Right stays
+                if (want >= cols) want = cols - 1;         // hard stops, like every buffer
                 g_haTipCol = want;
                 g_haTipLine = 0;
-                const char* head = axs(
-                    (g_haTipCol == 0)                                    ? AXS_HA_HEAD_NOW :
-                    (t->kind == HA_WEAPON || t->kind == HA_ARMOUR)        ? AXS_HA_HEAD_NEXT_TIER :
-                    (t->kind == HA_COMBAT && t->level >= 0)              ? AXS_HA_HEAD_NEXT_RANK
-                                                                         : AXS_HA_HEAD_IF_BUY);
+                const char* head = axs(haTipHead(t, g_haTipCol));
                 _snprintf(utter, sizeof utter, "%s. %s", head, g_haTip[g_haTipCol][0]);
             } else {
                 int n = g_haTipCount[g_haTipCol];
