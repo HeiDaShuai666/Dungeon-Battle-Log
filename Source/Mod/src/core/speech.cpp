@@ -352,6 +352,11 @@ const char* speechKindName(SpeechKind k) {
 char g_speechQ[SPEECH_QUEUE_MAX][MAILBOX_SZ];
 SpeechKind g_sqKind[SPEECH_QUEUE_MAX];     // per line: nav (droppable) or event (never)
 int  g_sqHead = 0;
+
+// ---- THE KEY RULE: the key epoch ----
+LONG g_sqEpoch[SPEECH_QUEUE_MAX];
+static LONG g_keyEpoch = 0;
+void axSpeechKeyEdge() { g_keyEpoch++; }
 int  g_sqCount = 0;
 volatile bool g_hasPending = false;
 
@@ -889,6 +894,7 @@ void postSpeech(const char* text, bool interrupt, SpeechKind kind) {
             if (w != r) {
                 memcpy(g_speechQ[w], g_speechQ[r], MAILBOX_SZ);
                 g_sqKind[w]      = g_sqKind[r];
+                g_sqEpoch[w]     = g_sqEpoch[r];
             }
             nk++;
         }
@@ -904,6 +910,7 @@ void postSpeech(const char* text, bool interrupt, SpeechKind kind) {
             if (w != r) {
                 memcpy(g_speechQ[w], g_speechQ[r], MAILBOX_SZ);
                 g_sqKind[w]      = g_sqKind[r];
+                g_sqEpoch[w]     = g_sqEpoch[r];
             }
             nk++;
         }
@@ -934,6 +941,7 @@ void postSpeech(const char* text, bool interrupt, SpeechKind kind) {
             int src = (g_sqHead + i - 1) % SPEECH_QUEUE_MAX;
             memcpy(g_speechQ[dst], g_speechQ[src], MAILBOX_SZ);
             g_sqKind[dst]      = g_sqKind[src];
+            g_sqEpoch[dst]     = g_sqEpoch[src];
         }
         g_sqHead = (g_sqHead + 1) % SPEECH_QUEUE_MAX;
         g_sqCount--;
@@ -942,6 +950,7 @@ void postSpeech(const char* text, bool interrupt, SpeechKind kind) {
     strncpy(g_speechQ[slot], text, MAILBOX_SZ - 1);
     g_speechQ[slot][MAILBOX_SZ - 1] = 0;
     g_sqKind[slot]      = kind;
+    g_sqEpoch[slot]     = g_keyEpoch;           // THE KEY RULE: which keypress this line follows
     g_sqCount++;
     g_hasPending = true;
     LeaveCriticalSection(&g_cs);

@@ -934,6 +934,28 @@ bool routeEmbarkKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
     return false;
 }
 
+void embFwdLabel(uintptr_t base, char* out, int outsz) {
+    if (!out || outsz <= 0) return;
+    strncpy(out, axs(AXS_EMB_FWD_FALLBACK), outsz - 1);
+    out[outsz - 1] = 0;
+    uintptr_t root = resTownRoot(base);
+    if (!root) return;
+    char key[0x40];
+    key[0] = 0;
+    EmbFwdLabelFn fn = (EmbFwdLabelFn)(base + EMB_FWDLABEL_RVA);
+    __try { fn(root, key); }
+    __except (EXCEPTION_EXECUTE_HANDLER) { key[0] = 0; }
+    key[sizeof key - 1] = 0;
+    if (key[0]) {
+        char raw[64];
+        if (resolveKey(base, key, raw, sizeof raw)) {
+            stripMarkup(raw, out, outsz);
+        } else {
+            logLine("embark: forward label key \"%s\" did not resolve", key);
+        }
+    }
+}
+
 bool routeEmbarkForward(uintptr_t base, uint8_t repeat) {
     uintptr_t root = resTownRoot(base);
     if (!root) return false;                         // not in town: E stays the game's
@@ -948,22 +970,8 @@ bool routeEmbarkForward(uintptr_t base, uint8_t repeat) {
     }
     if (g_embFwdWatchUntil) { postSpeech(axs(AXS_STILL_WORKING)); return true; }
 
-    // The button's current label, from the game's own picker (a pure read + strncpy).
-    strncpy(g_embFwdLabel, axs(AXS_EMB_FWD_FALLBACK), sizeof g_embFwdLabel - 1);
-    char key[0x40];
-    key[0] = 0;
-    EmbFwdLabelFn fn = (EmbFwdLabelFn)(base + EMB_FWDLABEL_RVA);
-    __try { fn(root, key); }
-    __except (EXCEPTION_EXECUTE_HANDLER) { key[0] = 0; }
-    key[sizeof key - 1] = 0;
-    if (key[0]) {
-        char raw[64];
-        if (resolveKey(base, key, raw, sizeof raw)) {
-            stripMarkup(raw, g_embFwdLabel, sizeof g_embFwdLabel);
-        } else {
-            logLine("embark: forward label key \"%s\" did not resolve", key);
-        }
-    }
+    // The button's current label, from the game's own picker.
+    embFwdLabel(base, g_embFwdLabel, sizeof g_embFwdLabel);
 
     if (ringForwardAction(base, g_embFwdLabel)) {
         g_embFwdQsBefore   = embQsOpen(root);
@@ -1154,7 +1162,8 @@ void checkEmbark(uintptr_t base) {
 
     g_embProvOpen = prov;
 
-    bool on = qs && !prov && !g_resActive && !g_ptyActive && !g_rosActive && !csTownSheetPanel(base);
+    bool on = qs && !prov && !g_resActive && !g_ptyActive && !g_rosActive && !g_tmnActive &&
+              !csTownSheetPanel(base);
     if (on && !g_embActive) {
         g_embActive = true;
         uintptr_t camp = embCampaign(base);

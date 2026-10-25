@@ -653,6 +653,8 @@ bool routeQuestKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
 // ---- THE QUEST-COMPLETE POPUP ----
 volatile bool g_qcOpen = false;
 static int  g_qcCursor = 0;
+static uint32_t g_qcAppear = 0;                      // popups opened: the popup reader's cursor key
+static MvCursor g_qcCur = { 0xffffffffu, 0 };        // the popup reader's row (heading, then choices)
 
 // ---- THE RETURN-IN-FLIGHT BLOCK ----
 volatile bool    g_qcReturning    = false;
@@ -1009,6 +1011,7 @@ void checkQuestCompletePopup(uintptr_t base) {
     if (!up) { logLine("questdone: closed"); qcDumpChoices("questdone closed"); return; }
     qcReturnEnd("a quest-complete popup opened", false);   // cannot be returning AND asked again
     g_qcCursor = 0;
+    g_qcAppear++;                                // the popup reader's cursor: back to the heading
     g_qcCompletedRoot = mapRoot(base);
     char msg[768];
     qcComposeLine(base, msg, sizeof msg);
@@ -1017,17 +1020,35 @@ void checkQuestCompletePopup(uintptr_t base) {
     postSpeech(msg);
 }
 
+// ---- THE POPUP READER's rows ----
+static MvRows* qcBuildRows(uintptr_t base) {
+    MvRows* r = mvBegin();
+    mvTextLine(r, axs(AXS_QC_COMPLETE_HEAD));
+    for (int i = 0; i < 2; i++) {
+        char label[320], line[400];
+        qcChoiceText(base, i, label, sizeof label);
+        size_t l = strlen(label);
+        if (l && label[l - 1] == '.') label[l - 1] = 0;          // the frame supplies the period
+        _snprintf(line, sizeof line, axs(AXS_MV_BUTTON_FMT), label);
+        line[sizeof line - 1] = 0;
+        axAppendHint(line, sizeof line, AXS_ENTER_ACTIVATE_HINT);
+        mvOption(r, i, line);
+    }
+    return r;
+}
+
 bool routeQuestDoneKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
                              // de-static'd; the AX_QUESTDONE row stays with the context table too)
     if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) return false;
-    if (sym == SDLK_LEFT || sym == SDLK_RIGHT) {
-        if (repeat) return true;
-        axStepCursor(&g_qcCursor, 2, sym == SDLK_RIGHT ? 1 : -1);   // hard stops, as everywhere else
-        qcSpeakChoice(base);
-        return true;
-    }
-    if (sym == SDLK_RETURN || sym == SDLK_KP_ENTER) {
-        if (repeat) return true;
+    MvRows* rows = qcBuildRows(base);
+    mvSync(&g_qcCur, g_qcAppear, rows);
+    int opt = -1;
+    int mk = mvKey(&g_qcCur, rows, sym, mod, repeat, /*lrOptions=*/true, &opt);
+    if (rows->n > 0 && rows->row[g_qcCur.row].kind == MV_OPT) g_qcCursor = rows->row[g_qcCur.row].opt;
+    if (mk == MVK_TEXT) { mvSpeak(&g_qcCur, rows, nullptr); return true; }   // Enter on the heading: re-read
+    if (mk == MVK_DONE || mk == MVK_CLOSE) return true;
+    if (mk == MVK_OPTION) {
+        if (opt >= 0 && opt < 2) g_qcCursor = opt;
         uint32_t id = g_qcCursor == 0 ? QT_HAMLET_ID : QT_CONTINUE_ID;
         qcDumpChoices(g_qcCursor == 0 ? "before the Return-to-Hamlet click"
                                       : "before the Continue-Adventuring click");
@@ -1053,6 +1074,10 @@ bool qcFocusSync(uintptr_t base, int64_t id, uint32_t owner) {
     if (cc == (uint32_t)QT_HAMLET_ID)        g_qcCursor = 0;
     else if (cc == (uint32_t)QT_CONTINUE_ID) g_qcCursor = 1;
     else return false;
+    MvRows* rows = qcBuildRows(base);
+    mvSync(&g_qcCur, g_qcAppear, rows);
+    int at = mvRowOfOption(rows, g_qcCursor);
+    if (at >= 0) g_qcCur.row = at;
     qcSpeakChoice(base);
     return true;
 }

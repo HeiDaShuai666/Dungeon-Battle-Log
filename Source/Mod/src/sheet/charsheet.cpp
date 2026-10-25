@@ -1293,13 +1293,14 @@ static void csSpeakTipLine(uintptr_t base, int tipDir) {
     if (total <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return; }
 
     int line = (g_csTipLine + tipDir + total) % total;   // wraps, so neither direction dead-ends
+    const char* note = axWrapNote(g_csTipLine, line, tipDir);
     g_csTipLine = line;
     char def[AB_TIP_LINE_SZ];
     const char* text = lines[0];
     if (line < n) text = lines[line];
     else if (axTipKeywordLine(&lines[0][0], AB_TIP_LINE_SZ, n, 1, type, line - n, def, sizeof def)) text = def;
     logLine("charsheet tipline %d/%d (%s row %d) -> \"%s\"", line, total, s->name, g_csRow, text);
-    postSpeech(text);
+    axPostWrapped(note, text);
 }
 
 bool routeCharSheetKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {

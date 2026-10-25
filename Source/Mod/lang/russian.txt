@@ -26,6 +26,8 @@ VALUE_OFF=Выключено
 VALUE_AUTO=Авто
 POS_N_OF_M=%d из %d.
 NO_MORE_INFO=Больше нет сведений.
+WRAP_TOP=Переход в начало.
+WRAP_BOTTOM=Переход в конец.
 VALUE_CHECKED=отмечено
 VALUE_UNCHECKED=не отмечено
 ACTION_FAILED=Не получилось.
@@ -289,6 +291,13 @@ HELPCTX_WAVE_COMBAT=Бесконечный бой
 CTRLS_TITLE=Управление.
 CTRLS_EMPTY=Текста об управлении нет.
 CTRLS_CLOSED=Управление закрыто.
+
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s, %d.
+CR_IN_SECTION_FMT=%s, %s
+CR_EMPTY=Текста титров нет.
+CR_CLOSED=Титры закрыты.
+CR_OPEN_HINT=Page Up и Page Down переходят между разделами.
 
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=Страница дневника. %s. Страница %d из %d.
@@ -1186,6 +1195,8 @@ TS_CHOOSE_TARGET_FMT=%s. Выберите цель. Доступно: %d.
 TS_CHOOSE_POSITION_FMT=%s. Выберите позицию. Доступно: %d.
 TS_USED_ON_FMT=%s по цели %s.
 TS_COULDNT_USE_FMT=Не удалось применить «%s» по цели %s.
+TS_CLICK_MISSED_FMT=Щелчок по цели %s не сработал.
+TS_USERSEL_KILL_FMT=%s. Выберите, какого героя убить. Доступно: %d.
 TS_ROW_POSITION_FMT=Позиция %d. %s.
 TS_HITS_FMT=Целей: %d: %s
 TS_CANT_MOVE_THERE=Туда переместиться нельзя.
@@ -1909,3 +1920,18 @@ ABBR_RD=rd
 ABBR_RD_FULL=раунд
 ABBR_RDS=rds
 ABBR_RDS_FULL=раундов
+
+# ---- THE POPUP READER (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s, кнопка.
+MV_CLOSE=Закрыть
+MV_OPTION_FALLBACK=Вариант.
+MV_EMPTY=Здесь нечего читать.
+
+# ---- THE TOWN MENU PANEL (town/menupanel.cpp, 2026-10-25): the estate bar as one Tab stop. The four FB_ lines are fallbacks for the game's own town_name_* / menu_options_element_town_events strings and copy that language's shipped value ----
+TMN_TITLE=Меню.
+TMN_NONE=Кнопок нет.
+TMN_SETTINGS=Настройки
+TMN_FB_TRINKETS=Набор украшений
+TMN_FB_GLOSSARY=Глоссарий
+TMN_FB_ACTIVITY=Журнал действий
+TMN_FB_TOWN_EVENTS=Городские События

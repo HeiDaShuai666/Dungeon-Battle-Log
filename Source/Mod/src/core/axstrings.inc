@@ -6,6 +6,8 @@ AXS(VALUE_OFF, "Off")
 AXS(VALUE_AUTO, "Auto")
 AXS(POS_N_OF_M, "%d of %d.")
 AXS(NO_MORE_INFO, "No more information.")
+AXS(WRAP_TOP,    "Wrapping to top.")
+AXS(WRAP_BOTTOM, "Wrapping to bottom.")
 AXS(VALUE_CHECKED,   "checked")
 AXS(VALUE_UNCHECKED, "unchecked")
 AXS(ACTION_FAILED, "That didn't work.")
@@ -293,6 +295,13 @@ AXS(CTRLS_TITLE,      "Controls.")
 AXS(CTRLS_EMPTY,      "No controls text.")
 AXS(CTRLS_CLOSED,     "Controls closed.")
 
+// ---- frontend/credits.cpp: the credits roll ----
+AXS(CR_HEADING_FMT,    "%s, %d.")
+AXS(CR_IN_SECTION_FMT, "%s, %s")
+AXS(CR_EMPTY,          "No credits text.")
+AXS(CR_CLOSED,         "Credits closed.")
+AXH(CR_OPEN_HINT,      "Page Up and Page Down jump between sections.")
+
 // ---- frontend/sharedui.cpp: journal page popup ----
 AXS(JP_HDR_TITLE_POS, "Journal page, %s, page %d of %d.")
 AXS(JP_HDR_TITLE,     "Journal page, %s.")
@@ -348,6 +357,13 @@ AXS(RES_TITLE,          "Resources.")
 AXS(RES_ROW_AMOUNT,     "%s: %d")
 AXS(RES_TRADE_FALLBACK, "Trade heirlooms")
 AXS(RES_NONE,           "No resources.")
+AXS(TMN_TITLE,          "Menu.")
+AXS(TMN_NONE,           "No buttons.")
+AXS(TMN_SETTINGS,       "Settings")
+AXS(TMN_FB_TRINKETS,    "Trinket Inventory")
+AXS(TMN_FB_GLOSSARY,    "Glossary")
+AXS(TMN_FB_ACTIVITY,    "Activity Log")
+AXS(TMN_FB_TOWN_EVENTS, "Town Events")
 
 // ---- town/map.cpp: the hamlet map's Locations list ----
 AXS(TM_TITLE_HAMLET, "Hamlet Locations.")
@@ -1270,6 +1286,8 @@ AXS(TS_CHOOSE_TARGET_FMT,  "%s, choose target, %d available.")
 AXS(TS_CHOOSE_POSITION_FMT,"%s, choose rank, %d available.")
 AXS(TS_USED_ON_FMT,        "%s on %s.")
 AXS(TS_COULDNT_USE_FMT,    "Couldn't use %s on %s.")
+AXS(TS_CLICK_MISSED_FMT,   "The click on %s didn't land.")
+AXS(TS_USERSEL_KILL_FMT,   "%s, select which hero to kill, %d available.")
 AXS(TS_ROW_POSITION_FMT,   "Rank %d, %s.")
 AXS(TS_HITS_FMT,           "Hits %d: %s")
 AXS(TS_CANT_MOVE_THERE,    "Can't move there.")
@@ -1635,6 +1653,14 @@ AXS(FD_NO_RESULTS,      "No results.")
 AXS(FD_NOTHING_HERE,    "Nothing to search on this screen.")
 // Ctrl+F on a searchable surface whose list is empty right now.
 AXS(FD_EMPTY,           "Nothing to search: the list is empty.")
+
+// ---- THE POPUP READER: every popup's rows ----
+AXS(MV_BUTTON_FMT,      "%s, button.")
+// The word inside that frame if the game's key ever fails to resolve.
+AXS(MV_CLOSE,           "Close")
+AXS(MV_OPTION_FALLBACK, "Option.")
+// A popup whose text and options all failed to read, on an arrow press.
+AXS(MV_EMPTY,           "Nothing to read here.")
 
 // ---- MOD TUTORIALS: the mod's own help dialogs ----
 AXS(MT_TITLE_P1, "Welcome to Darkest Dungeon! Mod tutorials like this will automatically appear in many areas of the game to help you learn how to play. You can also view them by pressing F1 for context-sensitive help.")

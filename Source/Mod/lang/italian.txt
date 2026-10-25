@@ -31,6 +31,8 @@ VALUE_OFF=Disattivo
 VALUE_AUTO=Automatico
 POS_N_OF_M=%d di %d.
 NO_MORE_INFO=Nessun'altra informazione.
+WRAP_TOP=Ritorno all'inizio.
+WRAP_BOTTOM=Ritorno alla fine.
 VALUE_CHECKED=selezionato
 VALUE_UNCHECKED=non selezionato
 ACTION_FAILED=Non ha funzionato.
@@ -280,6 +282,13 @@ HELPCTX_WAVE_COMBAT=Combattimento della modalità Infinita
 CTRLS_TITLE=Comandi.
 CTRLS_EMPTY=Nessun testo sui comandi.
 CTRLS_CLOSED=Comandi chiusi.
+
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s, %d.
+CR_IN_SECTION_FMT=%s, %s
+CR_EMPTY=Nessun testo dei riconoscimenti.
+CR_CLOSED=Riconoscimenti chiusi.
+CR_OPEN_HINT=Pagina su e Pagina giù saltano da una sezione all'altra.
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=Pagina del diario. %s. Pagina %d di %d.
 JP_HDR_TITLE=Pagina del diario. %s.
@@ -1146,6 +1155,8 @@ TS_CHOOSE_TARGET_FMT=%s. Scegli il bersaglio. Disponibili: %d.
 TS_CHOOSE_POSITION_FMT=%s. Scegli la posizione. Disponibili: %d.
 TS_USED_ON_FMT=%s su %s.
 TS_COULDNT_USE_FMT=Impossibile usare %s su %s.
+TS_CLICK_MISSED_FMT=Il clic su %s non è andato a segno.
+TS_USERSEL_KILL_FMT=%s. Scegli quale eroe uccidere. Disponibili: %d.
 TS_ROW_POSITION_FMT=Posizione %d. %s.
 TS_HITS_FMT=Colpisce %d: %s
 TS_CANT_MOVE_THERE=Non ci si può spostare lì.
@@ -1863,3 +1874,18 @@ ABBR_RD=rd
 ABBR_RD_FULL=round
 ABBR_RDS=rds
 ABBR_RDS_FULL=round
+
+# ---- THE POPUP READER (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s, pulsante.
+MV_CLOSE=Chiudi
+MV_OPTION_FALLBACK=Opzione.
+MV_EMPTY=Niente da leggere qui.
+
+# ---- THE TOWN MENU PANEL (town/menupanel.cpp, 2026-10-25): the estate bar as one Tab stop. The four FB_ lines are fallbacks for the game's own town_name_* / menu_options_element_town_events strings and copy that language's shipped value ----
+TMN_TITLE=Menu.
+TMN_NONE=Nessun pulsante.
+TMN_SETTINGS=Impostazioni
+TMN_FB_TRINKETS=Inventario degli Ornamenti
+TMN_FB_GLOSSARY=Glossario
+TMN_FB_ACTIVITY=Registro delle Attività
+TMN_FB_TOWN_EVENTS=Eventi del Villaggio

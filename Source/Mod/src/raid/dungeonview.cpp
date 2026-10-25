@@ -1346,10 +1346,8 @@ static uint32_t rvDoorLeadsTo(uintptr_t root, uintptr_t curArea, uint32_t curId,
     uint32_t farEnd = 0;
     for (int e = 0; e < 2; e++) {
         uintptr_t tile = tb + (uintptr_t)(e ? tiles - 1 : 0) * TILE_STRIDE;
-        int32_t ttype = -1; uint32_t tneigh = 0;
-        safeReadU32(tile + TILE_TYPE_OFF, reinterpret_cast<uint32_t*>(&ttype));
-        safeReadU32(tile + TILE_NEIGH_ID_OFF, &tneigh);
-        if (ttype != 2 || !tneigh || tneigh == FOURCC_NONE) continue;
+        uint32_t tneigh = 0;
+        if (!tileLinksRoom(tile, &tneigh)) continue;
         if (tneigh == curId) endsNameUs = true;
         else                 farEnd = tneigh;
     }
@@ -1383,10 +1381,8 @@ static int rvDoorList(uintptr_t base, uint32_t* destOut, uintptr_t* doorOut, int
             long ti = e ? tiles - 1 : 0;
             if (partyTile >= 0 && partyTile != ti) continue;   // not standing at this end door
             uintptr_t tile = tb + (uintptr_t)ti * TILE_STRIDE;
-            int32_t ttype = -1; uint32_t tneigh = 0;
-            safeReadU32(tile + TILE_TYPE_OFF, reinterpret_cast<uint32_t*>(&ttype));
-            safeReadU32(tile + TILE_NEIGH_ID_OFF, &tneigh);
-            if (ttype != 2 || !tneigh || tneigh == FOURCC_NONE) continue;
+            uint32_t tneigh = 0;
+            if (!tileLinksRoom(tile, &tneigh)) continue;   // junction, or DD_map4's kind-1 door
             destOut[got] = tneigh;
             doorOut[got] = tile;
             got++;
@@ -2837,6 +2833,7 @@ void rvSpeakTipLine(uintptr_t base, int tipDir) {
         if (nr > 0) {
             int total = nr + axTipKeywordCount(&rl[0][0], AB_TIP_LINE_SZ, nr, 1, nullptr);   // 1: the identity line
             int line = (g_rvTipLine + tipDir + total) % total;   // wraps, like the main buffer
+            const char* note = axWrapNote(g_rvTipLine, line, tipDir);
             g_rvTipLine = line;
             char def[AB_TIP_LINE_SZ];
             const char* text = rl[0];
@@ -2844,7 +2841,7 @@ void rvSpeakTipLine(uintptr_t base, int tipDir) {
             else if (axTipKeywordLine(&rl[0][0], AB_TIP_LINE_SZ, nr, 1, nullptr, line - nr, def, sizeof def)) text = def;
             logLine("roomview %s tipline %d/%d (row %d) -> \"%s\"",
                     g_rvTipCol == 1 ? "resist" : "left-panel", line, total, g_rvCursor, text);
-            postSpeech(text);
+            axPostWrapped(note, text);
             return;
         }
         g_rvTipCol = 0;
@@ -2856,13 +2853,14 @@ void rvSpeakTipLine(uintptr_t base, int tipDir) {
     if (total <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return; }
 
     int line = (g_rvTipLine + tipDir + total) % total;   // wraps, so neither direction dead-ends
+    const char* note = axWrapNote(g_rvTipLine, line, tipDir);
     g_rvTipLine = line;
     char def[AB_TIP_LINE_SZ];
     const char* text = lines[0];
     if (line < nl) text = lines[line];
     else if (axTipKeywordLine(&lines[0][0], AB_TIP_LINE_SZ, nl, 1, nullptr, line - nl, def, sizeof def)) text = def;
     logLine("roomview tipline %d/%d (row %d) -> \"%s\"", line, total, g_rvCursor, text);
-    postSpeech(text);
+    axPostWrapped(note, text);
 }
 
 // ---- READ ONE RANK ON DEMAND ----

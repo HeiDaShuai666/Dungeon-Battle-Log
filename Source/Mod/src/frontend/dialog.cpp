@@ -422,6 +422,66 @@ static bool cdAnswersOnScreen(int count) {
     return false;
 }
 
+// ---- THE POPUP READER's rows ----
+static MvCursor g_cdCur = { 0xffffffffu, 0 };
+
+static MvRows* cdBuildRows(uintptr_t base, uint32_t* sigOut) {
+    MvRows* r = mvBegin();
+    if (sigOut) *sigOut = 0;
+    uintptr_t entry = 0, aBegin = 0;
+    int count = confirmDialogAnswers(base, &entry, &aBegin);
+    if (count <= 0) return r;
+    if (count > CONFIRM_ANSWER_MAX) count = CONFIRM_ANSWER_MAX;
+
+    char qraw[CD_QUESTION_TEXT_MAX + 4]; qraw[0] = 0;
+    safeReadCStr(entry + CD_QUESTION_TEXT_OFF, qraw, sizeof qraw);
+    uint32_t tag = (uint32_t)count * 2654435761u;
+    for (const char* p = qraw; *p; p++) tag = tag * 31u + (unsigned char)*p;
+    if (sigOut) *sigOut = tag;
+
+    // The question: the same three sources, in the same order, as cdComposeLine.
+    char actHdr[256], title[600];
+    bool actFail = g_bldActWhy[0] &&
+                   resolveKey(base, kActFailKey, actHdr, sizeof actHdr) && actHdr[0] &&
+                   strncmp(qraw, actHdr, strlen(actHdr)) == 0;
+    if (actFail)                                              mvTextLine(r, g_bldActWhy);
+    else if (confirmDialogQuestion(base, entry, title, sizeof title) ||
+             optBackTitle(base, aBegin, count, title, sizeof title)) mvText(r, title);
+
+    uintptr_t display = frontEndDisplay(base);
+    for (int i = 0; i < count; i++) {
+        char raw[128], label[128], line[900];
+        raw[0] = 0; label[0] = 0; line[0] = 0;
+        char rich[800];
+        if (display && resolveModeDialog(base, display, (int64_t)(CONFIRM_ANSWER_BASE + (uint32_t)i),
+                                         false, rich, sizeof rich)) {
+            char clean[800];
+            stripMarkup(rich, clean, sizeof clean);
+            _snprintf(line, sizeof line, "%s", clean);
+            line[sizeof line - 1] = 0;
+            axAppendHint(line, sizeof line, AXS_ENTER_ACTIVATE_HINT);
+            mvOption(r, i, line);
+            continue;
+        }
+        uintptr_t ans = aBegin + (uintptr_t)i * CD_ANSWER_STRIDE;
+        if (safeReadCStr(ans + CD_ANSWER_TEXT_OFF, raw, sizeof raw) && raw[0]) {
+            if (!resolveKey(base, raw, label, sizeof label)) {
+                strncpy(label, raw, sizeof label - 1);
+                label[sizeof label - 1] = 0;
+            }
+        }
+        if (label[0]) {
+            char clean[128];
+            stripMarkup(label, clean, sizeof clean);
+            _snprintf(line, sizeof line, axs(AXS_MV_BUTTON_FMT), clean);
+            line[sizeof line - 1] = 0;
+            axAppendHint(line, sizeof line, AXS_ENTER_ACTIVATE_HINT);
+        }
+        mvOption(r, i, line);
+    }
+    return r;
+}
+
 bool routeDialogKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
     (void)base;
     if (mod & (KMOD_LALT | KMOD_RALT)) return false;
@@ -446,17 +506,17 @@ bool routeDialogKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
     }
     s_phantomLogged = false;
 
-    switch (sym) {
-        case SDLK_UP: case SDLK_DOWN: case SDLK_LEFT: case SDLK_RIGHT: {
-            if (repeat) return true;
-            frontEndFocusMove(sym == SDLK_UP ? 0 : sym == SDLK_DOWN ? 1 : sym == SDLK_LEFT ? 2 : 3);
-            return true;
-        }
-        default: break;
-    }
+    uint32_t sig = 0;
+    MvRows* rows = cdBuildRows(g_base, &sig);
+    mvSync(&g_cdCur, sig, rows);
+    int opt = -1;
+    int mk = mvKey(&g_cdCur, rows, sym, mod, repeat, /*lrOptions=*/true, &opt);
+    if (mk == MVK_DONE) return true;
 
     int want = -1;
-    if (sym == SDLK_RETURN || sym == SDLK_KP_ENTER) {
+    if (mk == MVK_OPTION && opt >= 0 && opt < count) {
+        want = opt;
+    } else if (mk == MVK_TEXT || mk == MVK_OPTION) {
         // The focused answer if focus is on one; else the accept role (answer 0).
         int64_t id = feCurrentFocusId();
         uint32_t idx = (uint32_t)(uint64_t)id - CONFIRM_ANSWER_BASE;

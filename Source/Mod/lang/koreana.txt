@@ -22,6 +22,8 @@ VALUE_OFF=꺼짐
 VALUE_AUTO=자동
 POS_N_OF_M=%d번째, 총 %d개.
 NO_MORE_INFO=추가 정보가 없습니다.
+WRAP_TOP=처음으로 돌아갑니다.
+WRAP_BOTTOM=끝으로 이동합니다.
 VALUE_CHECKED=선택됨
 VALUE_UNCHECKED=선택 안 됨
 ACTION_FAILED=실행되지 않았습니다.
@@ -285,6 +287,13 @@ HELPCTX_WAVE_COMBAT=무한 모드 전투
 CTRLS_TITLE=조작법.
 CTRLS_EMPTY=조작법 내용이 없습니다.
 CTRLS_CLOSED=조작법을 닫았습니다.
+
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s, %d.
+CR_IN_SECTION_FMT=%s, %s
+CR_EMPTY=제작진 텍스트가 없습니다.
+CR_CLOSED=제작진을 닫았습니다.
+CR_OPEN_HINT=페이지 업과 페이지 다운으로 섹션 사이를 이동합니다.
 
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=일지. %s. %d쪽, 총 %d쪽.
@@ -1180,6 +1189,8 @@ TS_CHOOSE_TARGET_FMT=%s. 목표를 고르십시오. %d개 가능.
 TS_CHOOSE_POSITION_FMT=%s. 열을 고르십시오. %d개 가능.
 TS_USED_ON_FMT=%s 사용, 목표 %s.
 TS_COULDNT_USE_FMT=%s 사용 실패, 목표 %s.
+TS_CLICK_MISSED_FMT=%s 클릭이 적용되지 않았습니다.
+TS_USERSEL_KILL_FMT=%s. 죽일 영웅을 고르십시오. %d개 가능.
 TS_ROW_POSITION_FMT=%d열. %s.
 TS_HITS_FMT=타격 대상 %d: %s
 TS_CANT_MOVE_THERE=그곳으로 이동할 수 없습니다.
@@ -1903,3 +1914,18 @@ ABBR_RD=rd
 ABBR_RD_FULL=라운드
 ABBR_RDS=rds
 ABBR_RDS_FULL=라운드
+
+# ---- THE POPUP READER (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s, 버튼.
+MV_CLOSE=닫기
+MV_OPTION_FALLBACK=선택지.
+MV_EMPTY=여기에는 읽을 내용이 없습니다.
+
+# ---- THE TOWN MENU PANEL (town/menupanel.cpp, 2026-10-25): the estate bar as one Tab stop. The four FB_ lines are fallbacks for the game's own town_name_* / menu_options_element_town_events strings and copy that language's shipped value ----
+TMN_TITLE=메뉴.
+TMN_NONE=버튼이 없습니다.
+TMN_SETTINGS=설정
+TMN_FB_TRINKETS=장신구 가방
+TMN_FB_GLOSSARY=용어사전
+TMN_FB_ACTIVITY=활동 일지
+TMN_FB_TOWN_EVENTS=마을 이벤트

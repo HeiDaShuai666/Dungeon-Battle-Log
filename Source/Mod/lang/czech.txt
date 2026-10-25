@@ -27,6 +27,8 @@ VALUE_OFF=Vypnuto
 VALUE_AUTO=Automaticky
 POS_N_OF_M=%d z %d.
 NO_MORE_INFO=Žádné další informace.
+WRAP_TOP=Přechod na začátek.
+WRAP_BOTTOM=Přechod na konec.
 VALUE_CHECKED=zaškrtnuto
 VALUE_UNCHECKED=nezaškrtnuto
 ACTION_FAILED=To nefungovalo.
@@ -290,6 +292,13 @@ HELPCTX_WAVE_COMBAT=Nekonečný boj
 CTRLS_TITLE=Ovládání.
 CTRLS_EMPTY=Žádný text ovládání.
 CTRLS_CLOSED=Ovládání zavřeno.
+
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s, %d.
+CR_IN_SECTION_FMT=%s, %s
+CR_EMPTY=Žádný seznam tvůrců.
+CR_CLOSED=Seznam tvůrců zavřen.
+CR_OPEN_HINT=Page Up a Page Down přeskakují mezi sekcemi.
 
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=Stránka deníku. %s. Strana %d z %d.
@@ -1185,6 +1194,8 @@ TS_CHOOSE_TARGET_FMT=%s. Vyber cíl. K dispozici: %d.
 TS_CHOOSE_POSITION_FMT=%s. Vyber pozici. K dispozici: %d.
 TS_USED_ON_FMT=%s na %s.
 TS_COULDNT_USE_FMT=Nelze použít %s na %s.
+TS_CLICK_MISSED_FMT=Kliknutí na %s nezabralo.
+TS_USERSEL_KILL_FMT=%s. Vyber, kterého hrdinu zabít. K dispozici: %d.
 TS_ROW_POSITION_FMT=Pozice %d. %s.
 TS_HITS_FMT=Zasáhne (%d): %s
 TS_CANT_MOVE_THERE=Tam se nelze přesunout.
@@ -1908,3 +1919,18 @@ ABBR_RD=rd
 ABBR_RD_FULL=kolo
 ABBR_RDS=rds
 ABBR_RDS_FULL=kol
+
+# ---- THE POPUP READER (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s, tlačítko.
+MV_CLOSE=Zavřít
+MV_OPTION_FALLBACK=Možnost.
+MV_EMPTY=Není tu nic ke čtení.
+
+# ---- THE TOWN MENU PANEL (town/menupanel.cpp, 2026-10-25): the estate bar as one Tab stop. The four FB_ lines are fallbacks for the game's own town_name_* / menu_options_element_town_events strings and copy that language's shipped value ----
+TMN_TITLE=Nabídka.
+TMN_NONE=Žádná tlačítka.
+TMN_SETTINGS=Nastavení
+TMN_FB_TRINKETS=Inventář cetek
+TMN_FB_GLOSSARY=Glosář
+TMN_FB_ACTIVITY=Záznam aktivit
+TMN_FB_TOWN_EVENTS=Události ve městě

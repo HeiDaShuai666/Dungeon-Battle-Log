@@ -398,11 +398,18 @@ static void hpParaLine(int row, char* out, int outsz) {
     out[outsz - 1] = 0;
 }
 
+static void hpSpeakClose() {
+    char line[MV_ROW_SZ];
+    mvCloseLabel(line, sizeof line);
+    axAppendHint(line, sizeof line, AXS_ENTER_ACTIVATE_HINT);
+    postSpeech(line);
+}
+
 // Speak the paragraph at g_hpRow with its position (the Up/Down re-walk).
 static void hpSpeakPara(uintptr_t base) {
     if (g_hpCount == 0) { postSpeech(axs(AXS_HELP_EMPTY)); return; }
     if (g_hpRow < 0) g_hpRow = 0;
-    if (g_hpRow >= g_hpCount) g_hpRow = g_hpCount - 1;
+    if (g_hpRow >= g_hpCount) { g_hpRow = g_hpCount; hpSpeakClose(); return; }
     char line[HP_PARA_MAX + 2];
     hpParaLine(g_hpRow, line, sizeof line);
     char posn[64];
@@ -479,6 +486,17 @@ void checkHelp(uintptr_t base) {
 }
 
 bool routeHelpKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
+    if ((sym == SDLK_RETURN || sym == SDLK_KP_ENTER) &&
+        !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
+        if (repeat) return true;
+        if (g_hpPlaced && g_hpCount > 0 && g_hpRow >= g_hpCount) {
+            if (!clickQueued() && !mvSendEscape("help")) postSpeech(axs(AXS_ACTION_FAILED));
+            return true;
+        }
+        if (!g_hpPlaced) { g_hpPlaced = true; g_hpRow = 0; }
+        hpSpeakPara(base);                               // a paragraph: Enter re-reads it
+        return true;
+    }
     int dRow = 0, dCol = 0, jump = 0;
     bool isJump = axDecodeJump(sym, mod, repeat, &jump);   // Home/End: first/last paragraph
     if (isJump) {
@@ -500,8 +518,8 @@ bool routeHelpKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         }
     }
     int from = g_hpRow;
-    axStepCursor(&g_hpRow, g_hpCount, dRow);            // hard stop: re-read the end paragraph
-    logLine("help nav paragraph %d -> %d (of %d)", from, g_hpRow, g_hpCount);
+    axStepCursor(&g_hpRow, g_hpCount + 1, dRow);        // hard stop: re-read the end row (+1 = Close)
+    logLine("help nav paragraph %d -> %d (of %d + Close)", from, g_hpRow, g_hpCount);
     hpSpeakPara(base);
     return true;
 }
@@ -604,7 +622,15 @@ static void cpSpeakWhole(uintptr_t base) {
 static void cpSpeakLine(uintptr_t base) {
     if (g_cpCount == 0) { postSpeech(axs(AXS_CTRLS_EMPTY)); return; }
     if (g_cpRow < 0) g_cpRow = 0;
-    if (g_cpRow >= g_cpCount) g_cpRow = g_cpCount - 1;
+    if (g_cpRow >= g_cpCount) {
+        g_cpRow = g_cpCount;
+        char line[MV_ROW_SZ];
+        mvCloseLabel(line, sizeof line);
+        axAppendHint(line, sizeof line, AXS_ENTER_ACTIVATE_HINT);
+        g_cpSpokenCat = -1;
+        postSpeech(line);
+        return;
+    }
     int cat = g_cpLineCat[g_cpRow];
     char utter[MAILBOX_SZ];
     utter[0] = 0;
@@ -677,6 +703,18 @@ void checkControls(uintptr_t base) {
 }
 
 bool routeControlsKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
+    if ((sym == SDLK_RETURN || sym == SDLK_KP_ENTER) &&
+        !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
+        if (repeat) return true;
+        if (g_cpCount == 0) cpCollect(base, false);
+        if (g_cpPlaced && g_cpCount > 0 && g_cpRow >= g_cpCount) {
+            if (!clickQueued() && !mvSendEscape("controls")) postSpeech(axs(AXS_ACTION_FAILED));
+            return true;
+        }
+        if (!g_cpPlaced) { g_cpPlaced = true; g_cpRow = 0; }
+        cpSpeakLine(base);                               // a line: Enter re-reads it
+        return true;
+    }
     int dRow = 0, dCol = 0, jump = 0;
     bool isJump = axDecodeJump(sym, mod, repeat, &jump);   // Home/End: first/last line
     if (isJump) {
@@ -695,8 +733,8 @@ bool routeControlsKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat
         }
     }
     int from = g_cpRow;
-    axStepCursor(&g_cpRow, g_cpCount, dRow);            // hard stop: re-read the end line
-    logLine("controls nav line %d -> %d (of %d)", from, g_cpRow, g_cpCount);
+    axStepCursor(&g_cpRow, g_cpCount + 1, dRow);        // hard stop: re-read the end row (+1 = Close)
+    logLine("controls nav line %d -> %d (of %d + Close)", from, g_cpRow, g_cpCount);
     cpSpeakLine(base);
     return true;
 }
@@ -892,7 +930,14 @@ static void jpSpeakWhole(bool turn) {
 
 static void jpSpeakRow() {
     if (g_jpRow < 0) g_jpRow = 0;
-    if (g_jpRow >= g_jpCount) g_jpRow = g_jpCount - 1;
+    if (g_jpRow >= g_jpCount) {
+        g_jpRow = g_jpCount;
+        char line[MV_ROW_SZ];
+        mvCloseLabel(line, sizeof line);
+        axAppendHint(line, sizeof line, AXS_ENTER_ACTIVATE_HINT);
+        postSpeech(line);
+        return;
+    }
     postSpeech(g_jpRows[g_jpRow]);
 }
 
@@ -978,6 +1023,25 @@ bool routeJournalKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat)
         return false;
     }
 
+    if (sym == SDLK_RETURN || sym == SDLK_KP_ENTER) {
+        if (repeat) return true;
+        jpReleaseReadHold("Enter");
+        if (g_jpCount <= 0) { postSpeech(axs(AXS_JP_NOTHING_TO_READ)); return true; }
+        if (g_jpPlaced && g_jpRow >= g_jpCount) {
+            if (clickQueued()) return true;
+            if (feGetElementById((int64_t)JP_ID_CLOSE) && frontEndClickElementId((int64_t)JP_ID_CLOSE)) {
+                logLine("journal: Close row -> clicked the close button");
+                return true;
+            }
+            logLine("journal: Close row -> no close button on screen");
+            postSpeech(axs(AXS_ACTION_FAILED));
+            return true;
+        }
+        if (!g_jpPlaced) { g_jpPlaced = true; g_jpRow = 0; }
+        jpSpeakRow();
+        return true;
+    }
+
     if (sym == SDLK_LEFT || sym == SDLK_RIGHT) {
         if (repeat) return true;                   // claimed, one turn per press
         jpReleaseReadHold("a page-turn key");
@@ -1016,8 +1080,8 @@ bool routeJournalKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat)
         }
     }
     int from = g_jpRow;
-    axStepCursor(&g_jpRow, g_jpCount, dRow);       // hard stop: re-read the last row
-    logLine("journal nav row %d -> %d (of %d)", from, g_jpRow, g_jpCount);
+    axStepCursor(&g_jpRow, g_jpCount + 1, dRow);   // hard stop: re-read the last row (+1 = Close)
+    logLine("journal nav row %d -> %d (of %d + Close)", from, g_jpRow, g_jpCount);
     jpSpeakRow();
     return true;
 }

@@ -310,6 +310,36 @@ int feCollectFamilyByX(uintptr_t base, uint32_t family, uint32_t ownerTag,
     return n;
 }
 
+int feCollectByOwner(uintptr_t base, uint32_t ownerTag, uintptr_t* out, int64_t* idOut,
+                     float* xOut, int maxOut) {
+    uintptr_t begin = 0, end = 0;
+    int n = 0;
+    if (!out || maxOut <= 0 || !ownerTag) return 0;
+    if (!safeReadPtr(base + VEC_BEGIN_RVA, &begin) ||
+        !safeReadPtr(base + VEC_END_RVA, &end) || !begin || end <= begin) return 0;
+    uintptr_t cnt = (end - begin) / ELEM_STRIDE;
+    if (cnt > 4096) cnt = 4096;
+    float   xs[64];
+    int64_t ids[64];
+    if (maxOut > 64) maxOut = 64;
+    for (uintptr_t i = 0; i < cnt && n < maxOut; i++) {
+        uintptr_t el = begin + i * ELEM_STRIDE;
+        int64_t id = 0; uintptr_t owner = 0;
+        if (!safeReadI64(el + ELEM_ID_OFF, &id) || isNoFocus(id)) continue;
+        if (!safeReadPtr(el + ELEM_OWNER_OFF, &owner) || (uint32_t)owner != ownerTag) continue;
+        float cx = 0, cy = 0;
+        if (!elemCenter(el, &cx, &cy)) continue;
+        int at = n++;                                   // insertion sort, ascending x
+        while (at > 0 && xs[at - 1] > cx) {
+            xs[at] = xs[at - 1]; ids[at] = ids[at - 1]; out[at] = out[at - 1]; at--;
+        }
+        xs[at] = cx; ids[at] = id; out[at] = el;
+    }
+    if (xOut)  for (int i = 0; i < n; i++) xOut[i]  = xs[i];
+    if (idOut) for (int i = 0; i < n; i++) idOut[i] = ids[i];
+    return n;
+}
+
 void feDumpFocusVector(const char* why) {
     if (!axDebugLogEnabled()) return;
     uintptr_t begin = 0, end = 0;

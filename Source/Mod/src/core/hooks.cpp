@@ -173,6 +173,32 @@ static void installJournalHook(uintptr_t base) {
     logLine("journalhook: installed slot=0x%llx orig=0x%llx",
             (unsigned long long)slot, (unsigned long long)g_origJournalShow);
 }
+// ---- Credits vtable hook (UI::Panel::Credits, slot 23) ----
+typedef void* (__fastcall *CreditsShowFn)(void*, void*, void*, void*);
+static CreditsShowFn g_origCreditsShow = nullptr;
+static void**        g_crSlot          = nullptr;
+
+static void* __fastcall CreditsShowDetour(void* self, void* a2, void* a3, void* a4) {
+    uintptr_t p = reinterpret_cast<uintptr_t>(self);
+    if (p != g_crObj) logLine("creditshook: first draw, obj=%p", (void*)p);   // once per instance
+    g_crObj = p;
+    g_crSeenTick = GetTickCount();
+    return g_origCreditsShow ? g_origCreditsShow(self, a2, a3, a4) : nullptr;
+}
+static void installCreditsHook(uintptr_t base) {
+    if (!vftableIs(base, CR_VFT_RVA, ".?AVCredits@Panel@UI@@", "creditshook")) return;
+    void** slot = reinterpret_cast<void**>(base + CR_VFT_RVA + (uintptr_t)CR_SHOW_SLOT * 8);
+    DWORD old = 0;
+    if (!VirtualProtect(slot, sizeof(void*), PAGE_READWRITE, &old)) {
+        logLine("creditshook: VirtualProtect failed"); return;
+    }
+    g_origCreditsShow = reinterpret_cast<CreditsShowFn>(*slot);
+    *slot = reinterpret_cast<void*>(&CreditsShowDetour);
+    VirtualProtect(slot, sizeof(void*), old, &old);
+    g_crSlot = slot;
+    logLine("creditshook: installed slot=0x%llx orig=0x%llx",
+            (unsigned long long)slot, (unsigned long long)g_origCreditsShow);
+}
 // ---- Light-meter vtable hook (LightTorchOverlay, slot 5 = Render) ----
 typedef void* (__fastcall *LightRenderFn)(void*, void*, void*, void*);
 static LightRenderFn g_origLightRender = nullptr;
@@ -430,6 +456,7 @@ static DWORD WINAPI SpeechThread(LPVOID) {
     if (hooked) installTutorialHook(g_base);
     if (hooked) installTownEventHook(g_base);
     if (hooked) installJournalHook(g_base);
+    if (hooked) installCreditsHook(g_base);
     if (hooked) installLightHook(g_base);
     if (hooked) installBannerHook(g_base);
     if (hooked) installPopupHook(g_base);
@@ -448,14 +475,16 @@ static DWORD WINAPI SpeechThread(LPVOID) {
 
     DWORD handoverTick = 0;
     bool  sawSpeaking  = false;
+    LONG  spokenEpoch  = 0;
 
     auto handOver = [&](const char* text, SpeechKind kind, size_t protectLen, DWORD now,
-                        bool append = false) {
+                        bool interrupt) {
         size_t len = strlen(text);
         DWORD spoken = (DWORD)protectLen * SPEAK_MS_PER_CHAR;
         if (spoken < SPEAK_MS_FLOOR) spoken = SPEAK_MS_FLOOR;
+        bool follows = !interrupt && g_speakUntil && (long)(now - g_speakUntil) < 0;
         DWORD est;
-        if (append) {
+        if (follows) {
             est = spoken;
             DWORD until = g_speakUntil + spoken;
             if (until - now > SPEAK_MS_CAP) until = now + SPEAK_MS_CAP;
@@ -470,15 +499,15 @@ static DWORD WINAPI SpeechThread(LPVOID) {
         g_lastSpokenKind  = kind;
 
         int perr = -1;
-        bool ok = speakUtf8(text, !append, &perr);
+        bool ok = speakUtf8(text, interrupt, &perr);
+        const char* how = interrupt ? "" : follows ? " polite=1 (queued behind)" : " polite=1";
         if (ok) {
             logLine("speech->prism kind=%s%s est=%lu len=%d \"%.60s\"",
-                    speechKindName(kind), append ? " polite=1 (chained)" : "", (unsigned long)est,
-                    (int)len, text);
+                    speechKindName(kind), how, (unsigned long)est, (int)len, text);
         } else {
             const char* sr = axSpeechReaderName();
             logLine("speech->prism kind=%s%s est=%lu ok=0 len=%d err=%s speech=%d backend=%s \"%.60s\"",
-                    speechKindName(kind), append ? " polite=1 (chained)" : "", (unsigned long)est,
+                    speechKindName(kind), how, (unsigned long)est,
                     (int)len, axSpeechErrName(perr), axSpeechHasSpeech() ? 1 : 0,
                     sr ? sr : "none", text);
         }
@@ -535,13 +564,17 @@ static DWORD WINAPI SpeechThread(LPVOID) {
         }
 
         // ---- THE EVENT CHAIN ----
-        bool chain = false;
-        if (g_lastSpokenKind == SPK_EVENT && g_speakUntil && (long)(now - g_speakUntil) < 0) {
+        bool chain = false, headKey = false;
+        bool eventHold = g_lastSpokenKind == SPK_EVENT && g_speakUntil && (long)(now - g_speakUntil) < 0;
+        if (eventHold) {
             EnterCriticalSection(&g_cs);
-            chain = g_sqCount > 0 && g_sqKind[g_sqHead] == SPK_EVENT;
+            if (g_sqCount > 0) {
+                chain   = g_sqKind[g_sqHead] == SPK_EVENT;
+                headKey = (LONG)(g_sqEpoch[g_sqHead] - spokenEpoch) > 0;
+            }
             LeaveCriticalSection(&g_cs);
         }
-        if (!chain && g_lastSpokenKind == SPK_EVENT && g_speakUntil && (long)(now - g_speakUntil) < 0) {
+        if (eventHold && !chain && !headKey) {
             if (!g_holdLogged && g_hasPending) {
                 g_holdLogged = true;
                 logLine("speech: HOLDING %lu ms more for an event, %d line(s) waiting",
@@ -553,9 +586,11 @@ static DWORD WINAPI SpeechThread(LPVOID) {
 
         char local[MAILBOX_SZ]; bool has = false;
         SpeechKind kind = SPK_NAV;
+        LONG epoch = spokenEpoch;          // THE KEY RULE: newest stamp in the utterance
         EnterCriticalSection(&g_cs);
         while (g_sqCount > 0) {
             kind = g_sqKind[g_sqHead];
+            epoch = g_sqEpoch[g_sqHead];
             memcpy(local, g_speechQ[g_sqHead], sizeof local);
             g_sqHead = (g_sqHead + 1) % SPEECH_QUEUE_MAX;
             g_sqCount--;
@@ -582,6 +617,7 @@ static DWORD WINAPI SpeechThread(LPVOID) {
                     memcpy(local + len, sep, slen);   len += slen;
                     memcpy(local + len, next, nlen);  len += nlen;
                     local[len] = 0;
+                    if ((LONG)(g_sqEpoch[g_sqHead] - epoch) > 0) epoch = g_sqEpoch[g_sqHead];
                     g_sqHead = (g_sqHead + 1) % SPEECH_QUEUE_MAX;
                     g_sqCount--;
                     merged++;
@@ -616,7 +652,11 @@ static DWORD WINAPI SpeechThread(LPVOID) {
         if (rode)
             logLine("speech: %d carried bark(s) ride on the %s line", rode, speechKindName(kind));
 
-        if (has) handOver(local, kind, protectLen, now, chain);
+        if (has) {
+            bool interrupt = (LONG)(epoch - spokenEpoch) > 0;
+            if (interrupt) spokenEpoch = epoch;
+            handOver(local, kind, protectLen, now, interrupt);
+        }
     }
 }
 

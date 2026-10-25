@@ -174,6 +174,7 @@ static const int       SDL_BUTTON_RIGHT      = 3;    // SDL_BUTTON_RIGHT -- the 
 static const int       SDL_EVENT_SIZE        = 56;   // sizeof(SDL_Event) in SDL2 (zero before filling)
 static const uint32_t  SDL_EVT_KEYDOWN      = 0x300;  // SDL_KEYDOWN
 static const uint32_t  SDL_EVT_KEYUP        = 0x301;  // SDL_KEYUP — the release half of a held key
+static const uint32_t  SDL_EVT_TEXTEDITING  = 0x302;  // SDL_TEXTEDITING (an IME composition in progress)
 static const uint32_t  SDL_EVT_TEXTINPUT    = 0x303;  // SDL_TEXTINPUT
 static const uint32_t  SDL_EVT_MOUSEBUTTONDOWN      = 0x401;
 static const uint32_t  SDL_EVT_JOYBUTTONDOWN        = 0x603;
@@ -321,7 +322,7 @@ static const uintptr_t TILE_CONTENT_OFF = 0xa0;      // tile+: int content enum 
 static const uint32_t  FOURCC_NONE      = 0x656E6F6E; // "none" — empty exit / non-junction neighbour
 
 static const uintptr_t TILE_HDOOR_DEST_TILE_OFF = 0x1c; // tile+: int tile index inside the secret room
-static const uintptr_t TILE_HDOOR_KIND_OFF      = 0x24; // tile+: int door kind — 2 = hidden door
+static const uintptr_t TILE_HDOOR_KIND_OFF      = 0x24; // tile+: int door kind — 2 = hidden door;
 static const int       TILE_HDOOR_KIND_HIDDEN   = 2;
 static const uintptr_t TILE_HDOOR_SEEN_OFF      = 0x44; // tile+: byte, the door has been FOUND
 static const uintptr_t TILE_HDOOR_ACCESS_OFF    = 0x45; // tile+: byte, hidden_door_accessible (template)
@@ -592,6 +593,9 @@ inline const uintptr_t HP_VFT_RVA = axRva(0xec9270, 0xeabb50, 0xeabba0);
 inline const uintptr_t CP_SINGLETON_RVA = axRva(0x117de38, 0x1158310, 0x1158350);
 inline const uintptr_t CP_VFT_RVA = axRva(0xec8f30, 0xeab930, 0xeab9b8);
 inline const uintptr_t JP_SYSCLASS_RVA = axRva(0x117d998, 0x1157ea0, 0x1157ee0);
+// ---- frontend\credits.cpp ----
+inline const uintptr_t CR_VFT_RVA = axRva(0xed4370, 0xeb6c40, 0xeb6c90);  // UI::Panel::Credits::vftable
+static const int       CR_SHOW_SLOT = 23;
 // ---- input\synth.cpp ----
 inline const uintptr_t FE_CURSOR_X_RVA = axRva(0x117cda8, 0x11572dc, 0x115731c);
 inline const uintptr_t FE_CURSOR_Y_RVA = axRva(0x117cdac, 0x11572f0, 0x1157330);

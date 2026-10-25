@@ -1838,9 +1838,15 @@ bool routeTownTab(uintptr_t base, uint32_t sym, uint8_t repeat) {
     if (repeat) return true;                     // held key must not flap the context
     if (!resTownRoot(base)) return false;        // not in town: Tab stays the game's
 
-    if (g_ptyActive) { ptyLeave(base, "Tab"); return true; }
+    if (axIsTownMenu()) { tmnLeave(base, "Tab"); return true; }
+    if (g_ptyActive) {
+        ptyLeave(base, "Tab");
+        tmnEnter(base);
+        return true;
+    }
     if (g_resActive && tmbBareMap(resTownRoot(base))) {
         g_resActive = false;
+        if (tmnEnter(base)) return true;
         logLine("resources: Tab -> stand down to the locations list");
         return true;
     }
@@ -1874,6 +1880,11 @@ bool routeTownShiftTab(uintptr_t base, uint8_t repeat) {
     if (!root) return false;                     // not in town: Shift+Tab stays the game's
     if (!embProvIsOpen(root) && tmbBareMap(root)) {
         if (repeat) return true;
+        if (axIsTownMenu()) {
+            tmnLeave(base, "Shift+Tab");
+            logLine("townmenu: Shift+Tab -> the resources bar");
+            return routeResourcesToggle(base, SDLK_r, 0);
+        }
         if (g_resActive) {
             g_resActive = false;
             logLine("resources: Shift+Tab -> the roster");
@@ -1883,10 +1894,33 @@ bool routeTownShiftTab(uintptr_t base, uint8_t repeat) {
             rosLeave(base, "Shift+Tab");         // checkTownMap's edge re-enters the list
             return true;
         }
-        if (!g_rosActive && !g_ptyActive) return routeResourcesToggle(base, SDLK_r, 0);
+        if (!g_rosActive && !g_ptyActive) {
+            if (tmnEnter(base)) return true;
+            return routeResourcesToggle(base, SDLK_r, 0);
+        }
+    }
+    if (embQsOpen(root) && !embProvIsOpen(root) && !g_rosActive) {
+        if (repeat) return true;
+        if (axIsTownMenu()) {
+            tmnLeave(base, "Shift+Tab");
+            if (ptyEnter(base)) return true;     // menu -> the lineup
+            return true;                         // no lineup: the quest list's edge re-lands
+        }
+        if (g_ptyActive) {
+            ptyLeave(base, "Shift+Tab");         // lineup -> the quest list (checkEmbark's edge)
+            return true;
+        }
+        if (tmnEnter(base)) return true;
+        return ptyEnter(base);                   // no menu: the lineup is the other stop
     }
     if (!embProvIsOpen(root)) return routeTownTab(base, SDLK_TAB, repeat);
     if (repeat) return true;                     // held key must not flap the context
+    if (axIsTownMenu()) {
+        tmnLeave(base, "Shift+Tab");
+        if (ptyEnter(base)) return true;         // menu -> the lineup
+        provLandOnInfo();                        // no lineup: the quest-info panel is next back
+        return true;
+    }
     if (g_ptyActive) {
         ptyLeave(base, "Shift+Tab");
         provLandOnInfo();
@@ -1894,7 +1928,8 @@ bool routeTownShiftTab(uintptr_t base, uint8_t repeat) {
     }
     if (!axIsProvision()) return false;
     if (provShiftTabToGrid(base)) return true;   // quest info -> the grid
-    if (ptyEnter(base)) return true;
+    if (tmnEnter(base)) return true;
+    if (ptyEnter(base)) return true;             // no menu: grid -> the lineup
     return provTabToInfo(base);                  // no lineup here: the panel is the other stop
 }
 

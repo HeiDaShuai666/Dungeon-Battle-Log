@@ -23,6 +23,8 @@ VALUE_OFF=Off
 VALUE_AUTO=Auto
 POS_N_OF_M=%d of %d.
 NO_MORE_INFO=No more information.
+WRAP_TOP=Wrapping to top.
+WRAP_BOTTOM=Wrapping to bottom.
 VALUE_CHECKED=checked
 VALUE_UNCHECKED=unchecked
 ACTION_FAILED=That didn't work.
@@ -308,6 +310,13 @@ CTRLS_TITLE=Controls.
 CTRLS_EMPTY=No controls text.
 CTRLS_CLOSED=Controls closed.
 
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s, %d.
+CR_IN_SECTION_FMT=%s, %s
+CR_EMPTY=No credits text.
+CR_CLOSED=Credits closed.
+CR_OPEN_HINT=Page Up and Page Down jump between sections.
+
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=Journal page, %s, page %d of %d.
 JP_HDR_TITLE=Journal page, %s.
@@ -361,6 +370,13 @@ RES_TITLE=Resources.
 RES_ROW_AMOUNT=%s: %d
 RES_TRADE_FALLBACK=Trade heirlooms
 RES_NONE=No resources.
+TMN_TITLE=Menu.
+TMN_NONE=No buttons.
+TMN_SETTINGS=Settings
+TMN_FB_TRINKETS=Trinket Inventory
+TMN_FB_GLOSSARY=Glossary
+TMN_FB_ACTIVITY=Activity Log
+TMN_FB_TOWN_EVENTS=Town Events
 
 # ---- town/map.cpp: the hamlet map's Locations list (string round, 2026-08-06) ----
 TM_TITLE_HAMLET=Hamlet Locations.
@@ -1267,6 +1283,8 @@ TS_CHOOSE_TARGET_FMT=%s, choose target, %d available.
 TS_CHOOSE_POSITION_FMT=%s, choose rank, %d available.
 TS_USED_ON_FMT=%s on %s.
 TS_COULDNT_USE_FMT=Couldn't use %s on %s.
+TS_CLICK_MISSED_FMT=The click on %s didn't land.
+TS_USERSEL_KILL_FMT=%s, select which hero to kill, %d available.
 TS_ROW_POSITION_FMT=Rank %d, %s.
 TS_HITS_FMT=Hits %d: %s
 TS_CANT_MOVE_THERE=Can't move there.
@@ -1628,6 +1646,12 @@ FD_CLEARED_FMT=Search cleared. Items: %d.
 FD_NO_RESULTS=No results.
 FD_NOTHING_HERE=Nothing to search on this screen.
 FD_EMPTY=Nothing to search: the list is empty.
+
+# ---- THE POPUP READER: every popup's rows (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s, button.
+MV_CLOSE=Close
+MV_OPTION_FALLBACK=Option.
+MV_EMPTY=Nothing to read here.
 
 # ---- MOD TUTORIALS: the mod's own help dialogs (core/modtutorial.cpp, 2026-10-10) ----
 MT_TITLE_P1=Welcome to Darkest Dungeon! Mod tutorials like this will automatically appear in many areas of the game to help you learn how to play. You can also view them by pressing F1 for context-sensitive help.

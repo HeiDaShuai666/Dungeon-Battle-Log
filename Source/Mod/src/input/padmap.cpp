@@ -234,6 +234,7 @@ void servicePadMap(uintptr_t base) {
             if (g_pmPressed[i]) { g_pmDownSince[i] = now; g_pmChorded[i] = false; }
             g_pmPrev[i] = g_pmDown[i];
         }
+        if (raid && (g_pmPressed[PI_LB] || g_pmPressed[PI_RB])) abNoteSwapInput();
     } else {
         memset(g_pmPressed, 0, sizeof g_pmPressed);
         memset(g_pmReleased, 0, sizeof g_pmReleased);

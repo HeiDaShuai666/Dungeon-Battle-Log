@@ -7,6 +7,8 @@ VALUE_OFF=Desactivado
 VALUE_AUTO=Automático
 POS_N_OF_M=%d de %d.
 NO_MORE_INFO=No hay más información.
+WRAP_TOP=Volviendo al principio.
+WRAP_BOTTOM=Volviendo al final.
 VALUE_CHECKED=marcado
 VALUE_UNCHECKED=sin marcar
 ACTION_FAILED=No ha funcionado.
@@ -270,6 +272,13 @@ HELPCTX_WAVE_COMBAT=Combate del modo sin fin
 CTRLS_TITLE=Controles.
 CTRLS_EMPTY=No hay texto de controles.
 CTRLS_CLOSED=Controles cerrados.
+
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s, %d.
+CR_IN_SECTION_FMT=%s, %s
+CR_EMPTY=No hay texto de créditos.
+CR_CLOSED=Créditos cerrados.
+CR_OPEN_HINT=Página arriba y Página abajo saltan entre secciones.
 
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=Página del diario. %s. Página %d de %d.
@@ -1165,6 +1174,8 @@ TS_CHOOSE_TARGET_FMT=%s. Elige objetivo. %d disponibles.
 TS_CHOOSE_POSITION_FMT=%s. Elige posición. %d disponibles.
 TS_USED_ON_FMT=%s sobre %s.
 TS_COULDNT_USE_FMT=No se ha podido usar %s sobre %s.
+TS_CLICK_MISSED_FMT=El clic sobre %s no ha llegado.
+TS_USERSEL_KILL_FMT=%s. Elige qué héroe matar. %d disponibles.
 TS_ROW_POSITION_FMT=Posición %d. %s.
 TS_HITS_FMT=Golpea a %d: %s
 TS_CANT_MOVE_THERE=No se puede mover ahí.
@@ -1888,3 +1899,18 @@ ABBR_RD=rd
 ABBR_RD_FULL=ronda
 ABBR_RDS=rds
 ABBR_RDS_FULL=rondas
+
+# ---- THE POPUP READER (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s, botón.
+MV_CLOSE=Cerrar
+MV_OPTION_FALLBACK=Opción.
+MV_EMPTY=No hay nada que leer aquí.
+
+# ---- THE TOWN MENU PANEL (town/menupanel.cpp, 2026-10-25): the estate bar as one Tab stop. The four FB_ lines are fallbacks for the game's own town_name_* / menu_options_element_town_events strings and copy that language's shipped value ----
+TMN_TITLE=Menú.
+TMN_NONE=No hay botones.
+TMN_SETTINGS=Ajustes
+TMN_FB_TRINKETS=Inventario del reino
+TMN_FB_GLOSSARY=Glosario
+TMN_FB_ACTIVITY=Registro de actividad
+TMN_FB_TOWN_EVENTS=Eventos del poblado

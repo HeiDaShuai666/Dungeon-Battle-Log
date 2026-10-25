@@ -5,7 +5,10 @@
 #include <cstring>
 #include "internal.h"
 
-bool axTipWanted() { return axAutoTooltips(); }
+// ---- THE UNPROMPTED LANDING SPEAKS THE ROW BARE ----
+static bool g_tipUnprompted = false;
+void axTipSetUnprompted(bool on) { g_tipUnprompted = on; }
+bool axTipWanted() { return axAutoTooltips() && !g_tipUnprompted; }
 
 static bool tipEnded(const char* buf, size_t n) {
     if (n == 0) return true;
@@ -66,11 +69,13 @@ bool axTipStep(int* cursor, int dir, const char* lines, int stride, int n) {
     int total = n + kw;
     if (total <= 1) { *cursor = 0; postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
     if (*cursor < 0 || *cursor >= total) *cursor = 0;
+    int from = *cursor;
     *cursor = (*cursor + (dir < 0 ? -1 : 1) + total) % total;   // wraps, so neither direction dead-ends
+    const char* note = axWrapNote(from, *cursor, dir);
     if (*cursor < n) {
         const char* l = lines + (size_t)*cursor * (size_t)stride;
         logLine("tooltip: line %d/%d -> \"%s\"", *cursor, total, l);
-        postSpeech(l);
+        axPostWrapped(note, l);
         return true;
     }
     char def[AB_TIP_LINE_SZ];
@@ -80,6 +85,23 @@ bool axTipStep(int* cursor, int dir, const char* lines, int stride, int n) {
         return true;
     }
     logLine("tooltip: keyword line %d/%d -> \"%s\"", *cursor, total, def);
-    postSpeech(def);
+    axPostWrapped(note, def);
     return true;
+}
+
+// ---- THE WRAP NOTE ----
+const char* axWrapNote(int from, int to, int dir) {
+    if (from < 0 || to == from) return nullptr;
+    if (dir > 0 && to < from) return axs(AXS_WRAP_TOP);
+    if (dir < 0 && to > from) return axs(AXS_WRAP_BOTTOM);
+    return nullptr;
+}
+
+void axPostWrapped(const char* note, const char* text) {
+    if (!text) return;
+    if (!note || !note[0]) { postSpeech(text); return; }
+    char full[MAILBOX_SZ];
+    _snprintf(full, sizeof full, "%s %s", note, text);
+    full[sizeof full - 1] = 0;
+    postSpeech(full);
 }

@@ -829,6 +829,9 @@ bool routeTownEventEnter(uintptr_t base) {
     return true;                                                 // Enter belongs to the popup while it is up
 }
 
+static uint32_t g_teAppear = 0;
+static MvCursor g_teCur = { 0xffffffffu, 0 };
+
 static bool teComposeLine(uintptr_t base, uintptr_t self, char* out, int outsz) {
     if (!out || outsz <= 0) return false;
     out[0] = 0;
@@ -939,6 +942,7 @@ void announceTownEventPopup(uintptr_t base, uintptr_t self) {
     if (strcmp(id, g_teSpokenId) == 0 && gap < TUT_GAP_MS) return;
     strncpy(g_teSpokenId, id, sizeof g_teSpokenId - 1);
     g_teSpokenId[sizeof g_teSpokenId - 1] = 0;
+    g_teAppear++;
 
     char utter[MAILBOX_SZ];
     if (!teComposeLine(base, self, utter, sizeof utter)) return;
@@ -950,6 +954,104 @@ void teReannounce(uintptr_t base) {
     if (!teComposeLine(base, 0, utter, sizeof utter)) return;
     logLine("townevent: '/' re-reading");
     postSpeech(utter);
+}
+
+// ---- THE POPUP READER's rows + keys ----
+static const int TE_OPT_INTERACT = 1000;
+
+static MvRows* teBuildRows(uintptr_t base) {
+    MvRows* r = mvBegin();
+    char id[64];
+    uintptr_t entry = 0;
+    uint32_t hash = 0;
+    if (!townEventActiveId(base, id, sizeof id, &entry, &hash)) return r;
+
+    char keyT[96], keyD[96], rawT[512], rawD[1536];
+    _snprintf(keyT, sizeof keyT, "town_event_title_%s", id);
+    _snprintf(keyD, sizeof keyD, "town_event_description_%s", id);
+    bool haveT = resolveKey(base, keyT, rawT, sizeof rawT);
+    bool haveD = resolveKey(base, keyD, rawD, sizeof rawD);
+    if (haveT) mvText(r, rawT);
+    else       mvTextLine(r, axs(AXS_TE_TITLE));
+    if (haveD) mvText(r, rawD);
+    char info[512] = { 0 };
+    if (townEventInfoLine(base, hash, info, sizeof info)) mvText(r, info);
+
+    int heroes = teHeroCount(base);
+    g_teHeroCount = heroes;
+    if (heroes > 0) {
+        char cost[160];
+        teCostLine(base, cost, sizeof cost);
+        if (cost[0]) mvTextLine(r, cost);
+    }
+
+    char act[512] = { 0 };
+    if (townEventInteractionLabel(base, entry, act, sizeof act)) {
+        char line[640];
+        _snprintf(line, sizeof line, axs(AXS_MV_BUTTON_FMT), act);
+        line[sizeof line - 1] = 0;
+        axAppendHint(line, sizeof line, AXS_ENTER_ACTIVATE_HINT);
+        mvOption(r, TE_OPT_INTERACT, line);
+    }
+    for (int i = 0; i < heroes; i++) {
+        uintptr_t hero = teHeroAt(base, i);
+        char card[512] = { 0 }, line[640];
+        if (hero) ptyHeroFrag(base, hero, card, sizeof card);
+        _snprintf(line, sizeof line, "%s.", card[0] ? card : axs(AXS_TE_A_HERO));
+        line[sizeof line - 1] = 0;
+        axAppendHint(line, sizeof line, AXS_RCT_ROW_HINT);   // the coach's row hint, shared
+        mvOption(r, i, line);
+    }
+    mvClose(r);
+    return r;
+}
+
+bool routeTownEventKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
+    if (g_csOpen) return false;                          // the preview sheet's row has the keys
+    if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) return false;
+    MvRows* r = teBuildRows(base);
+    if (r->n <= 0) return false;                         // no verified event: leave the key alone
+
+    if (g_teHeroCount > 0 && (g_teRecArm == 2 || g_teRecWatchUntil))
+        return routeTownEventHeroKey(base, sym, mod, repeat);
+
+    mvSync(&g_teCur, g_teAppear, r);
+    auto heroAt = [&](int row) -> int {
+        const MvRowSlot& s = r->row[row];
+        return (s.kind == MV_OPT && s.opt >= 0 && s.opt < TE_OPT_INTERACT) ? s.opt : -1;
+    };
+    int h = heroAt(g_teCur.row);
+    if (h >= 0) g_teHeroRow = h;
+
+    bool bare = !(mod & (KMOD_LSHIFT | KMOD_RSHIFT));
+    if (g_teHeroCount > 0 && bare && sym == SDLK_c)                   // the preview sheet
+        return routeTownEventHeroKey(base, sym, mod, repeat);
+    if (g_teHeroCount > 0 && sym == SDLK_ESCAPE && g_teRecArm == 1)   // disarm, not close
+        return routeTownEventHeroKey(base, sym, mod, repeat);
+
+    int from = g_teCur.row, opt = -1;
+    int mk = mvKey(&g_teCur, r, sym, mod, repeat, /*lrOptions=*/false, &opt);
+    if (g_teCur.row != from) {
+        if (g_teRecArm == 1) { g_teRecArm = 0; logLine("townevent: moved off the armed hero -- disarmed"); }
+        int nh = heroAt(g_teCur.row);
+        if (nh >= 0) g_teHeroRow = nh;
+    }
+    switch (mk) {
+        case MVK_TEXT:  mvSpeak(&g_teCur, r, nullptr); return true;
+        case MVK_CLOSE:
+            if (clickQueued()) return true;
+            if (!mvSendEscape("townevent")) postSpeech(axs(AXS_ACTION_FAILED));
+            return true;
+        case MVK_OPTION:
+            if (opt == TE_OPT_INTERACT) return routeTownEventEnter(base);
+            if (opt >= 0) {
+                g_teHeroRow = opt;
+                return routeTownEventHeroKey(base, SDLK_RETURN, mod, 0);   // arm, or the second Enter
+            }
+            return true;
+        case MVK_DONE:  return true;
+        default:        return false;
+    }
 }
 
 // ---- The popup left the screen -> release the hold, hand the player back ----

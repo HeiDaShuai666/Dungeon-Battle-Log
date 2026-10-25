@@ -19,6 +19,8 @@ VALUE_OFF=关
 VALUE_AUTO=自动
 POS_N_OF_M=第%d个，共%d个。
 NO_MORE_INFO=没有更多信息。
+WRAP_TOP=回到顶部。
+WRAP_BOTTOM=跳到底部。
 VALUE_CHECKED=已勾选
 VALUE_UNCHECKED=未勾选
 ACTION_FAILED=操作没有成功。
@@ -282,6 +284,13 @@ HELPCTX_WAVE_COMBAT=无尽模式战斗
 CTRLS_TITLE=操作说明。
 CTRLS_EMPTY=没有操作说明文本。
 CTRLS_CLOSED=操作说明已关闭。
+
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s，%d。
+CR_IN_SECTION_FMT=%s，%s
+CR_EMPTY=没有制作人员名单文本。
+CR_CLOSED=制作人员名单已关闭。
+CR_OPEN_HINT=Page Up 和 Page Down 在各部分之间跳转。
 
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=日志页。%s。第%d页，共%d页。
@@ -1177,6 +1186,8 @@ TS_CHOOSE_TARGET_FMT=%s。选择目标。%d个可选。
 TS_CHOOSE_POSITION_FMT=%s。选择位置。%d个可选。
 TS_USED_ON_FMT=%s，目标%s。
 TS_COULDNT_USE_FMT=无法对%s使用%s。
+TS_CLICK_MISSED_FMT=对%s的点击未生效。
+TS_USERSEL_KILL_FMT=%s。选择要杀死的英雄。%d个可选。
 TS_ROW_POSITION_FMT=第%d位。%s。
 TS_HITS_FMT=命中%d个：%s
 TS_CANT_MOVE_THERE=无法移动到那里。
@@ -1900,3 +1911,18 @@ ABBR_RD=rd
 ABBR_RD_FULL=回合
 ABBR_RDS=rds
 ABBR_RDS_FULL=回合
+
+# ---- THE POPUP READER (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s，按钮。
+MV_CLOSE=关闭
+MV_OPTION_FALLBACK=选项。
+MV_EMPTY=这里没有可读的内容。
+
+# ---- THE TOWN MENU PANEL (town/menupanel.cpp, 2026-10-25): the estate bar as one Tab stop. The four FB_ lines are fallbacks for the game's own town_name_* / menu_options_element_town_events strings and copy that language's shipped value ----
+TMN_TITLE=菜单。
+TMN_NONE=没有按钮。
+TMN_SETTINGS=设置
+TMN_FB_TRINKETS=饰品栏
+TMN_FB_GLOSSARY=术语表
+TMN_FB_ACTIVITY=活动日志
+TMN_FB_TOWN_EVENTS=城镇事件

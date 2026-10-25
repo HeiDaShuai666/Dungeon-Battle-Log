@@ -43,7 +43,9 @@ static const uintptr_t OE_ANIM_OFF            = 0xdb0;
 static const uintptr_t OE_PREVSTATE_OFF       = 0xd8c;
 static const uintptr_t PROP_CLEAR_ITEM_VOFF   = 0x30;     // DoorProp vftable[6]: clear-with-item virtual
 
-static const int OE_MAX_ROWS = 5;
+static const int OE_MAX_ROWS = 16;
+static const int OE_MAX_HEADS = OE_MAX_ROWS - 4;
+static int g_evHeads = 1;
 
 // ---- The EVENT overlay: reader, cursor and appearance watch ----
 enum EvSkin { EV_NONE = 0, EV_CURIO, EV_OBSTACLE, EV_ANCESTOR, EV_HUNGER };
@@ -113,21 +115,28 @@ static bool evPropString(uintptr_t propType, uintptr_t off, char* out, int outsz
 }
 
 static void evHeadFor(uintptr_t base, int skin, uintptr_t prop, uintptr_t propType,
-                      char* title, int titlesz, char* flavour, int flavoursz) {
+                      char* title, int titlesz, char* flavour, int flavoursz,
+                      char* rawFl = nullptr, int rawFlSz = 0) {
     title[0] = 0; flavour[0] = 0;
+    if (rawFl && rawFlSz > 0) rawFl[0] = 0;
     char raw[600];
+    // The flavour's two outputs from one raw read.
+    auto keepFlavour = [&](const char* r) {
+        stripMarkup(r, flavour, flavoursz);
+        if (rawFl && rawFlSz > 0) { _snprintf(rawFl, rawFlSz, "%s", r); rawFl[rawFlSz - 1] = 0; }
+    };
 
     if (skin == EV_CURIO) {
         uintptr_t oe = evOverlay();
         if (!oe) return;
         if (safeReadCStr(oe + OE_TITLE_OFF, raw, sizeof raw))   stripMarkup(raw, title, titlesz);
-        if (safeReadCStr(oe + OE_CONTENT_OFF, raw, sizeof raw)) stripMarkup(raw, flavour, flavoursz);
+        if (safeReadCStr(oe + OE_CONTENT_OFF, raw, sizeof raw)) keepFlavour(raw);
         return;
     }
 
     if (skin == EV_HUNGER) {
         if (resolveKey(base, "str_ui_hunger_title", raw, sizeof raw))   stripMarkup(raw, title, titlesz);
-        if (resolveKey(base, "str_ui_hunger_content", raw, sizeof raw)) stripMarkup(raw, flavour, flavoursz);
+        if (resolveKey(base, "str_ui_hunger_content", raw, sizeof raw)) keepFlavour(raw);
         return;
     }
 
@@ -137,7 +146,7 @@ static void evHeadFor(uintptr_t base, int skin, uintptr_t prop, uintptr_t propTy
     _snprintf(key, sizeof key, "str_obstacle_%s_title", id);       key[sizeof key - 1] = 0;
     if (resolveKey(base, key, raw, sizeof raw)) stripMarkup(raw, title, titlesz);
     _snprintf(key, sizeof key, "str_obstacle_%s_description", id); key[sizeof key - 1] = 0;
-    if (resolveKey(base, key, raw, sizeof raw)) stripMarkup(raw, flavour, flavoursz);
+    if (resolveKey(base, key, raw, sizeof raw)) keepFlavour(raw);
 
     if (!title[0]) {
         propPrettyName(id, title, titlesz);
@@ -213,7 +222,8 @@ static int evBuildRows(uintptr_t base, EvRow* rows, int* skinOut,
     if (skinOut) *skinOut = skin;
     if (skin == EV_NONE) return 0;
 
-    evHeadFor(base, skin, prop, pt, title, titlesz, flavour, flavoursz);
+    char rawFl[600];
+    evHeadFor(base, skin, prop, pt, title, titlesz, flavour, flavoursz, rawFl, sizeof rawFl);
 
     int n = 0;
     {
@@ -222,9 +232,21 @@ static int evBuildRows(uintptr_t base, EvRow* rows, int* skinOut,
             h->isHead = true;
             _snprintf(h->name, sizeof h->name, "%s", title[0] ? title : axs(AXS_EV_TITLE_FALLBACK));
             h->name[sizeof h->name - 1] = 0;
-            _snprintf(h->desc, sizeof h->desc, "%s", flavour);
-            h->desc[sizeof h->desc - 1] = 0;
         }
+        const char* p = rawFl[0] ? rawFl : flavour;
+        while (*p && n < OE_MAX_HEADS) {
+            char clean[512];
+            p = mvSplitLine(p, clean, sizeof clean);   // the popup reader's split (core/msgview.cpp)
+            if (clean[0]) {
+                EvRow* f = evAddRow(base, rows, &n, nullptr, nullptr, 0, 0, 0.0f);
+                if (f) {
+                    f->isHead = true;
+                    _snprintf(f->desc, sizeof f->desc, "%s", clean);
+                    f->desc[sizeof f->desc - 1] = 0;
+                }
+            }
+        }
+        g_evHeads = n;
     }
     if (skin == EV_CURIO) {
         char cat[64] = { 0 }, ui[96] = { 0 };
@@ -309,8 +331,8 @@ static int evBuildRows(uintptr_t base, EvRow* rows, int* skinOut,
 
 static void evRowLabel(const EvRow* r, char* out, int outsz) {
     if (r->isHead) {
-        if (r->desc[0]) _snprintf(out, outsz, "%s. %s.", r->name, r->desc);
-        else            _snprintf(out, outsz, "%s.", r->name);
+        if (r->name[0]) _snprintf(out, outsz, "%s.", r->name);
+        else            _snprintf(out, outsz, "%s", r->desc);
         out[outsz - 1] = 0;
         return;
     }
@@ -332,7 +354,7 @@ static void evRowLine(const EvRow* r, int idx, int total, char* out, int outsz) 
     char label[MAILBOX_SZ];
     evRowLabel(r, label, sizeof label);
     char pos[48];
-    _snprintf(pos, sizeof pos, axs(AXS_POS_N_OF_M), idx, total - 1);
+    _snprintf(pos, sizeof pos, axs(AXS_POS_N_OF_M), idx - g_evHeads + 1, total - g_evHeads);
     pos[sizeof pos - 1] = 0;
     _snprintf(out, outsz, "%s %s", label, pos);
     out[outsz - 1] = 0;
@@ -375,11 +397,10 @@ static bool evOpeningLine(uintptr_t base, char* out, int outsz) {
     int n = evBuildRows(base, rows, &skin, title, sizeof title, flavour, sizeof flavour);
     if (n <= 0) return false;
 
-    int at = (g_evRow >= 0 && g_evRow < n) ? g_evRow : (n > 1 ? 1 : 0);
+    int at = (g_evRow >= g_evHeads && g_evRow < n) ? g_evRow : (n > g_evHeads ? g_evHeads : 0);
     char row[MAILBOX_SZ];
-    evRowLine(&rows[at], at, n, row, sizeof row);
-
-    if (rows[at].isHead) { _snprintf(out, outsz, "%s", row); out[outsz - 1] = 0; return true; }
+    if (rows[at].isHead) row[0] = 0;                      // a scroll with no choice at all
+    else evRowLine(&rows[at], at, n, row, sizeof row);
 
     if (flavour[0])
         _snprintf(out, outsz, "%s. %s. %s", title[0] ? title : axs(AXS_EV_TITLE_FALLBACK),
@@ -401,7 +422,7 @@ void checkEventOverlay(uintptr_t base) {
 
     if (up && g_evActive && skin != g_evSkin) {
         g_evSkin = skin;
-        g_evRow  = 1;
+        g_evRow  = 0;
         g_evPickItem = false;           // a different scroll: the old pick is meaningless
         char utter[MAILBOX_SZ];
         if (evOpeningLine(base, utter, sizeof utter)) postSpeech(utter);
@@ -420,7 +441,7 @@ void checkEventOverlay(uintptr_t base) {
     }
 
     g_evSkin = skin;
-    g_evRow  = 1;
+    g_evRow  = 0;
     g_evPickItem = false;
 
     EvRow rows[OE_MAX_ROWS];

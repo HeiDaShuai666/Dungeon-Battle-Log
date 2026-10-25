@@ -26,7 +26,9 @@ static bool restLandActionBar(uintptr_t base) {
     abSetActive(base, true);
     char head[192];
     abHeaderText(head, sizeof head);
+    axTipSetUnprompted(true);
     abSpeakLabel(base, &items[g_abCursor], abSlotCount(items, n), head);
+    axTipSetUnprompted(false);
     return true;
 }
 
@@ -101,5 +103,7 @@ void checkRestingPoint(uintptr_t base) {
     if (g_abActive) abSetActive(base, false);   // a root switch out of combat leaves the bar
     rvSetActive(base, true);
     logLine("resting point: landing in the dungeon view");
+    axTipSetUnprompted(true);
     rvAnnounceEntry(base, true);
+    axTipSetUnprompted(false);
 }

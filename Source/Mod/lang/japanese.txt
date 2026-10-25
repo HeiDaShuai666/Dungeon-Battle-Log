@@ -24,6 +24,8 @@ VALUE_OFF=オフ
 VALUE_AUTO=自動
 POS_N_OF_M=%d番目、全%d件。
 NO_MORE_INFO=これ以上の情報はありません。
+WRAP_TOP=先頭に戻ります。
+WRAP_BOTTOM=末尾に移動します。
 VALUE_CHECKED=チェック済み
 VALUE_UNCHECKED=チェックなし
 ACTION_FAILED=実行できませんでした。
@@ -287,6 +289,13 @@ HELPCTX_WAVE_COMBAT=無限モードの戦闘
 CTRLS_TITLE=操作方法。
 CTRLS_EMPTY=操作方法のテキストがありません。
 CTRLS_CLOSED=操作方法を閉じました。
+
+# ---- frontend/credits.cpp: the credits roll ----
+CR_HEADING_FMT=%s、%d。
+CR_IN_SECTION_FMT=%s、%s
+CR_EMPTY=クレジットのテキストがありません。
+CR_CLOSED=クレジットを閉じました。
+CR_OPEN_HINT=ページアップとページダウンでセクション間を移動します。
 
 # ---- frontend/sharedui.cpp: journal page popup ----
 JP_HDR_TITLE_POS=日誌のページ。%s。%dページ目、全%dページ。
@@ -1182,6 +1191,8 @@ TS_CHOOSE_TARGET_FMT=%s。ターゲットを選んでください。%d件が選�
 TS_CHOOSE_POSITION_FMT=%s。ポジションを選んでください。%d件が選べます。
 TS_USED_ON_FMT=%sを%sに使用。
 TS_COULDNT_USE_FMT=%sを%sに使えませんでした。
+TS_CLICK_MISSED_FMT=%sへのクリックが届きませんでした。
+TS_USERSEL_KILL_FMT=%s。殺すヒーローを選んでください。%d件が選べます。
 TS_ROW_POSITION_FMT=ポジション%d。%s。
 TS_HITS_FMT=対象%d件：%s
 TS_CANT_MOVE_THERE=そこには移動できません。
@@ -1905,3 +1916,18 @@ ABBR_RD=rd
 ABBR_RD_FULL=ラウンド
 ABBR_RDS=rds
 ABBR_RDS_FULL=ラウンド
+
+# ---- THE POPUP READER (core/msgview.cpp, 2026-10-25) ----
+MV_BUTTON_FMT=%s、ボタン。
+MV_CLOSE=閉じる
+MV_OPTION_FALLBACK=選択肢。
+MV_EMPTY=ここに読むものはありません。
+
+# ---- THE TOWN MENU PANEL (town/menupanel.cpp, 2026-10-25): the estate bar as one Tab stop. The four FB_ lines are fallbacks for the game's own town_name_* / menu_options_element_town_events strings and copy that language's shipped value ----
+TMN_TITLE=メニュー。
+TMN_NONE=ボタンがありません。
+TMN_SETTINGS=設定
+TMN_FB_TRINKETS=トリンケットリスト
+TMN_FB_GLOSSARY=用語集
+TMN_FB_ACTIVITY=アクティビティ・ログ
+TMN_FB_TOWN_EVENTS=村のイベント

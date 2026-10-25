@@ -5381,9 +5381,11 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
                 int n = g_haTipCount[g_haTipCol];
                 if (n <= 0) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
                 int total = n + axTipKeywordCount(&g_haTip[g_haTipCol][0][0], AB_TIP_LINE_SZ, n, 0, nullptr);
+                const int dir = (sym == SDLK_DOWN) ? 1 : -1;
+                const int from = g_haTipLine;
                 if (g_haTipLine < 0) g_haTipLine = 0;              // the first press lands on line 1
                 else {
-                    g_haTipLine += (sym == SDLK_DOWN) ? 1 : -1;
+                    g_haTipLine += dir;
                     if (g_haTipLine < 0)      g_haTipLine = total - 1;   // wraps, like the action bar's
                     if (g_haTipLine >= total) g_haTipLine = 0;
                 }
@@ -5394,6 +5396,9 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
                     g_haTipLine = 0;
                     _snprintf(utter, sizeof utter, "%s", g_haTip[g_haTipCol][0]);
                 }
+                utter[sizeof utter - 1] = 0;
+                axPostWrapped(axWrapNote(from, g_haTipLine, dir), utter);
+                return true;
             }
             utter[sizeof utter - 1] = 0;
             postSpeech(utter);
@@ -5405,16 +5410,17 @@ bool routeBldKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
         (sym == SDLK_UP || sym == SDLK_DOWN) && g_bldMode == 0) {
         uintptr_t root = resTownRoot(base);
         uintptr_t panel = root ? bldOpenPanel(root) : 0;
-        if (!panel || bldRowKindOf(base, panel, nullptr) != 3) return false;
-        if (repeat) return true;
-        BldActRow rows[48];
-        int n = bldActRows(base, panel, rows, 48);
-        if (n <= 0) return false;
-        axStepCursor(&g_bldRow, n, 0);       // re-clamp against the live rows
-        char desc[MAILBOX_SZ];
-        if (bldActDescription(base, rows[g_bldRow].actId, desc, sizeof desc)) postSpeech(desc);
-        else postSpeech(axs(AXS_NO_MORE_INFO));
-        return true;
+        if (panel && bldRowKindOf(base, panel, nullptr) == 3) {
+            if (repeat) return true;
+            BldActRow rows[48];
+            int n = bldActRows(base, panel, rows, 48);
+            if (n <= 0) return false;
+            axStepCursor(&g_bldRow, n, 0);       // re-clamp against the live rows
+            char desc[MAILBOX_SZ];
+            if (bldActDescription(base, rows[g_bldRow].actId, desc, sizeof desc)) postSpeech(desc);
+            else postSpeech(axs(AXS_NO_MORE_INFO));
+            return true;
+        }
     }
 
     if (g_bldMode == 0) {

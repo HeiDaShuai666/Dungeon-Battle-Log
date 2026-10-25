@@ -18,6 +18,7 @@ enum SpeechKind {
 };
 
 // ---- The mod owns the queue; the reader gets one line at a time ----
+// ---- THE KEY RULE (2026-10-18, dev's report: "many automatic announcements getting cut off on ----
 static const DWORD SPEAK_MS_LATENCY  = 400;       // handover -> first audible word
 static const DWORD SPEAK_MS_PER_CHAR = 50;        // ~20 chars/s
 static const DWORD SPEAK_MS_FLOOR    = 300;       // on top of the latency, never less than this
@@ -36,6 +37,7 @@ static const int   EVENT_MERGE_MAX_CHARS = 240;
 extern CRITICAL_SECTION g_cs;
 extern char g_speechQ[SPEECH_QUEUE_MAX][MAILBOX_SZ];
 extern SpeechKind g_sqKind[SPEECH_QUEUE_MAX];     // per line: nav (droppable) or event (never)
+extern LONG g_sqEpoch[SPEECH_QUEUE_MAX];
 extern int  g_sqHead;
 extern int  g_sqCount;
 extern volatile bool g_hasPending;
@@ -46,6 +48,7 @@ extern char       g_lastNavLine[MAILBOX_SZ];      // last NAV line + when it was
 extern DWORD      g_lastNavTick;                  // held-arrow release re-read (dllmain.cpp)
 extern volatile bool g_silenceReq;
 void axReleaseReadHold(const char* who);
+void axSpeechKeyEdge();
 
 const char* speechKindName(SpeechKind k);
 // ---- The speech library ----
@@ -90,11 +93,14 @@ void axSetKeywordsMode(int mode);      // out of range is refused (logged)
 
 // ---- THE TOOLTIP CHANNEL ----
 bool axTipWanted();
+void axTipSetUnprompted(bool on);
 void axTipGlue(char* buf, int bufsz, const char* line);
 void axTipGlueLines(char* buf, int bufsz, const char* lines, int stride, int n, int from);
 void axTipGluePanel(char* buf, int bufsz, const char* head, const char* lines, int stride,
                     int n, int from);
 bool axTipStep(int* cursor, int dir, const char* lines, int stride, int n);
+const char* axWrapNote(int from, int to, int dir);
+void        axPostWrapped(const char* note, const char* text);
 void axTipNoteKeywords(const char* text);
 void axTipGlueKeywords(char* buf, int bufsz);
 void axTipGlueKeywordLine(char* buf, int bufsz, const char* line);
@@ -145,7 +151,9 @@ unsigned char axAsciiLower(unsigned char c);
 
 // ---- The game's own subtitles (core/subtitles.cpp) ----
 void serviceSubtitles(uintptr_t base);
-bool subMovieTrackUp(uintptr_t base);           // a cinematic's subtitle track is live (LOG-ONLY
+bool subMovieTrackUp(uintptr_t base);           // a cinematic's subtitle track is live (the
+bool axIsMovie();
+bool routeMovieKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
 
 // ---- Game-read module (core/gameread.cpp) ----
 bool safeReadPtr(uintptr_t addr, uintptr_t* out);
@@ -180,6 +188,8 @@ extern volatile void* g_optMenu;           // captured by the options-menu vtabl
 extern volatile void* g_raidDisplay;       // captured by the Panel_Banner hook (RaidDisplay&)
 extern uintptr_t g_jpObj;                  // journal popup the hook last saw drawn
 extern DWORD     g_jpSeenTick;             // when it last drew (backstop for "gone")
+extern uintptr_t g_crObj;
+extern DWORD     g_crSeenTick;             // when it last drew
 extern uintptr_t g_ltoObj;                 // light-meter overlay the hook last saw render
 extern DWORD     g_ltoSeenTick;            // when it last rendered ("meter is on screen")
 int  OurPoll(void* ev);
@@ -238,6 +248,12 @@ void cpReannounce(uintptr_t base);
 void jpReannounce(uintptr_t base);
 extern bool g_jpActive;
 extern DWORD g_stJrnWatchUntil;
+
+// ---- Frontend module (frontend/credits.cpp): the CREDITS screen ----
+void checkCredits(uintptr_t base);
+bool axIsCredits();
+bool routeCreditsKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
+void crReannounce(uintptr_t base);
 
 // ---- Frontend module (frontend/options.cpp): the OPTIONS screen ----
 bool isOptionId(uint32_t cc);
@@ -309,7 +325,9 @@ uintptr_t feFindElementByFamily(uintptr_t base, uint32_t family, uint32_t ownerT
                                 uint32_t span = 0);
 int feCollectFamilyByX(uintptr_t base, uint32_t family, uint32_t ownerTag,
                        uintptr_t* out, float* xOut, int maxOut);
-void frontEndClickCursor();                     // click WHERE THE CURSOR IS (no target re-derive)
+int feCollectByOwner(uintptr_t base, uint32_t ownerTag, uintptr_t* out, int64_t* idOut,
+                     float* xOut, int maxOut);
+void frontEndClickCursor();                    // click WHERE THE CURSOR IS (no target re-derive)
 bool frontEndClickElementId(int64_t id);        // move onto a specific element, then click it
 void feDumpFocusVector(const char* why);
 extern bool g_cursorValid;                      // cursor has been placed on this screen
@@ -426,16 +444,20 @@ enum AxContext {
     AX_GLOSSARY,
     AX_HELP,
     AX_CONTROLS,
+    AX_CREDITS,
     AX_JOURNAL,
     AX_INGAME,
     AX_SETTINGS,
     AX_FIND,
     AX_MODTUT,
     AX_TUTORIAL,
+    AX_MOVIE,
     AX_TOWNEVENT,
     AX_RING,
                    //   ring.cpp) -- the root view of that layer, like AX_BLDG in town (OWNS it)
     AX_RINGLIST,
+    AX_TOWNMENU,
+                   //   the hamlet / quest map / provisioning screen (town/menupanel.cpp; OWNS it)
 };
 
 // ---- FIND: a surface's element enumerator ----
@@ -594,6 +616,16 @@ extern bool g_resActive;
 extern bool g_ptyActive;
 extern bool g_rosActive;
 
+// ---- Town module (town/menupanel.cpp): the TOWN MENU PANEL ----
+extern bool g_tmnActive;
+bool axIsTownMenu();
+bool tmnEnter(uintptr_t base);             // false = this screen has no menu (or no buttons)
+void tmnLeave(uintptr_t base, const char* why);   // silent: the surface underneath re-announces
+void checkTownMenu(uintptr_t base);
+bool routeTownMenuKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
+void tmnReannounce(uintptr_t base);
+int  tmnFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+
 // ---- Town module (town/map.cpp): the HAMLET MAP + the TOWN JUMP KEYS ----
 void checkTownBuildings(uintptr_t base);
 void checkTownMap(uintptr_t base);         // AX_TOWNMAP edges, the open watch, the jump chain
@@ -653,7 +685,9 @@ void dstReannounce(uintptr_t base);
 void checkEmbark(uintptr_t base);          // AX_EMBARK edges + the E / selection watches
 bool routeEmbarkKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
 bool routeEmbarkForward(uintptr_t base, uint8_t repeat);
-extern DWORD g_embFwdWatchUntil;           // nonzero = the forward click actually went out --
+void embFwdLabel(uintptr_t base, char* out, int outsz);   // the forward button's live label
+                                           // (the town menu panel's first row reads it too)
+extern DWORD g_embFwdWatchUntil;          // nonzero = the forward click actually went out --
 bool axIsEmbark();
 void embReannounce(uintptr_t base);
 bool embProvIsOpen(uintptr_t root);        // the provisioning panel's own open test
@@ -835,6 +869,7 @@ bool routeTownEventEnter(uintptr_t base);     // pre-dispatch: click the interac
 bool routeTownEventToggle(uintptr_t base, uint8_t repeat);   // Shift+Period: the estate bar's event button
 bool townEventHeroKeysClaim();
 bool routeTownEventHeroKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
+bool routeTownEventKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);   // the AX_TOWNEVENT row: the popup reader's rows
 void teReannounce(uintptr_t base);
 int townEventFreeUpgrades(uintptr_t base, const char* tag);
 
@@ -879,6 +914,7 @@ void mapAreaLabel(uint32_t id, int kind, char* out, int outsz);        // from t
 void mapAreaLabelById(uintptr_t root, uint32_t id, char* out, int outsz);  // ...via the graph
 void mapContentLabel(uintptr_t base, int content, char* out, int outsz);   // AreaContent -> word
 int  areaFindHiddenDoor(uintptr_t area, uint32_t* destId, uintptr_t* tileOut);  // -1 = none.
+bool tileLinksRoom(uintptr_t tile, uint32_t* neighOut);
 extern int g_invSlot;                      // the bag's cursor slot; -1 = not placed yet
 void ruDisarmEquip(const char* why);
 bool axOwnsAnnouncer(AxContext c);         // does this context drive its own readout?
@@ -1042,6 +1078,7 @@ bool rvCursorOnParty(uintptr_t base);
 bool rvCursorOnDoor(uintptr_t base);
 void serviceRvMovePend(uintptr_t base);
 uintptr_t abCurrentTurnActor(uintptr_t root);   // whose turn the battle says it is
+void abNoteSwapInput();
 bool abBattleLive(uintptr_t root);               // is a battle actually running (raid root's
 bool abMoveWatchArmed();
 bool abWasRecentCommitTarget(uintptr_t actor);   // was this actor the explicit target of the
@@ -1523,6 +1560,8 @@ void smPadCaptureFeed(const bool* down, const bool* pressed, const bool* release
 extern bool g_fdActive;                  // the overlay is up (= the AX_FIND predicate)
 bool axIsFind();
 bool routeFindKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat);
+bool routeFindText(uintptr_t base, void* ev, uint32_t type);   // SDL_TEXTINPUT/TEXTEDITING while up
+extern bool g_fdKeyFolded;
 void fdOpen(uintptr_t base, AxFindFn fn, const char* who);   // the router's Ctrl+F: snapshot + announce
 void fdReannounce(uintptr_t base);
 extern bool g_mtActive;                  // a dialog is up (= the AX_MODTUT predicate)
@@ -1532,11 +1571,35 @@ void mtService(uintptr_t base);
 void mtOpenF1(uintptr_t base);
 void mtReannounce(uintptr_t base);
 void mtNoteLanding(bool map);
+static const int MV_MAX_ROWS = 48;
+static const int MV_ROW_SZ   = 1024;
+enum MvKind { MV_TEXT = 0, MV_OPT, MV_CLOSE };
+struct MvRowSlot { int kind; int opt; char text[MV_ROW_SZ]; };
+struct MvRows    { int n; MvRowSlot row[MV_MAX_ROWS]; };
+struct MvCursor  { uint32_t sig; int row; };
+enum MvKeyResult { MVK_PASS = 0, MVK_DONE, MVK_OPTION, MVK_CLOSE, MVK_TEXT };
+MvRows* mvBegin();                                     // the one shared scratch, emptied
+void mvText(MvRows* r, const char* raw);
+const char* mvSplitLine(const char* p, char* out, int outsz);   // one stripped line off a raw string; -> the next
+void mvTextLine(MvRows* r, const char* line);          // one already-clean line, as it stands
+void mvOption(MvRows* r, int opt, const char* line);   // an option row; `opt` comes back from mvKey
+void mvClose(MvRows* r);
+void mvCloseLabel(char* out, int outsz);               // ... its words alone, without the hint
+int  mvFirstNonText(const MvRows* r);                  // first option/close row, -1 = none
+int  mvRowOfOption(const MvRows* r, int opt);          // the row option `opt` sits on, -1 = none
+void mvSync(MvCursor* c, uint32_t sig, const MvRows* r);   // new sig -> row 0; then clamp
+void mvRowLine(const MvRows* r, int row, char* out, int outsz);   // a row's words, no position
+void mvSpeak(const MvCursor* c, const MvRows* r, const char* prefix);   // row + "N of M."
+int  mvKey(MvCursor* c, const MvRows* r, uint32_t sym, uint16_t mod, uint8_t repeat, bool lrOptions,
+           int* optOut);                               // MvKeyResult
+bool mvSendEscape(const char* who);                    // the Close row's gesture: the game's own Escape
 // ---- THE FIND ENUMERATORS ----
 int  feFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
 int  glFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);   // frontend/sharedui.cpp: the glossary's TERM rows
 int  hpFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  mtFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
 int  cpFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
+int  crFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
 int  csFind       (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
 int  ringFind     (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);
 int  ringListFind (uintptr_t base, AxFindOp op, int idx, char* out, int outsz);

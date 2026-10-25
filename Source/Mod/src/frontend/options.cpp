@@ -484,12 +484,14 @@ bool optTipStep(bool forward) {
         logLine("opttip: pos=%d desc=%d name=\"%s\" has no tooltip", pos, chosen, name);
         return true;
     }
+    int from = g_optTipLine;
     g_optTipLine = (g_optTipLine + (forward ? 1 : -1) + total) % total;
-    if (g_optTipLine < own) postSpeech(both[g_optTipLine]);
+    const char* note = axWrapNote(from, g_optTipLine, forward ? 1 : -1);
+    if (g_optTipLine < own) axPostWrapped(note, both[g_optTipLine]);
     else {
         char def[1024];
         if (axTipKeywordLine(&both[0][0], sizeof both[0], own, 1, nullptr, g_optTipLine - own, def, sizeof def))
-            postSpeech(def);
+            axPostWrapped(note, def);
         else { g_optTipLine = 0; postSpeech(row); }
     }
     logLine("opttip: pos=%d desc=%d name=\"%s\" line=%d/%d", pos, chosen, name,

@@ -891,7 +891,7 @@ void checkTownMap(uintptr_t base) {
     }
 
     bool on = false;
-    if (root && !g_resActive && !g_ptyActive && !g_rosActive && !circusScreenUp(base) &&
+    if (root && !g_resActive && !g_ptyActive && !g_rosActive && !g_tmnActive && !circusScreenUp(base) &&
         !axIsLoading() && !circusMatchLoading() && tmbBareMap(root)) {
         uintptr_t beg = 0;
         uintptr_t owner = tmbOwner(root);

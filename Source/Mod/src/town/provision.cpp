@@ -1023,7 +1023,8 @@ void checkProvision(uintptr_t base) {
         }
     }
 
-    bool on = prov && !g_resActive && !g_ptyActive && !g_rosActive && !csTownSheetPanel(base);
+    bool on = prov && !g_resActive && !g_ptyActive && !g_rosActive && !g_tmnActive &&
+              !csTownSheetPanel(base);
     if (on && !g_provActive) {
         g_provActive = true;
         bool landInfo = g_provLandInfoUntil && GetTickCount() <= g_provLandInfoUntil;

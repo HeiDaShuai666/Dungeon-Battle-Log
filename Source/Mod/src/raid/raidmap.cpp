@@ -210,6 +210,17 @@ static int areaNearestTile(uintptr_t root, long ai, float px, float py) {
     return areaNearestTileP(mapAreaAt(root, ai), px, py);
 }
 
+// ---- A HALLWAY TILE THAT LINKS TO A ROOM ----
+bool tileLinksRoom(uintptr_t tile, uint32_t* neighOut) {                    // exported (internal.h)
+    int32_t ty = -1, kind = 0; uint32_t nb = 0;
+    if (!safeReadU32(tile + TILE_NEIGH_ID_OFF, &nb) || !nb || nb == FOURCC_NONE) return false;
+    safeReadU32(tile + TILE_TYPE_OFF, (uint32_t*)&ty);
+    safeReadU32(tile + TILE_HDOOR_KIND_OFF, (uint32_t*)&kind);
+    bool links = (ty == 2) || (kind != 0 && kind != TILE_HDOOR_KIND_HIDDEN);
+    if (links && neighOut) *neighOut = nb;
+    return links;
+}
+
 static bool corridorEnds(uintptr_t area, long tiles, uint32_t* roomAt0, uint32_t* roomAtEnd) {
     *roomAt0 = 0; *roomAtEnd = 0;
     if (tiles <= 0) return false;
@@ -217,10 +228,8 @@ static bool corridorEnds(uintptr_t area, long tiles, uint32_t* roomAt0, uint32_t
     if (!safeReadPtr(area + AREA_TILES_BEG, &tb) || !tb) return false;
     for (int e = 0; e < 2; e++) {
         uintptr_t tile = tb + (uintptr_t)(e ? tiles - 1 : 0) * TILE_STRIDE;
-        int32_t ty = -1; uint32_t nb = 0;
-        safeReadU32(tile + TILE_TYPE_OFF, (uint32_t*)&ty);
-        safeReadU32(tile + TILE_NEIGH_ID_OFF, &nb);
-        if (ty == 2 && nb && nb != FOURCC_NONE) *(e ? roomAtEnd : roomAt0) = nb;
+        uint32_t nb = 0;
+        if (tileLinksRoom(tile, &nb)) *(e ? roomAtEnd : roomAt0) = nb;
     }
     return *roomAt0 || *roomAtEnd;
 }
@@ -552,8 +561,9 @@ static void mapDescribeTile(uintptr_t base, uintptr_t root, long ai, int ti, cha
         o += _snprintf(out + o, outsz - o, "%s, ", axs(AXS_MAP_NOT_SCOUTED));
     }
     o += _snprintf(out + o, outsz - o, axs(AXS_MAP_TILE_N_OF_M_FMT), ti + 1, tiles);
-    if (ty == 2 && nb && nb != (int32_t)FOURCC_NONE) {   // junction: area on the far side
-        char nlabel[64]; mapAreaLabelById(root, (uint32_t)nb, nlabel, sizeof nlabel);
+    uint32_t linkId = 0;
+    if (tileLinksRoom(tile, &linkId)) {                   // junction (or DD_map4's door): the far side
+        char nlabel[64]; mapAreaLabelById(root, linkId, nlabel, sizeof nlabel);
         { o += _snprintf(out + o, outsz - o, ", "); o += _snprintf(out + o, outsz - o, axs(AXS_MAP_DOOR_TO_FMT), nlabel); }
     } else {
         uint32_t sid = 0;
@@ -1026,7 +1036,7 @@ bool routeMapKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {  
 
 // ---- THE MAP'S FIND ENUMERATOR ----
 struct MapFindEntry { int area; int tile; };    // tile -1 = the area's own row
-static const int MAP_FIND_MAX = 512;
+static const int MAP_FIND_MAX = 512;            // ~100 areas + marked tiles (was = find.cpp's
 static const int MAP_FIND_SECRETS = 32;
 
 static int mapFindBuild(uintptr_t root, MapFindEntry* out, int maxOut) {
@@ -1617,8 +1627,9 @@ static void twTileLine(uintptr_t base, uintptr_t root, uintptr_t area, int tile,
     }
     o += _snprintf(out + o, outsz - o, axs(AXS_MAP_TILE_N_OF_M_FMT), tile + 1, tiles > 0 ? tiles : 1);
     if (tileOk) {
-        if (ty == 2 && nb && nb != (int32_t)FOURCC_NONE) {      // junction: what is through it
-            char nl[64]; mapAreaLabelById(root, (uint32_t)nb, nl, sizeof nl);
+        uint32_t linkId = 0;
+        if (tileLinksRoom(tb + (uintptr_t)tile * TILE_STRIDE, &linkId)) {   // junction (or DD_map4's door)
+            char nl[64]; mapAreaLabelById(root, linkId, nl, sizeof nl);
             { o += _snprintf(out + o, outsz - o, ", "); o += _snprintf(out + o, outsz - o, axs(AXS_MAP_DOOR_TO_FMT), nl); }
         } else {
             uint32_t sid = 0;                        // hidden door: same clause, once SHOWN
@@ -1725,7 +1736,7 @@ static bool twBeginStepImpl(uintptr_t base, uint32_t sym, uint32_t scan, uintptr
             int32_t ty = -1; uint32_t nb = 0;
             safeReadU32(t + TILE_TYPE_OFF,     (uint32_t*)&ty);
             safeReadU32(t + TILE_NEIGH_ID_OFF, &nb);
-            if (akind == 1 && ty == 2 && nb && nb != FOURCC_NONE) {
+            if (akind == 1 && tileLinksRoom(t, &nb)) {
                 char nl[64]; mapAreaLabelById(root, nb, nl, sizeof nl);
                 char msg[160];
                 _snprintf(msg, sizeof msg, axs(AXS_MAP_DOOR_AT_END_FMT), nl);

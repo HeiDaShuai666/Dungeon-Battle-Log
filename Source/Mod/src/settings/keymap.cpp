@@ -689,7 +689,7 @@ KmRegion kmRegionNow(uintptr_t base, AxContext ctx) {
         case AX_NAMING: case AX_LOADING: case AX_GLOSSARY: case AX_HELP:
         case AX_PAUSE: case AX_DIALOG: case AX_JOURNAL: case AX_RESULTS:
         case AX_TITLE: case AX_SETTINGS: case AX_TUTORIAL: case AX_TOWNEVENT:
-        case AX_CONTROLS:
+        case AX_CONTROLS: case AX_CREDITS:
             return KMR_NONE;
         default: break;
     }

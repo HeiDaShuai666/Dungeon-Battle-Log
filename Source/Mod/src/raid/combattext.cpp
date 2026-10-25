@@ -1200,20 +1200,28 @@ static void clogSpeakCursor(const char* prefix = nullptr) {
 
 // ---- the clear question ----
 static bool g_clogClearAsk = false;
-static int  g_clogClearSel = 0;     // 0 = Delete, 1 = Cancel
+static uint32_t g_clogAskSeq = 0;                    // questions asked: the reader's cursor key
+static MvCursor g_clogAskCur = { 0xffffffffu, 0 };
 
 bool clogClearAskActive() { return g_clogOpen && g_clogClearAsk; }
 
-static AxStrId clogClearOptionId() {
-    return g_clogClearSel == 0 ? AXS_CLOG_CLEAR_DELETE : AXS_CLOG_CLEAR_CANCEL;
+static MvRows* clogClearAskRows() {
+    MvRows* r = mvBegin();
+    char q[192];
+    _snprintf(q, sizeof q, axs(AXS_CLOG_CLEARQ_FMT), g_clogCount);
+    q[sizeof q - 1] = 0;
+    mvTextLine(r, q);
+    mvOption(r, 0, axs(AXS_CLOG_CLEAR_DELETE));
+    mvOption(r, 1, axs(AXS_CLOG_CLEAR_CANCEL));
+    return r;
 }
 
 void clogReannounceClearAsk(uintptr_t base) {
     (void)base;
-    char q[192], msg[256];
+    char q[192], msg[320];
     _snprintf(q, sizeof q, axs(AXS_CLOG_CLEARQ_FMT), g_clogCount);
     q[sizeof q - 1] = 0;
-    _snprintf(msg, sizeof msg, "%s %s", q, axs(clogClearOptionId()));
+    _snprintf(msg, sizeof msg, "%s %s %s", q, axs(AXS_CLOG_CLEAR_DELETE), axs(AXS_CLOG_CLEAR_CANCEL));
     msg[sizeof msg - 1] = 0;
     postSpeech(msg);
 }
@@ -1224,14 +1232,17 @@ static void clogClear() {
 }
 
 static bool routeLogClearAskKey(uint32_t sym, uint8_t repeat) {
+    MvRows* rows = clogClearAskRows();
+    mvSync(&g_clogAskCur, g_clogAskSeq, rows);
+    int opt = -1;
+    int mk = mvKey(&g_clogAskCur, rows, sym, 0, repeat, /*lrOptions=*/true, &opt);
+    if (mk == MVK_DONE) return true;
     if (repeat) return true;                                  // every key here ACTS: one per press
-    bool enter = (sym == SDLK_RETURN || sym == SDLK_KP_ENTER || sym == SDLK_SPACE);
-    if (sym == SDLK_LEFT || sym == SDLK_RIGHT || sym == SDLK_UP || sym == SDLK_DOWN) {
-        g_clogClearSel ^= 1;                                  // two options: any arrow is a toggle
-        postSpeech(axs(clogClearOptionId()));
-    } else if (enter) {
+    bool enter = (mk == MVK_OPTION || mk == MVK_TEXT || sym == SDLK_SPACE);
+    if (enter) {
+        int sel = (mk == MVK_OPTION) ? opt : 0;               // the question's Enter = Delete
         g_clogClearAsk = false;
-        if (g_clogClearSel == 0) { clogClear(); postSpeech(axs(AXS_CLOG_CLEARED)); }
+        if (sel == 0) { clogClear(); postSpeech(axs(AXS_CLOG_CLEARED)); }
         else clogSpeakCursor(axs(AXS_CANCELLED));             // back on the row they were reading
     } else if (sym == SDLK_ESCAPE) {
         g_clogClearAsk = false;                               // changed their mind: the log stays
@@ -1261,7 +1272,7 @@ bool routeLogKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {  
         if (repeat) return true;
         if (g_clogCount == 0) { postSpeech(axs(AXS_CLOG_EMPTY)); return true; }
         g_clogClearAsk = true;
-        g_clogClearSel = 0;
+        g_clogAskSeq++;                                       // a new question: the reader's row 0
         clogReannounceClearAsk(base);
         return true;
     }

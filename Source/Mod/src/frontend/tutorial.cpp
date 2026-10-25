@@ -13,6 +13,7 @@ static const DWORD TUT_HOLD_MS = 500;
 static char  g_tutSpokenId[64] = { 0 };  // id last announced ("" = none)
 static DWORD g_tutSeenTick     = 0;      // tick of the most recent detour call (any id)
 static uintptr_t g_tutSelf     = 0;
+static uint32_t  g_tutAppear   = 0;
 
 static bool tutReadId(uintptr_t self, char* out, int outsz) {
     if (out && outsz) out[0] = 0;
@@ -80,6 +81,7 @@ void announceTutorialPopup(uintptr_t self) {
     if (strcmp(id, g_tutSpokenId) == 0 && gap < TUT_GAP_MS) return;
     strncpy(g_tutSpokenId, id, sizeof g_tutSpokenId - 1);
     g_tutSpokenId[sizeof g_tutSpokenId - 1] = 0;
+    g_tutAppear++;
 
     char utter[MAILBOX_SZ];
     if (!tutComposeLine(g_base, id, utter, sizeof utter)) {
@@ -111,13 +113,7 @@ void tutReannounce(uintptr_t base) {
 
 // ---- Escape while a CONFIRM DIALOG sits under the popup: click the popup's own close icon ----
 static const int TUT_MAX_CLOSE_ELEMS = 8;
-bool routeTutorialKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
-    if (sym != SDLK_ESCAPE) return false;
-    if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL | KMOD_LSHIFT | KMOD_RSHIFT))
-        return false;
-    if (!confirmDialogOpen(base)) return false;    // the game's own Escape works: hand it over
-    if (repeat) return true;                       // one click per physical press
-
+static bool tutClickCloseIcon(uintptr_t base) {
     uintptr_t vb = 0, ve = 0;
     int found = 0;
     float ex = 0, ey = 0;
@@ -157,6 +153,54 @@ bool routeTutorialKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat
             ex, ey, lx, ly, u32AsFloatM(lb[0]), u32AsFloatM(lb[1]), u32AsFloatM(lc[0]), u32AsFloatM(lc[1]),
             ok ? "clicked" : "NO CLICK, handing Escape to the game");
     return ok;
+}
+
+// ---- THE POPUP READER's rows ----
+static MvCursor g_tutCur = { 0xffffffffu, 0 };
+
+static MvRows* tutBuildRows(uintptr_t base) {
+    MvRows* r = mvBegin();
+    char id[64];
+    if (!tutReadId(g_tutSelf, id, sizeof id)) return r;
+    char keyT[96], keyD[96], rawT[512], rawD[1536];
+    _snprintf(keyT, sizeof keyT, "tutorial_popup_%s_title", id);
+    _snprintf(keyD, sizeof keyD, "tutorial_popup_%s_description", id);
+    bool haveT = resolveKey(base, keyT, rawT, sizeof rawT);
+    bool haveD = resolveKey(base, keyD, rawD, sizeof rawD);
+    if (haveT) mvText(r, rawT);
+    if (haveD) mvText(r, rawD);
+    if (!haveT && !haveD) mvTextLine(r, axs(AXS_TUT_POPUP));
+    mvClose(r);
+    return r;
+}
+
+static void tutCloseRow(uintptr_t base) {
+    if (clickQueued()) { logLine("tutorialkey: Close row while a click is landing -- swallowed"); return; }
+    if (confirmDialogOpen(base)) {
+        if (tutClickCloseIcon(base)) return;
+        logLine("tutorialkey: Close row, dialog underneath, no close icon -- sending Escape anyway");
+    }
+    if (!mvSendEscape("tutorial")) postSpeech(axs(AXS_ACTION_FAILED));
+}
+
+bool routeTutorialKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) {
+    if (sym == SDLK_ESCAPE) {
+        if (mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL | KMOD_LSHIFT | KMOD_RSHIFT))
+            return false;
+        if (!confirmDialogOpen(base)) return false;    // the game's own Escape works: hand it over
+        if (repeat) return true;                       // one click per physical press
+        return tutClickCloseIcon(base);
+    }
+    MvRows* r = tutBuildRows(base);
+    mvSync(&g_tutCur, g_tutAppear, r);
+    int opt = -1;
+    switch (mvKey(&g_tutCur, r, sym, mod, repeat, false, &opt)) {
+        case MVK_TEXT:  mvSpeak(&g_tutCur, r, nullptr); return true;
+        case MVK_CLOSE: tutCloseRow(base); return true;
+        case MVK_DONE:
+        case MVK_OPTION: return true;
+        default:        return false;
+    }
 }
 
 // ---- Tutorial popup dismissed -> hand the surface underneath back its voice ----

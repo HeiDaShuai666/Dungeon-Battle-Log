@@ -90,7 +90,7 @@ static bool mtHereSheet(uintptr_t base) {
 
 static bool mtHereHamlet(uintptr_t base) {
     AxContext c = currentAxContext();
-    if (c != AX_TOWNMAP && c != AX_ROSTER && c != AX_RESOURCES) return false;
+    if (c != AX_TOWNMAP && c != AX_ROSTER && c != AX_RESOURCES && c != AX_TOWNMENU) return false;
     uintptr_t root = resTownRoot(base);
     if (!root) return false;
     if (!tmbBareMap(root)) return false;
@@ -99,7 +99,7 @@ static bool mtHereHamlet(uintptr_t base) {
 
 static bool mtHereEmbark(uintptr_t base) {
     AxContext c = currentAxContext();
-    if (c != AX_EMBARK && c != AX_PARTY && c != AX_ROSTER) return false;
+    if (c != AX_EMBARK && c != AX_PARTY && c != AX_ROSTER && c != AX_TOWNMENU) return false;
     uintptr_t root = resTownRoot(base);
     if (!root) return false;
     if (!embQsOpen(root)) return false;
@@ -109,7 +109,7 @@ static bool mtHereEmbark(uintptr_t base) {
 
 static bool mtHereProvision(uintptr_t base) {
     AxContext c = currentAxContext();
-    if (c != AX_PROVISION && c != AX_PARTY && c != AX_ROSTER) return false;
+    if (c != AX_PROVISION && c != AX_PARTY && c != AX_ROSTER && c != AX_TOWNMENU) return false;
     uintptr_t root = resTownRoot(base);
     if (!root) return false;
     if (!embProvIsOpen(root)) return false;
@@ -204,6 +204,7 @@ bool g_mtActive = false;
 static int  g_mtTopic = -1;               // index into kMtTopics
 static int  g_mtRow = 0;
 static int  g_mtFnSayAgain = -2, g_mtFnTutorial = -2, g_mtFnSettings = -2, g_mtFnFind = -2;
+static int  g_mtFnHints = -2, g_mtFnTips = -2;
 
 bool axIsModTut() { return g_mtActive; }
 
@@ -240,6 +241,31 @@ static void mtSpeakRow(const char* prefix) {
               line, posln);
     utter[sizeof utter - 1] = 0;
     postSpeech(utter);
+}
+
+// ---- FIND (Ctrl+F) over the dialog ----
+int mtFind(uintptr_t base, AxFindOp op, int idx, char* out, int outsz) {
+    (void)base;
+    if (!g_mtActive || g_mtTopic < 0) return 0;
+    int n = mtRows();
+    if (op == AXF_COUNT) return n;
+    if (idx < 0 || idx >= n) return 0;
+    if (op == AXF_LABEL) {
+        if (!out || outsz <= 0) return 0;
+        const MtTopic& t = kMtTopics[g_mtTopic];
+        if (idx < t.paras)                _snprintf(out, outsz, "%s", axs(t.para[idx]));
+        else if (idx == mtCheckboxRow())  mtCheckboxLine(out, outsz);
+        else                              _snprintf(out, outsz, "%s", axs(AXS_MT_OK));
+        out[outsz - 1] = 0;
+        return 1;
+    }
+    if (op == AXF_GO) {
+        g_mtRow = idx;
+        logLine("modtutorial: find landed on row %d (of %d)", idx, n);
+        mtSpeakRow(nullptr);
+        return 1;
+    }
+    return 0;
 }
 
 void mtReannounce(uintptr_t base) {
@@ -337,13 +363,17 @@ bool routeModTutKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
     if (g_mtFnTutorial == -2) g_mtFnTutorial = kmFind("general.mod_tutorial");
     if (g_mtFnSettings == -2) g_mtFnSettings = kmFind("general.settings");
     if (g_mtFnFind == -2)     g_mtFnFind     = kmFind("general.find");
+    if (g_mtFnHints == -2)    g_mtFnHints    = kmFind("general.control_hints");
+    if (g_mtFnTips == -2)     g_mtFnTips     = kmFind("general.auto_tooltips");
     const uint16_t CTRL = (uint16_t)(KMOD_LCTRL | KMOD_RCTRL);
     const uint16_t ALT  = (uint16_t)(KMOD_LALT | KMOD_RALT);
     const uint16_t SHIFT = (uint16_t)(KMOD_LSHIFT | KMOD_RSHIFT);
     bool bare = !(mod & (CTRL | ALT | SHIFT));
     bool menuKey = g_mtFnSettings >= 0 ? kmIsCurrentKey(g_mtFnSettings, sym, mod) : (sym == SDLK_F10 && bare);
     bool findKey = g_mtFnFind >= 0     ? kmIsCurrentKey(g_mtFnFind, sym, mod)     : (sym == SDLK_f && (mod & CTRL) != 0);
-    if (menuKey || findKey) return false;            // the router's own blocks take these
+    bool hintKey = g_mtFnHints >= 0    ? kmIsCurrentKey(g_mtFnHints, sym, mod)    : (sym == SDLK_F2 && bare);
+    bool tipsKey = g_mtFnTips >= 0     ? kmIsCurrentKey(g_mtFnTips, sym, mod)     : (sym == SDLK_F3 && bare);
+    if (menuKey || findKey || hintKey || tipsKey) return false;   // the router's own blocks take these
     bool sayAgain = g_mtFnSayAgain >= 0 ? kmIsCurrentKey(g_mtFnSayAgain, sym, mod) : (sym == SDLK_COMMA);
     bool tutKey   = g_mtFnTutorial >= 0 ? kmIsCurrentKey(g_mtFnTutorial, sym, mod) : (sym == SDLK_F1 && bare);
     if (sayAgain || tutKey) { if (!repeat) mtReannounce(base); return true; }

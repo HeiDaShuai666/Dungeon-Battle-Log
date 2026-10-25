@@ -1702,8 +1702,9 @@ static void abSpeakTipLine(uintptr_t base, const ActionItem* it, int slotCount, 
     int n = abBuildLines(base, it, slotCount, lines);
     if (n <= 0) { if (head && head[0]) postSpeech(head); return; }
     int total = n + axTipKeywordCount(&lines[0][0], AB_TIP_LINE_SZ, n, 1, nullptr);   // 1: line 0 is the label
-    if (line < 0) line = total - 1;
-    if (line >= total) line = 0;
+    const char* note = nullptr;
+    if (line < 0)      { line = total - 1; note = axs(AXS_WRAP_BOTTOM); }
+    if (line >= total) { line = 0;         note = axs(AXS_WRAP_TOP); }
     g_abTipLine = line;
     char def[AB_TIP_LINE_SZ];
     const char* text = lines[0];
@@ -1717,7 +1718,7 @@ static void abSpeakTipLine(uintptr_t base, const ActionItem* it, int slotCount, 
         postSpeech(full);
         return;
     }
-    postSpeech(text);
+    axPostWrapped(note, text);
 }
 
 void abSpeakLabel(uintptr_t base, const ActionItem* it, int slotCount,
@@ -1836,6 +1837,9 @@ void abSetActive(uintptr_t base, bool on) {
 
 static bool tsBegin(uintptr_t base, uintptr_t skill, const char* skillName, int abCursor);
 static void serviceUserSelectedTarget(uintptr_t base);   // the monster-turn aim, with tsBegin
+static void tsServiceAim(uintptr_t base);
+static void tsConfirm(uintptr_t base, const RvEntry& row);   // the sweep re-enters it when it gives up
+static void tsCloseToBar(uintptr_t base);
 static bool tsClickPartyPoint(uintptr_t base, int rank, float* tx, float* ty);
 static bool tsIsMoveSkill(uintptr_t skill);
 static const uint32_t MV_WATCH_MS       = 1500;  // the direct call: the swap is immediate
@@ -2247,10 +2251,11 @@ bool routeActionKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
                          : spHeroItemLines(base, hero, slot, slotEnd, false, rl, AB_TIP_MAX_LINES);
             if (nr <= 0) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
             int line = (g_abTipLine + tipDir + nr) % nr;
+            const char* note = axWrapNote(g_abTipLine, line, tipDir);
             g_abTipLine = line;
             logLine("actionbar %s tipline %d/%d -> \"%s\"",
                     g_abTipCol == 1 ? "resist" : "items", line, nr, rl[line]);
-            postSpeech(rl[line]);
+            axPostWrapped(note, rl[line]);
             return true;
         }
         g_abTipCol = 0;
@@ -2258,7 +2263,7 @@ bool routeActionKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
         int nl = abBuildLines(base, &items[g_abCursor], abSlotCount(items, n), lines);
         if (nl <= 1) { postSpeech(axs(AXS_NO_MORE_INFO)); return true; }
         abSpeakTipLine(base, &items[g_abCursor], abSlotCount(items, n),
-                       (g_abTipLine + tipDir + nl) % nl);
+                       g_abTipLine + tipDir);           // the raw step: abSpeakTipLine wraps and names it
         return true;
     }
 
@@ -2267,8 +2272,9 @@ bool routeActionKey(uintptr_t base, uint32_t sym, uint16_t mod, uint8_t repeat) 
     else                target = (g_abCursor + dir + n) % n;   // wrap at both ends
 
     logLine("actionbar dir=%d %d -> %d (of %d)", dir, g_abCursor, target, n);
+    const char* note = axWrapNote(g_abCursor, target, dir);
     g_abCursor = target;
-    abSpeakLabel(base, &items[target], abSlotCount(items, n));
+    abSpeakLabel(base, &items[target], abSlotCount(items, n), note);
     return true;
 }
 
@@ -2385,6 +2391,23 @@ static int abPortraitLines(uintptr_t base, char lines[][AB_TIP_LINE_SZ], int n) 
 static uintptr_t g_hwLastHandoff = 0;
 static uintptr_t g_hwTurnActor   = 0;    // the combatant last seen holding the turn
 
+// ---- THE GAME SELECTS THE HERO A MONSTER IS ABOUT TO HIT ----
+static const DWORD HW_SWAP_INPUT_MS  = 500;
+static DWORD       g_hwSwapInputTick = 0;
+void abNoteSwapInput() { g_hwSwapInputTick = GetTickCount(); }
+static bool abSwapInputRecent() {
+    DWORD t = g_hwSwapInputTick;
+    return t != 0 && (GetTickCount() - t) <= HW_SWAP_INPUT_MS;
+}
+static bool hwMonsterTurnOver(uintptr_t base, uintptr_t hero) {
+    uintptr_t root = mapRoot(base);
+    uint32_t combat = 0;
+    if (!root || !safeReadU32(root + RAID_IN_COMBAT_OFF, &combat) || combat == 0) return false;
+    uintptr_t turn = abCurrentTurnActor(root);
+    if (!turn || turn == hero) return false;
+    return !spActorIsHero(base, turn);
+}
+
 static uintptr_t hwTurnHandoff(uintptr_t base, uintptr_t hero) {
     uintptr_t root = mapRoot(base);
     uint32_t combat = 0;
@@ -2456,6 +2479,11 @@ static void serviceGameArmedSkill(uintptr_t base, uintptr_t hero) {
         logLine("armed-watch: a hero-skill edge during a monster's user-selected aim -- ignored");
         return;
     }
+    if (hwMonsterTurnOver(base, hero)) {
+        logLine("armed-watch: \"%s\" moved on %p during a monster's turn -- the game selected its "
+                "target, not a press; the bar stays", name, (void*)hero);
+        return;
+    }
 
     if (g_tsActive && armed == g_tsSkill) return;        // our own aim, already open and announced
     if (g_tsActive) {
@@ -2486,6 +2514,7 @@ static void serviceGameArmedSkill(uintptr_t base, uintptr_t hero) {
 
 void serviceHeroWatch(uintptr_t base) {
     serviceUserSelectedTarget(base);
+    tsServiceAim(base);
 
     uintptr_t hero = abSelectedHero(base);
     if (!hero) { g_lastSelHero = 0; g_hwLastHandoff = 0; g_hwTurnActor = 0; return; }
@@ -2500,6 +2529,11 @@ void serviceHeroWatch(uintptr_t base) {
     g_lastSelHero = hero;
     if (!selChanged && !handoff) return;   // nothing new this frame
     if (!prev) return;
+    if (!handoff && hwMonsterTurnOver(base, hero) && !abSwapInputRecent()) {
+        logLine("heroswap: %p -> %p during a monster's turn with no swap press -- the game selecting "
+                "its target, not spoken", (void*)prev, (void*)hero);
+        return;
+    }
     AxContext c = currentAxContext();
     if (c == AX_LOADING || c == AX_NAMING || c == AX_CHARSHEET) return;
 
@@ -2533,7 +2567,9 @@ void serviceHeroWatch(uintptr_t base) {
             logLine("heroswap: %p -> %p is the TURN — taking the action bar -> \"%s\"",
                     (void*)prev, (void*)hero, out);
             const bool onPortrait = items[g_abCursor].kind == AB_PORTRAIT;
+            axTipSetUnprompted(true);
             abSpeakLabel(base, &items[g_abCursor], abSlotCount(items, n), onPortrait ? nullptr : out);
+            axTipSetUnprompted(false);
             return;
         }
         logLine("heroswap: %p -> %p is the turn, but the bar does not read yet — not moving",
@@ -2813,6 +2849,171 @@ static bool tsClickArmedTarget(uintptr_t base, float tx, float ty, const char* w
     enqueueSynthAt(SDL_EVT_MOUSEBUTTONUP,   SDL_BUTTON_LEFT, 0, 0, tx, ty, 2);
     logLine("targeting: ARMED commit -- one click on %s (%.0f,%.0f)", what, tx, ty);
     return true;
+}
+
+// ---- ⚠⚠ THE GAME'S OWN HOVER WITNESS, THE AIM SWEEP, THE CLICK-MISS WATCH ----
+static const uintptr_t RD_HOVER_PTR_OFF  = 0x4128;
+static const uintptr_t RD_HOVER_TYPE_OFF = 0x4130;   // raid screen+: int, its kind (was 0x3cc8)
+static const int       RD_HOVER_ACTOR    = 2;        // the kind that means "an Actor*"
+
+static bool tsGameHovers(uintptr_t base, uintptr_t actor, uintptr_t* hovOut, int* typeOut) {
+    if (hovOut) *hovOut = 0;
+    if (typeOut) *typeOut = -1;
+    uintptr_t rd = 0, hov = 0; int32_t type = -1;
+    if (!safeReadPtr(base + RAID_SCREEN_RVA, &rd) || rd <= 0x10000) return false;
+    if (!safeReadPtr(rd + RD_HOVER_PTR_OFF, &hov)) return false;
+    if (!safeReadU32(rd + RD_HOVER_TYPE_OFF, reinterpret_cast<uint32_t*>(&type))) return false;
+    if (hovOut) *hovOut = hov;
+    if (typeOut) *typeOut = type;
+    return type == RD_HOVER_ACTOR && actor && hov == actor;
+}
+
+static const int TS_SWEEP_MAX    = 40;
+static const int TS_SWEEP_FRAMES = 3;        // frames a candidate point gets to be hovered
+static bool      g_tsSweepOn    = false;
+static bool      g_tsSweepSkip  = false;
+static bool      g_tsSweepArmed = false;     // which gesture the found point gets
+static RvEntry   g_tsSweepRow;
+static char      g_tsSweepName[160] = {0};
+static float     g_tsSweepX[TS_SWEEP_MAX], g_tsSweepY[TS_SWEEP_MAX];
+static int       g_tsSweepN = 0, g_tsSweepIdx = -1, g_tsSweepWait = 0;
+
+static int tsSweepCandidates(uintptr_t base, uintptr_t actor, float* xs, float* ys, int max) {
+    uint32_t guid = 0;
+    if (!tsActorGuid(actor, &guid)) return 0;
+    uintptr_t bar = feGetElementById((int64_t)(TS_BAR_ID_BASE + guid));
+    float bpx = 0, bpy = 0, anchor = 0;
+    if (!bar || !elemPos(bar, &bpx, &bpy) || !tsBarAnchorOffset(base, &anchor)) return 0;
+    uintptr_t heroes[8]; float hx[8];
+    const int hn = feCollectFamilyByX(base, TS_HERO_ELEM_FAMILY, TS_HERO_ELEM_OWNER, heroes, hx, 8);
+    if (hn < 2) return 0;                                    // one hero: no pitch to measure
+    float pitch = (hx[0] - hx[hn - 1]) / (float)(hn - 1);
+    if (pitch < 0) pitch = -pitch;
+    if (pitch < 20.0f) return 0;
+    float py = 0, hbx = 0; uint32_t hb = 0;
+    if (!elemPos(heroes[0], &hbx, &py) || !safeReadU32(heroes[0] + ELEM_SIZE_OFF + 4, &hb)) return 0;
+    const float h = u32AsFloatM(hb);
+    if (h <= 0) return 0;
+    uint32_t mask = 0;
+    safeReadU32(actor + ACTOR_RANK_MASK_OFF, &mask);
+    int span = 0;
+    for (int i = 0; i < 4; i++) if (mask & (1u << i)) span++;
+    if (span < 1) span = 1;
+    const float x0 = bpx + anchor;                           // the one-rank point (today's click)
+    const float cx = x0 + 0.5f * (float)(span - 1) * pitch;  // the span's centre
+    const float rows[4] = { py + 0.75f * h, py + 0.5f * h, py + 0.25f * h, py + 0.92f * h };
+    const int halfSteps = span + 1;                          // to half a pitch past each end
+    int n = 0;
+    for (int r = 0; r < 4 && n < max; r++)
+        for (int k = 0; k <= halfSteps && n < max; k++)
+            for (int sgn = (k == 0 ? 1 : -1); sgn <= 1 && n < max; sgn += 2) {
+                xs[n] = cx + (float)(sgn * k) * 0.5f * pitch;
+                ys[n] = rows[r];
+                n++;
+            }
+    logLine("targeting: sweep geometry -- bar left %.1f + anchor %.1f, pitch %.1f, span %d "
+            "(mask 0x%x), hero box y %.1f h %.1f -> %d candidates around (%.0f,%.0f)",
+            bpx, anchor, pitch, span, mask, py, h, n, cx, rows[0]);
+    return n;
+}
+
+static bool tsSweepBegin(uintptr_t base, const RvEntry& row, bool armed, const char* name,
+                         uintptr_t hov, int htype) {
+    if (g_tsSweepOn) return true;                            // one at a time; a second Enter changes nothing
+    g_tsSweepN = tsSweepCandidates(base, row.actor, g_tsSweepX, g_tsSweepY, TS_SWEEP_MAX);
+    if (g_tsSweepN <= 0) {
+        logLine("targeting: hover witness says the cursor is NOT on %s (hovered=%p type=%d) and no "
+                "candidate points could be built -- blind click as before", name, (void*)hov, htype);
+        return false;
+    }
+    g_tsSweepOn = true; g_tsSweepArmed = armed; g_tsSweepRow = row;
+    _snprintf(g_tsSweepName, sizeof g_tsSweepName, "%s", name);
+    g_tsSweepName[sizeof g_tsSweepName - 1] = 0;
+    g_tsSweepIdx = 0; g_tsSweepWait = 0;
+    moveCursorTo(g_tsSweepX[0], g_tsSweepY[0]);
+    logLine("targeting: hover witness says the cursor is NOT on %s (hovered=%p type=%d) -- sweeping "
+            "%d candidate points, first (%.0f,%.0f)", name, (void*)hov, htype, g_tsSweepN,
+            g_tsSweepX[0], g_tsSweepY[0]);
+    return true;
+}
+
+static uintptr_t g_cwActor = 0, g_cwSkill = 0, g_cwPerf = 0;   // the click-miss watch
+static uint32_t  g_cwTick = 0;
+static char      g_cwName[160] = {0};
+static const uint32_t TS_CLICK_WATCH_MS = 900;
+
+static void tsArmClickWatch(uintptr_t actor, const char* name) {
+    g_cwActor = actor; g_cwSkill = g_tsSkill; g_cwPerf = g_tsPerformer; g_cwTick = GetTickCount();
+    _snprintf(g_cwName, sizeof g_cwName, "%s", name ? name : axs(AXS_TS_TARGET_FALLBACK));
+    g_cwName[sizeof g_cwName - 1] = 0;
+    if (!g_cwTick) g_cwTick = 1;                             // 0 means "no watch"
+}
+
+// Main thread, every frame (from serviceHeroWatch).
+static void tsServiceAim(uintptr_t base) {
+    if (g_tsSweepOn) {
+        if (!g_tsActive || !g_tsSkill) {
+            g_tsSweepOn = false;
+            logLine("targeting: sweep abandoned -- the aim closed under it");
+        } else {
+            uintptr_t hov = 0; int htype = -1;
+            if (tsGameHovers(base, g_tsSweepRow.actor, &hov, &htype)) {
+                const float tx = g_tsSweepX[g_tsSweepIdx], ty = g_tsSweepY[g_tsSweepIdx];
+                g_tsSweepOn = false;
+                char what[64];
+                _snprintf(what, sizeof what, "enemy slot %d (swept)", g_tsSweepRow.slot);
+                what[sizeof what - 1] = 0;
+                logLine("targeting: sweep HIT at candidate %d/%d (%.0f,%.0f) -- the game hovers %s "
+                        "(type %d)", g_tsSweepIdx + 1, g_tsSweepN, tx, ty, g_tsSweepName, htype);
+                const bool clicked = g_tsSweepArmed ? tsClickArmedTarget(base, tx, ty, what)
+                                                    : tsClickTargetPoint(base, tx, ty, what);
+                if (!clicked) {
+                    g_tsSweepSkip = true; tsConfirm(base, g_tsSweepRow); g_tsSweepSkip = false;
+                    return;
+                }
+                logLine("targeting: \"%s\" committed by CLICKING (enemy, after the sweep) -- the "
+                        "game owns the turn from here", g_tsSkillName);
+                tsArmClickWatch(g_tsSweepRow.actor, g_tsSweepName);
+                tsCloseToBar(base);
+            } else if (++g_tsSweepWait >= TS_SWEEP_FRAMES) {
+                g_tsSweepWait = 0;
+                if (++g_tsSweepIdx >= g_tsSweepN) {
+                    g_tsSweepOn = false;
+                    logLine("targeting: sweep EXHAUSTED after %d points -- the hover witness never "
+                            "named %s (last hovered=%p type=%d); falling back to the blind click",
+                            g_tsSweepN, g_tsSweepName, (void*)hov, htype);
+                    g_tsSweepSkip = true; tsConfirm(base, g_tsSweepRow); g_tsSweepSkip = false;
+                } else {
+                    moveCursorTo(g_tsSweepX[g_tsSweepIdx], g_tsSweepY[g_tsSweepIdx]);
+                    logLine("targeting: sweep -> candidate %d/%d (%.0f,%.0f) [was hovering %p type %d]",
+                            g_tsSweepIdx + 1, g_tsSweepN, g_tsSweepX[g_tsSweepIdx],
+                            g_tsSweepY[g_tsSweepIdx], (void*)hov, htype);
+                }
+            }
+        }
+    }
+
+    if (g_cwTick && GetTickCount() - g_cwTick >= TS_CLICK_WATCH_MS) {
+        uintptr_t root = mapRoot(base);
+        uintptr_t held = 0; uint32_t state = 0;
+        if (g_cwPerf) safeReadPtr(g_cwPerf + ACTOR_CUR_SKILL_OFF, &held);
+        if (root) safeReadU32(root + RAID_IN_COMBAT_OFF, &state);
+        const bool stillArmed = root && abBattleLive(root) && held == g_cwSkill &&
+                                (int)state == TP_STATE_CHOOSING_HI;
+        if (stillArmed) {
+            char msg[240];
+            _snprintf(msg, sizeof msg, axs(AXS_TS_CLICK_MISSED_FMT), g_cwName);
+            msg[sizeof msg - 1] = 0;
+            logLine("targeting: click-miss watch -- skill %p still held in state 0x%x %u ms after "
+                    "the click on %s: the click did NOT land", (void*)held, state,
+                    TS_CLICK_WATCH_MS, g_cwName);
+            postSpeech(msg);
+        } else {
+            logLine("targeting: click-miss watch -- the click on %s landed (held=%p want=%p "
+                    "state=0x%x)", g_cwName, (void*)held, (void*)g_cwSkill, state);
+        }
+        g_cwTick = 0;
+    }
 }
 
 static bool tsRowClickPoint(uintptr_t base, const RvEntry& row, float* tx, float* ty) {
@@ -3316,6 +3517,8 @@ void tsSetActive(bool on) {
     g_rvCursor  = -1;
     g_rvTipLine = 0;
     g_rvTipCol  = 0;
+    g_tsSweepOn = false;
+                           // click-miss watch is NOT cleared here -- it outlives the aim on purpose
     if (!on) {
         g_tsSkill = 0; g_tsPerformer = 0; g_tsSkillName[0] = 0;
         g_tsMove = false; g_tsMoverName[0] = 0;
@@ -3578,7 +3781,7 @@ static bool tsUserSelPending(uintptr_t base, uintptr_t* monster, uintptr_t* skil
 }
 
 static void tsUserSelHeader(uintptr_t base, int n, char* out, int outsz) {
-    _snprintf(out, outsz, axs(AXS_TS_CHOOSE_TARGET_FMT), g_tsSkillName, n);
+    _snprintf(out, outsz, axs(AXS_TS_USERSEL_KILL_FMT), g_tsSkillName, n);
     out[outsz - 1] = 0;
 }
 
@@ -3628,7 +3831,7 @@ static bool tsBeginUserSelected(uintptr_t base, uintptr_t monster, uintptr_t ski
     char msg[1100], row[768];
     tsUserSelHeader(base, n, msg, sizeof msg);
     if (tsComposeRow(base, rows, n, start, row, sizeof row)) abAppendFrag(msg, sizeof msg, row);
-    postSpeech(msg);
+    postSpeech(msg, /*interrupt=*/false, SPK_EVENT);
     tsFollowCursor(base, rows, n, start);
     return true;
 }
@@ -3797,6 +4000,16 @@ static void tsConfirm(uintptr_t base, const RvEntry& row) {
 
     // ---- A FRIENDLY TARGET IS CLICKED, NOT CALLED ----
     // ---- AND NOW THE FAR SIDE IS CLICKED TOO ----
+    if (row.enemy && row.actor && !isMove && !g_tsSweepSkip) {
+        uintptr_t hov = 0; int htype = -1;
+        if (!tsGameHovers(base, row.actor, &hov, &htype)) {
+            const bool armedOk = g_tsArmed &&
+                                 tsGameHoldsSkill(base, g_tsPerformer, g_tsSkill, "sweep");
+            if (tsSweepBegin(base, row, armedOk, name, hov, htype)) return;
+        } else {
+            logLine("targeting: hover witness confirms the cursor is on %s -- clicking", name);
+        }
+    }
     bool clicked = false;
     if (!isMove && g_tsArmed &&
         tsGameHoldsSkill(base, g_tsPerformer, g_tsSkill, "armed commit")) {
@@ -3814,6 +4027,7 @@ static void tsConfirm(uintptr_t base, const RvEntry& row) {
     if (clicked) {
         logLine("targeting: \"%s\" committed by CLICKING (%s) -- the game owns the turn "
                 "from here", g_tsSkillName, row.enemy ? "enemy" : "friendly");
+        if (row.enemy) tsArmClickWatch(row.actor, name);
         tsCloseToBar(base);
         return;
     }

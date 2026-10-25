@@ -77,6 +77,8 @@ static bool routeInputEventInner(uintptr_t base, void* ev);
 // ---- HELD-ARROW NAVIGATION ----
 static const DWORD AX_HELD_STEP_MS = 150;
 
+static const uint32_t AX_MOVIE_SCANS = 512;
+static bool     g_mvSwallowedScan[AX_MOVIE_SCANS];
 static uint32_t g_axEvScan    = 0;
 static uint32_t g_axHoldScan  = 0;
 static DWORD    g_axHoldPress = 0;  // tick when this hold was armed
@@ -487,7 +489,8 @@ struct AxContextDef {
 static const AxContextDef kAxContexts[] = {
     { AX_FIND,     axIsFind,     routeFindKey,     true, "find",     fdReannounce },
     { AX_SETTINGS, axIsSettings, routeSettingsKey, true, "settings", smReannounce },
-    { AX_MODTUT,   axIsModTut,   routeModTutKey,   true, "modtutorial", mtReannounce, true },
+    { AX_MODTUT,   axIsModTut,   routeModTutKey,   true, "modtutorial", mtReannounce, true, nullptr, mtFind },
+    { AX_MOVIE,    axIsMovie,    routeMovieKey,    true, "movie" },
     // modal layers: the game's focus sits underneath and must not be voiced
     { AX_NAMING,  axIsNaming,  nullptr,          true,  "naming"    },
     { AX_LOADING, axIsLoading, nullptr,          true,  "loading",  lsReannounce, true },
@@ -495,10 +498,11 @@ static const AxContextDef kAxContexts[] = {
     { AX_GLOSSARY, axIsGlossary, routeGlossaryKey, true, "glossary", glReannounce, false, nullptr, glFind },
     { AX_HELP, axIsHelp, routeHelpKey, true, "help", hpReannounce, true, nullptr, hpFind },
     { AX_CONTROLS, axIsControls, routeControlsKey, true, "controls", cpReannounce, true, nullptr, cpFind },
+    { AX_CREDITS, axIsCredits, routeCreditsKey, true, "credits", crReannounce, false, nullptr, crFind },
     { AX_PAUSE, axIsPause, routeFrontEndKey, false, "pause", feReannounce, false, feFocusSync, feFind },
     { AX_DIALOG, axIsDialog, routeDialogKey, false, "dialog", cdReannounce, true, nullptr, feFind },
     { AX_JOURNAL, axIsJournal, routeJournalKey,  true,  "journal",  jpReannounce, true },
-    { AX_TOWNEVENT, axIsTownEvent, nullptr, true, "townevent", teReannounce, true },
+    { AX_TOWNEVENT, axIsTownEvent, routeTownEventKey, true, "townevent", teReannounce, true },
     { AX_CHARSHEET, axIsTownEventSheet, routeCharSheetKey, true, "charsheet", nullptr, false, csFocusSync, csFind },
     { AX_RESULTS, axIsResults, routeResultsKey, true, "results", rrReannounce, false, nullptr, rrFind },
     { AX_TOWNLOG, axIsTownLog, routeTownLogKey, true, "townlog", tlReannounce, false, nullptr, tlFind },
@@ -509,6 +513,7 @@ static const AxContextDef kAxContexts[] = {
     { AX_RING, axIsRing, routeRingKey, true, "ring", ringReannounce, false, ringFocusSync, ringFind },
     { AX_ROSTER, axIsRoster, routeRosterKey, true, "roster", rosReannounce, false, nullptr, rosFind },
     { AX_PARTY, axIsParty, routePartyKey, true, "party", ptyReannounce, false, ptyFocusSync, ptyFind },
+    { AX_TOWNMENU, axIsTownMenu, routeTownMenuKey, true, "townmenu", tmnReannounce, false, nullptr, tmnFind },
     { AX_PROVISION, axIsProvision, routeProvisionKey, true, "provision", provReannounce, false, provFocusSync, provFind },
     { AX_EMBARK, axIsEmbark, routeEmbarkKey, true, "embark", embReannounce, false, embFocusSync, embFind },
     { AX_RESOURCES, axIsResources, routeResourcesKey, true, "resources", resReannounce, false, nullptr, resFind },
@@ -635,6 +640,11 @@ static bool routeInputEvent(uintptr_t base, void* ev) {
     kmForwardNote(-1, -1, 0);
     uint32_t type = 0;
     if (!safeReadU32((uintptr_t)ev, &type)) return false;
+    if (type == SDL_EVT_KEYDOWN) axSpeechKeyEdge();
+    if (type == SDL_EVT_KEYDOWN) {
+        uint32_t ssym = 0; safeReadU32((uintptr_t)ev + SDL_KEY_SYM_OFF, &ssym);
+        if (ssym == SDLK_q || ssym == SDLK_e) abNoteSwapInput();
+    } else if (type == SDL_EVT_MOUSEBUTTONDOWN) abNoteSwapInput();
     if (type == SDL_EVT_KEYUP) {
         uint32_t uscan = 0; safeReadU32((uintptr_t)ev + SDL_KEY_SCAN_OFF, &uscan);
         if (kmForwardKeyUp(uscan)) return true;
@@ -665,9 +675,19 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
                 && (long)(g_lastNavTick - g_axHoldPress) >= 0
                 && (DWORD)(GetTickCount() - g_lastNavTick) <= 1000) {
                 logLine("navhold: release re-read \"%.60s\"", g_lastNavLine);
+                axSpeechKeyEdge();
                 postSpeech(g_lastNavLine);
             }
             g_axHoldScan = 0; g_axHoldBurst = false;
+        }
+    }
+    if (g_fdActive && (type == SDL_EVT_TEXTINPUT || type == SDL_EVT_TEXTEDITING))
+        return routeFindText(base, ev, type);
+    if (type == SDL_EVT_KEYUP) {
+        uint32_t uscan = 0; safeReadU32((uintptr_t)ev + SDL_KEY_SCAN_OFF, &uscan);
+        if (uscan < AX_MOVIE_SCANS && g_mvSwallowedScan[uscan]) {
+            g_mvSwallowedScan[uscan] = false;
+            return true;
         }
     }
     if (type != SDL_EVT_KEYDOWN) return false;         // (text input etc. always passes)
@@ -685,7 +705,9 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
     g_axEvScan = scan;
 
     // ---- The KEYBOARD LAYOUT FOLD (input/layout.cpp) ----
+    uint32_t rawSym = sym;
     klFold(base, &sym, scan);
+    g_fdKeyFolded = (sym != rawSym);
 
     // ---- Ctrl = the player's silence key: drop the whole backlog ----
     int ci = (sym == SDLK_LCTRL) ? 0 : (sym == SDLK_RCTRL) ? 1 : -1;
@@ -708,6 +730,10 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
     if (ctx == AX_FIND) return routeFindKey(base, sym, mod, rep);
     if (ctx == AX_SETTINGS) return routeSettingsKey(base, sym, mod, rep);
     if (ctx == AX_MODTUT && routeModTutKey(base, sym, mod, rep)) return true;
+    if (ctx == AX_MOVIE && routeMovieKey(base, sym, mod, rep)) {
+        if (scan < AX_MOVIE_SCANS) g_mvSwallowedScan[scan] = true;
+        return true;
+    }
     {
         int kfn = -1, kslot = -1;
         int kr = kmRoute(base, ctx, &sym, &mod, &kfn, &kslot);
@@ -782,16 +808,6 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
     }
     if (g_twStepping && !(sym >= 0x400000E0u && sym <= 0x400000E7u)) twInterrupt(sym);
 
-    if (!tutPopupActive() &&
-        townEventHeroKeysClaim() && routeTownEventHeroKey(base, sym, mod, rep)) return true;
-
-    if ((sym == SDLK_RETURN || sym == SDLK_KP_ENTER) &&
-        !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL)) &&
-        !tutPopupActive() && townEventEnterClaims()) {
-        if (rep) return true;                          // swallow auto-repeat, act once
-        return routeTownEventEnter(base);
-    }
-
     if (sym == SDLK_COMMA &&
         !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL |
                  KMOD_LSHIFT | KMOD_RSHIFT)) && !g_textInputActive) {
@@ -846,7 +862,7 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
         if (ctx == AX_ROOM || ctx == AX_ACTIONS || ctx == AX_MAP || ctx == AX_INV ||
             ctx == AX_INGAME || ctx == AX_ITEMUSE)
             return routeRoomToggle(base, sym, rep);
-        if (ctx == AX_RESOURCES || ctx == AX_PARTY || ctx == AX_ROSTER ||
+        if (ctx == AX_RESOURCES || ctx == AX_PARTY || ctx == AX_ROSTER || ctx == AX_TOWNMENU ||
             ctx == AX_TOWNMAP || ctx == AX_BLDG || ctx == AX_DISTRICT || ctx == AX_EMBARK ||
             ctx == AX_NONE)
             return routeResourcesToggle(base, sym, rep);
@@ -870,10 +886,20 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
         }
     }
 
+    if (sym == SDLK_ESCAPE && !g_ruEquipHero && !g_ihHeld &&
+        !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL | KMOD_LSHIFT | KMOD_RSHIFT))) {
+        if (ctx == AX_MAP || ctx == AX_INV) {
+            if (rep) return true;                  // held: one landing per press
+            logLine("escape: %s -> the dungeon view (the pad's Back rule, on the keyboard)",
+                    ctx == AX_MAP ? "map" : "bag");
+            return routeRoomToggle(base, SDLK_r, 0);
+        }
+    }
+
     if (sym == SDLK_TAB && !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL |
                                     KMOD_LSHIFT | KMOD_RSHIFT))) {
         if (ctx == AX_PARTY || ctx == AX_ROSTER || ctx == AX_RESOURCES || ctx == AX_TOWNLOG ||
-            ctx == AX_REALMINV || ctx == AX_EXCHANGE ||
+            ctx == AX_REALMINV || ctx == AX_EXCHANGE || ctx == AX_TOWNMENU ||
             ctx == AX_TOWNMAP || ctx == AX_BLDG || ctx == AX_DISTRICT || ctx == AX_EMBARK ||
             ctx == AX_PROVISION || ctx == AX_NONE)
             return routeTownTab(base, sym, rep);
@@ -881,7 +907,7 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
     if (sym == SDLK_TAB && (mod & (KMOD_LSHIFT | KMOD_RSHIFT)) &&
         !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
         if (ctx == AX_PARTY || ctx == AX_ROSTER || ctx == AX_RESOURCES || ctx == AX_TOWNLOG ||
-            ctx == AX_REALMINV || ctx == AX_EXCHANGE ||
+            ctx == AX_REALMINV || ctx == AX_EXCHANGE || ctx == AX_TOWNMENU ||
             ctx == AX_TOWNMAP || ctx == AX_BLDG || ctx == AX_DISTRICT || ctx == AX_EMBARK ||
             ctx == AX_PROVISION || ctx == AX_NONE)
             return routeTownShiftTab(base, rep);
@@ -898,7 +924,7 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
             return claimed;
         }
         if (ctx == AX_TOWNMAP || ctx == AX_EMBARK || ctx == AX_PROVISION || ctx == AX_RING ||
-            ctx == AX_NONE)
+            ctx == AX_TOWNMENU || ctx == AX_NONE)
             return routeEmbarkForward(base, rep);
     }
 
@@ -906,7 +932,7 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
         !(mod & (KMOD_LALT | KMOD_RALT | KMOD_LCTRL | KMOD_RCTRL))) {
         if (ctx == AX_TOWNEVENT || ctx == AX_TOWNLOG || ctx == AX_TOWNMAP || ctx == AX_PARTY ||
             ctx == AX_ROSTER || ctx == AX_RESOURCES || ctx == AX_BLDG || ctx == AX_DISTRICT ||
-            ctx == AX_EMBARK || ctx == AX_NONE)
+            ctx == AX_EMBARK || ctx == AX_TOWNMENU || ctx == AX_NONE)
             return routeTownEventToggle(base, rep);
     }
 
@@ -915,7 +941,8 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
             ctx == AX_INV || ctx == AX_INGAME || ctx == AX_ITEMUSE)
             return routeLogToggle(base, sym, rep);
         if (ctx == AX_TOWNLOG || ctx == AX_TOWNMAP || ctx == AX_PARTY || ctx == AX_ROSTER ||
-            ctx == AX_BLDG || ctx == AX_DISTRICT || ctx == AX_EMBARK || ctx == AX_NONE)
+            ctx == AX_BLDG || ctx == AX_DISTRICT || ctx == AX_EMBARK || ctx == AX_TOWNMENU ||
+            ctx == AX_NONE)
             return routeTownLogToggle(base, sym, rep);
     }
 
@@ -969,7 +996,7 @@ static bool routeInputEventInner(uintptr_t base, void* ev) {
         if (ctx == AX_REALMINV || ctx == AX_TRKPICK || ctx == AX_EXCHANGE || ctx == AX_RESOURCES ||
             ctx == AX_TOWNMAP || ctx == AX_PARTY || ctx == AX_ROSTER ||
             ctx == AX_TOWNLOG || ctx == AX_BLDG || ctx == AX_DISTRICT || ctx == AX_EMBARK ||
-            ctx == AX_RING || ctx == AX_RINGLIST ||
+            ctx == AX_RING || ctx == AX_RINGLIST || ctx == AX_TOWNMENU ||
             ctx == AX_NONE)
             return routeRealmInvToggle(base, rep);
         return false;
@@ -1139,6 +1166,7 @@ int OurPoll(void* ev) {
         checkRing(g_base);
         checkTownBuildings(g_base);
         checkDistricts(g_base);
+        checkTownMenu(g_base);
         checkTownMap(g_base);
         checkEmbark(g_base);
         checkProvision(g_base);
@@ -1155,6 +1183,7 @@ int OurPoll(void* ev) {
         checkGlossary(g_base);
         checkHelp(g_base);
         checkControls(g_base);
+        checkCredits(g_base);
         checkJournal(g_base);
         serviceStatueJournalWatch();
         serviceQuestRetreatWatch();
